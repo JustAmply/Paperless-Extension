@@ -38,6 +38,7 @@ export type BackgroundRequest =
   | { target: 'background'; type: 'state' }
   | { target: 'background'; type: 'save'; url: string; token: string }
   | { target: 'background'; type: 'process' }
+  | { target: 'background'; type: 'upload-window'; windowId: number }
   | { target: 'background'; type: 'changed' }
   | { target: 'background'; type: 'idle' }
   | { target: 'background'; type: 'settings' };
@@ -47,6 +48,7 @@ export interface BackgroundResponse {
   error?: string;
   state?: State;
   settings?: Settings;
+  message?: string;
 }
 
 export function isActive(job: Job): boolean {

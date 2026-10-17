@@ -1,4 +1,5 @@
-import { getJobs } from './data/jobs.js';
+import { enqueueWindow, getJobs } from './data/jobs.js';
+import { windowPdfs } from './browser/pdf-tabs.js';
 import {
   errorMessage,
   isActive,
@@ -130,6 +131,27 @@ async function handle(
       await offscreen(true);
       await badge();
       return { ok: true };
+    case 'upload-window': {
+      if (sender.url !== chrome.runtime.getURL('popup.html'))
+        throw new UserError('Zugriff verweigert.');
+      if (!(await settings()))
+        throw new UserError('Bitte richte zuerst deinen Paperless-Server ein.');
+      if ((await getJobs()).some(isActive))
+        throw new UserError(
+          'Bitte warte, bis die laufende Übertragung abgeschlossen ist.',
+        );
+      const sources = await windowPdfs(message.windowId);
+      if (!sources.length)
+        return {
+          ok: true,
+          message: 'Keine PDF-Tabs gefunden.',
+          state: await state(),
+        };
+      await enqueueWindow(sources);
+      await offscreen(true);
+      await badge();
+      return { ok: true, state: await state() };
+    }
     case 'changed':
       await badge();
       return { ok: true };

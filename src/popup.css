@@ -159,6 +159,27 @@ p {
 .file-select span {
   margin-left: 4px;
 }
+.window-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--page);
+  color: var(--green);
+  font-size: 12px;
+}
+.window-button svg {
+  width: 18px;
+  height: 18px;
+}
+.window-button:hover {
+  background: var(--green-soft);
+}
 .upload-status:empty,
 .form-status:empty {
   display: none;

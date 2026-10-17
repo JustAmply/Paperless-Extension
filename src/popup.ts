@@ -4,10 +4,12 @@ import {
   errorMessage,
   isActive,
   UserError,
+  type Source,
   type State,
 } from './shared/model.js';
 import { readableSource } from './shared/pdf.js';
 import { hostPermission, normalizeServer } from './shared/settings.js';
+import { sourcePermission, windowSources } from './browser/pdf-tabs.js';
 
 function element<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -29,6 +31,7 @@ const ui = {
   send: element<HTMLButtonElement>('send-current'),
   fileAccess: element<HTMLButtonElement>('file-access'),
   drop: element<HTMLButtonElement>('drop-zone'),
+  sendWindow: element<HTMLButtonElement>('send-window'),
   input: element<HTMLInputElement>('file-input'),
   status: element('upload-status'),
   jobs: element('job-list'),
@@ -41,6 +44,8 @@ let currentUrl: string | undefined;
 let staged = false;
 let polling = false;
 let uploadError = '';
+let uploadNotice = '';
+let windowTabs: Source[] = [];
 
 function showSettings(open: boolean): void {
   ui.settings.hidden = !open;
@@ -54,13 +59,11 @@ function render(state: State): void {
   const active = state.jobs.some(isActive) || staged;
   ui.toggle.hidden = !state.settings.configured;
   ui.drop.disabled = active;
+  ui.sendWindow.disabled = active || !windowTabs.length;
   ui.send.disabled = active;
   ui.toggle.disabled = active;
   ui.jobs.replaceChildren();
-  const sourceJob = state.jobs.find(
-    (job) =>
-      job.source?.tabId === currentTab?.id && job.source?.url === currentUrl,
-  );
+  const sourceJob = state.jobs.find((job) => job.source?.url === currentUrl);
   ui.send.hidden = active || sourceJob?.status !== 'failed';
   const visible = state.jobs.filter((job) => job.status !== 'skipped');
   for (const job of visible) {
@@ -83,6 +86,7 @@ function render(state: State): void {
   ui.status.classList.toggle('error', Boolean(uploadError));
   ui.status.textContent =
     uploadError ||
+    uploadNotice ||
     (staged
       ? 'Vorbereitung … Fenster kurz geöffnet lassen.'
       : active
@@ -91,6 +95,7 @@ function render(state: State): void {
 }
 
 function showUploadError(error: unknown): void {
+  uploadNotice = '';
   uploadError = errorMessage(error);
   ui.status.textContent = uploadError;
   ui.status.classList.add('error');
@@ -106,6 +111,7 @@ async function start(
 ): Promise<void> {
   if (staged || currentState.jobs.some(isActive)) return;
   uploadError = '';
+  uploadNotice = '';
   staged = true;
   render(currentState);
   try {
@@ -173,6 +179,39 @@ ui.toggle.addEventListener('click', () =>
   showSettings(ui.settings.hidden === true),
 );
 ui.drop.addEventListener('click', () => ui.input.click());
+ui.sendWindow.addEventListener('click', () => {
+  if (staged || currentState.jobs.some(isActive) || !currentTab) return;
+  const windowId = currentTab.windowId;
+  const permission = chrome.permissions.request({
+    origins: [
+      ...new Set(windowTabs.map((source) => sourcePermission(source.url))),
+    ],
+  });
+  uploadError = '';
+  uploadNotice = '';
+  staged = true;
+  render(currentState);
+  void (async () => {
+    try {
+      if (!(await permission))
+        throw new UserError(
+          'Der Zugriff auf die PDF-Tabs wurde nicht erlaubt.',
+        );
+      const response = await request({
+        target: 'background',
+        type: 'upload-window',
+        windowId,
+      });
+      uploadNotice = response.message ?? '';
+    } catch (error) {
+      showUploadError(error);
+    } finally {
+      staged = false;
+      windowTabs = await windowSources(windowId);
+      await refresh();
+    }
+  })().catch(showUploadError);
+});
 ui.input.addEventListener('change', () => {
   const files = Array.from(ui.input.files ?? []);
   ui.input.value = '';
@@ -236,8 +275,7 @@ async function maybeUploadCurrent(): Promise<void> {
     }
   }
   const previous = currentState.jobs.some(
-    (job) =>
-      job.source?.url === currentUrl && job.source?.tabId === currentTab?.id,
+    (job) => job.source?.url === currentUrl,
   );
   if (!previous) await start({ url: currentUrl, tabId: currentTab.id });
   else if (currentState.jobs.some(isActive))
@@ -247,6 +285,7 @@ async function maybeUploadCurrent(): Promise<void> {
 async function initialize(): Promise<void> {
   [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
   currentUrl = readableSource(currentTab?.url);
+  if (currentTab) windowTabs = await windowSources(currentTab.windowId);
   await refresh();
   ui.url.value = currentState.settings.url;
   ui.httpWarning.hidden = !ui.url.value.startsWith('http://');

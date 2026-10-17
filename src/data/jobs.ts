@@ -65,13 +65,23 @@ export async function putJob(job: Job): Promise<void> {
 }
 
 export async function enqueue(input: File[] | Source): Promise<void> {
-  const files = Array.isArray(input) ? input : undefined;
-  if (files) {
-    if (!files.length || files.length > MAX_BATCH_FILES) {
+  if (Array.isArray(input)) {
+    if (!input.length || input.length > MAX_BATCH_FILES) {
       throw new UserError('Bitte wähle 1 bis 10 PDF-Dateien aus.');
     }
-    for (const file of files) await validatePdf(file);
+    for (const file of input) await validatePdf(file);
   }
+  await stage(Array.isArray(input) ? input : [input], false);
+}
+
+export async function enqueueWindow(sources: Source[]): Promise<void> {
+  await stage(sources, true);
+}
+
+async function stage(
+  entries: (File | Source)[],
+  preserveUploads: boolean,
+): Promise<void> {
   const db = await open();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(['jobs', 'files'], 'readwrite');
@@ -85,19 +95,30 @@ export async function enqueue(input: File[] | Source): Promise<void> {
         tx.abort();
         return;
       }
+      const completed = new Map(
+        jobs.flatMap((job) =>
+          job.source && ['accepted', 'uncertain'].includes(job.status)
+            ? [[job.source.url, job] as const]
+            : [],
+        ),
+      );
       store.clear();
       tx.objectStore('files').clear();
-      const sources = Array.isArray(input) ? input : [input];
-      sources.forEach((item, index) => {
+      entries.forEach((item, index) => {
         const isFile = item instanceof File;
-        const job: Job = {
-          id: crypto.randomUUID(),
-          name: isFile ? item.name : pdfName(item.url),
-          status: 'queued',
-          message: 'Wartet auf Übertragung',
-          createdAt: Date.now() + index,
-          ...(!isFile ? { source: item } : {}),
-        };
+        const kept =
+          !isFile && preserveUploads ? completed.get(item.url) : undefined;
+        const job: Job =
+          !isFile && kept
+            ? { ...kept, source: item }
+            : {
+                id: crypto.randomUUID(),
+                name: isFile ? item.name : pdfName(item.url),
+                status: 'queued',
+                message: 'Wartet auf Übertragung',
+                createdAt: Date.now() + index,
+                ...(!isFile ? { source: item } : {}),
+              };
         store.add(job);
         if (isFile) tx.objectStore('files').put(item, job.id);
       });
