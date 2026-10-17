@@ -1,0 +1,88 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {
+  hasPdfSignature,
+  pdfName,
+  readableSource,
+  validatePdf,
+} from '../../dist/shared/pdf.js';
+import { MAX_PDF_BYTES, UserError } from '../../dist/shared/model.js';
+
+const encode = (text) => new TextEncoder().encode(text);
+
+test('PDF validation checks file bytes rather than trusting a supplied MIME type', async () => {
+  await validatePdf(
+    new Blob(['%PDF-1.7\n1 0 obj\n'], { type: 'application/octet-stream' }),
+  );
+  await assert.rejects(
+    validatePdf(
+      new Blob(['<html>Login required</html>'], { type: 'application/pdf' }),
+    ),
+    UserError,
+  );
+  await assert.rejects(validatePdf(new Blob()), UserError);
+  assert.equal(hasPdfSignature(encode('%PDF-not-a-version')), false);
+});
+
+test('PDF header scanning stays within the supported first 1024 bytes', () => {
+  assert.equal(hasPdfSignature(encode(`${' '.repeat(1016)}%PDF-2.0`)), true);
+  assert.equal(hasPdfSignature(encode(`${' '.repeat(1024)}%PDF-1.7`)), false);
+});
+
+test('PDF size limit accepts the boundary and rejects larger files', async () => {
+  const file = new Blob(['%PDF-1.7', new Uint8Array(MAX_PDF_BYTES - 8)]);
+  assert.equal(file.size, MAX_PDF_BYTES);
+  await validatePdf(file);
+  await assert.rejects(validatePdf(new Blob([file, 'x'])), /zu groß/);
+});
+
+test('filenames prefer server metadata and remove path and control characters', () => {
+  assert.equal(
+    pdfName(
+      'https://files.example/download',
+      "attachment; filename*=UTF-8''Rechnung%20M%C3%A4rz.pdf",
+    ),
+    'Rechnung März.pdf',
+  );
+  assert.equal(
+    pdfName(
+      'https://files.example/download',
+      'attachment; filename="folder/evil\\name\u0000.pdf"',
+    ),
+    'folder_evil_name_.pdf',
+  );
+  assert.equal(
+    pdfName('https://files.example/Rechnung%20Juli.PDF?download=1'),
+    'Rechnung Juli.PDF',
+  );
+  assert.equal(
+    pdfName('https://files.example/', 'attachment; filename="invoice.html"'),
+    'Dokument.pdf',
+  );
+  assert.equal(
+    pdfName('https://files.example/', 'attachment; filename="50%.pdf"'),
+    '50%.pdf',
+  );
+});
+
+test('source URLs only allow directly retrievable schemes and omit PDF viewer fragments', () => {
+  assert.equal(
+    readableSource('https://files.example/invoice.pdf?download=1#page=2'),
+    'https://files.example/invoice.pdf?download=1',
+  );
+  assert.equal(
+    readableSource('file:///C:/Users/User/invoice.pdf#page=2'),
+    'file:///C:/Users/User/invoice.pdf',
+  );
+  for (const url of [
+    undefined,
+    '',
+    'not a URL',
+    'blob:https://files.example/id',
+    'data:application/pdf;base64,JVBERg==',
+    'chrome://extensions/',
+    'chrome-extension://other/viewer.html',
+  ]) {
+    assert.equal(readableSource(url), undefined);
+  }
+});

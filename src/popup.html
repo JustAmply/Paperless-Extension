@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Paperless Upload</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="header">
+      <div class="brand">
+        <img src="assets/paperless.svg" width="32" height="32" alt="" />
+        <span class="brand-name">paperless<span class="ngx">-ngx</span></span>
+      </div>
+      <button
+        id="settings-toggle"
+        class="icon-button"
+        aria-label="Einstellungen"
+        aria-expanded="false"
+        aria-controls="settings-panel"
+        title="Einstellungen"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
+          <path
+            d="m9 3-.6 2.2-2 .9-2-.6-2 3.4L4 10.5v2.4l-1.6 1.6 2 3.4 2-.6 2 .9L9 21h4l.6-2.2 2-.9 2 .6 2-3.4-1.6-1.6v-2.4l1.6-1.6-2-3.4-2 .6-2-.9L13 3Z"
+          />
+        </svg>
+      </button>
+    </header>
+    <main>
+      <section id="settings-panel" aria-labelledby="settings-title" hidden>
+        <div class="section-heading">
+          <h1 id="settings-title">Mit Paperless verbinden</h1>
+          <p>Einmal einrichten. PDFs direkt ablegen.</p>
+        </div>
+        <form id="settings-form">
+          <label for="server-url">Paperless-Adresse</label>
+          <input
+            id="server-url"
+            type="text"
+            inputmode="url"
+            placeholder="https://paperless.example.de"
+            required
+            autocomplete="url"
+            spellcheck="false"
+          />
+          <p class="field-note">
+            Die Basisadresse deines Servers, ggf. mit Unterpfad.
+          </p>
+          <label for="api-token">API-Token</label>
+          <input
+            id="api-token"
+            type="password"
+            placeholder="Dein API-Token"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <p id="token-help" class="field-note">
+            In Paperless unter „Mein Profil“ → „API-Token“.
+          </p>
+          <p id="http-warning" class="notice" hidden>
+            Bei HTTP werden Token und PDFs unverschlüsselt übertragen. Verwende
+            HTTPS, wenn dein Server es unterstützt.
+          </p>
+          <button id="save-settings" class="primary" type="submit">
+            Verbinden
+          </button>
+          <p id="settings-status" class="form-status" role="status"></p>
+        </form>
+        <p class="privacy-note">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="5" y="10" width="14" height="11" rx="2" />
+            <path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg
+          >Token nur in diesem Chrome-Profil gespeichert.
+        </p>
+      </section>
+      <section id="upload-panel" aria-label="PDFs hochladen" hidden>
+        <button id="drop-zone" class="drop-zone" type="button">
+          <span class="drop-icon"
+            ><svg viewBox="0 0 32 32" aria-hidden="true">
+              <path d="M16 21V7m-5 5 5-5 5 5M7 21v5h18v-5" /></svg></span
+          ><strong>PDFs hier hineinziehen</strong
+          ><span class="file-select"
+            >Dateien auswählen <span aria-hidden="true">↗</span></span
+          >
+        </button>
+        <input
+          id="file-input"
+          type="file"
+          accept="application/pdf,.pdf"
+          multiple
+          hidden
+        />
+        <button id="file-access" class="text-button" hidden>
+          Zugriff auf lokale PDFs erlauben
+        </button>
+        <div
+          id="upload-status"
+          class="upload-status"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        ></div>
+        <ul id="job-list" class="job-list" aria-label="Übertragungen"></ul>
+        <button
+          id="send-current"
+          class="icon-button retry-button"
+          title="Aktuelle PDF erneut senden"
+          aria-label="Aktuelle PDF erneut senden"
+          hidden
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 16V4m-5 5 5-5 5 5M5 15v5h14v-5" />
+          </svg>
+        </button>
+      </section>
+      <p id="fatal-error" class="form-status error" role="alert" hidden></p>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
