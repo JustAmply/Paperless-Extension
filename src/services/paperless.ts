@@ -37,13 +37,23 @@ function options(settings: Settings): RequestInit {
 export async function verifyConnection(settings: Settings): Promise<void> {
   let response: Response;
   try {
-    response = await fetch(new URL('api/', settings.url), {
+    // The API root redirects to Swagger in current Paperless versions.
+    response = await fetch(new URL('api/profile/', settings.url), {
       ...options(settings),
+      redirect: 'manual',
       signal: AbortSignal.timeout(15_000),
     });
   } catch {
     throw new UserError(
-      'Paperless ist nicht erreichbar. Prüfe Adresse, HTTPS-Zertifikat und Netzwerk. Weiterleitungen werden nicht unterstützt.',
+      'Paperless ist nicht erreichbar. Prüfe Adresse, HTTPS-Zertifikat und Netzwerk.',
+    );
+  }
+  if (
+    response.type === 'opaqueredirect' ||
+    (response.status >= 300 && response.status < 400)
+  ) {
+    throw new UserError(
+      'Der Server leitet die API-Anfrage weiter. Nutze die direkte Paperless-Basisadresse. Ein vorgeschalteter Login muss Token-Zugriff auf /api/ erlauben.',
     );
   }
   if (!response.ok) throw rejection(response.status);
@@ -53,7 +63,12 @@ export async function verifyConnection(settings: Settings): Promise<void> {
   } catch {
     /* An HTML login page is not the Paperless API. */
   }
-  if (!body || typeof body !== 'object' || !('documents' in body)) {
+  if (
+    !body ||
+    typeof body !== 'object' ||
+    !('auth_token' in body) ||
+    body.auth_token !== settings.token
+  ) {
     throw new UserError(
       'Unter dieser Adresse antwortet keine Paperless-API. Nutze die Basisadresse, gegebenenfalls mit Unterpfad.',
     );

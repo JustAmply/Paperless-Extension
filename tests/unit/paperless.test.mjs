@@ -10,19 +10,17 @@ const settings = {
 const pdf = new Blob(['%PDF-1.7\n'], { type: 'application/pdf' });
 const taskId = '12345678-1234-4567-89ab-123456789abc';
 
-test('connection verification uses the configured API subpath and rejects an HTML login page', async (t) => {
+test('connection verification authenticates against the profile endpoint and preserves installation subpaths', async (t) => {
   let request;
   const fetchMock = t.mock.method(globalThis, 'fetch', async (input, init) => {
     request = new Request(input, init);
-    return Response.json({
-      documents: 'https://paperless.example/archive/api/documents/',
-    });
+    return Response.json({ email: '', auth_token: settings.token });
   });
   await verifyConnection(settings);
-  assert.equal(request.url, 'https://paperless.example/archive/api/');
+  assert.equal(request.url, 'https://paperless.example/archive/api/profile/');
   assert.equal(request.headers.get('authorization'), `Token ${settings.token}`);
   assert.equal(request.credentials, 'omit');
-  assert.equal(request.redirect, 'error');
+  assert.equal(request.redirect, 'manual');
   fetchMock.mock.mockImplementation(
     async () =>
       new Response('<html>Log in</html>', {
@@ -30,6 +28,30 @@ test('connection verification uses the configured API subpath and rejects an HTM
       }),
   );
   await assert.rejects(verifyConnection(settings), /keine Paperless-API/);
+  fetchMock.mock.mockImplementation(async () =>
+    Response.json({ auth_token: 'different-fixture-token' }),
+  );
+  await assert.rejects(verifyConnection(settings), /keine Paperless-API/);
+});
+
+test('connection verification rejects invalid tokens rather than accepting the public API root', async (t) => {
+  const fetchMock = t.mock.method(globalThis, 'fetch', async () =>
+    Response.json({ detail: 'Invalid token.' }, { status: 401 }),
+  );
+  await assert.rejects(verifyConnection(settings), /API-Token ist ungültig/);
+  assert.equal(fetchMock.mock.callCount(), 1);
+});
+
+test('connection verification reports redirects without following them or sending the token elsewhere', async (t) => {
+  const fetchMock = t.mock.method(globalThis, 'fetch', async () =>
+    Response.redirect('https://login.example/', 302),
+  );
+  await assert.rejects(
+    verifyConnection(settings),
+    /leitet die API-Anfrage weiter/,
+  );
+  assert.equal(fetchMock.mock.callCount(), 1);
+  assert.equal(fetchMock.mock.calls[0].arguments[1].redirect, 'manual');
 });
 
 test('upload confines the token to the configured destination and sends the named PDF as multipart', async (t) => {

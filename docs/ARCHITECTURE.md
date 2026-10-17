@@ -41,6 +41,8 @@ PDFs are validated by byte signature in the first 1 KiB and bounded to 50 MiB wh
 
 Only the Paperless service sends the `Authorization: Token` header. Source requests carry the source site's normal browser credentials, never the Paperless token. API requests omit browser cookies and reject redirects. Source URLs may contain sensitive query parameters and remain local as part of the latest batch; they are not logged or sent to a third party. All UI content is inserted with `textContent`, not interpreted as HTML. The manifest enforces local-only scripts and styles and prohibits objects.
 
+Connection verification uses `GET api/profile/`, an authenticated endpoint that does not require access to documents. The public `api/` root redirects to Swagger in current Paperless versions and cannot establish connectivity or token validity. Only a matching profile token confirms the connection; the profile response is discarded without being stored, logged, or sent to the popup. Manual redirect handling reports a redirected API separately from network errors without following it or forwarding credentials.
+
 HTTP is allowed for self-hosted local servers with an explicit UI warning. The extension cannot fix invalid TLS certificates or bypass server authentication gateways. It does not encrypt the locally stored token; Chrome profile access grants access to extension storage. This is described plainly rather than hidden behind ineffective client-side encryption.
 
 ## Verification boundaries

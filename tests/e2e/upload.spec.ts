@@ -27,6 +27,8 @@ let server: Server;
 let baseUrl: string;
 let uploads: Upload[] = [];
 let status = 200;
+let profileRedirect = false;
+let redirectVisits = 0;
 let slow = false;
 let release: (() => void) | undefined;
 let context: BrowserContext;
@@ -72,13 +74,32 @@ test.beforeAll(async () => {
   server = createServer(async (request, response) => {
     try {
       if (request.method === 'GET' && request.url === '/paperless/api/') {
+        response.writeHead(302, { location: 'schema/view/' });
+        response.end();
+        return;
+      }
+      if (
+        request.method === 'GET' &&
+        request.url === '/paperless/api/profile/'
+      ) {
+        if (profileRedirect) {
+          response.writeHead(302, { location: '/login/' });
+          response.end();
+          return;
+        }
         response.writeHead(
           request.headers.authorization === `Token ${token}` ? 200 : 401,
           {
             'content-type': 'application/json',
           },
         );
-        response.end(JSON.stringify({ documents: `${baseUrl}api/documents/` }));
+        response.end(JSON.stringify({ email: '', auth_token: token }));
+        return;
+      }
+      if (request.url === '/login/') {
+        redirectVisits++;
+        response.writeHead(200, { 'content-type': 'text/html' });
+        response.end('<html>Proxy login</html>');
         return;
       }
       if (
@@ -138,6 +159,8 @@ test.beforeAll(async () => {
 test.beforeEach(async () => {
   uploads = [];
   status = 200;
+  profileRedirect = false;
+  redirectVisits = 0;
   slow = false;
   release = undefined;
   const extensionPath = path.resolve('dist');
@@ -199,7 +222,7 @@ test.afterAll(async () => {
   );
 });
 
-test('setup and file chooser upload work against the real API boundary', async () => {
+test('setup and file chooser upload work when the public API root redirects to Swagger', async () => {
   await screenshot('setup');
   await connect();
   await screenshot('ready');
@@ -255,6 +278,33 @@ test('setup and file chooser upload work against the real API boundary', async (
     popup.locator('#job-list [data-status="accepted"]'),
   ).toBeVisible();
   expect(uploads).toHaveLength(1);
+});
+
+test('setup rejects invalid tokens and login redirects without saving settings or following the redirect', async () => {
+  await popup.getByLabel('Paperless-Adresse').fill(baseUrl);
+  await popup
+    .getByLabel('API-Token', { exact: true })
+    .fill('invalid-fixture-token');
+  await popup.getByRole('button', { name: 'Verbinden', exact: true }).click();
+  await expect(popup.locator('#settings-status')).toContainText(
+    'API-Token ist ungültig',
+  );
+  await expect(popup.locator('#settings-panel')).toBeVisible();
+
+  profileRedirect = true;
+  await popup.getByLabel('API-Token', { exact: true }).fill(token);
+  await popup.getByRole('button', { name: 'Verbinden', exact: true }).click();
+  await expect(popup.locator('#settings-status')).toContainText(
+    'leitet die API-Anfrage weiter',
+  );
+  expect(redirectVisits).toBe(0);
+  expect(uploads).toHaveLength(0);
+  expect(
+    await popup.evaluate(() => chrome.storage.local.get('settings')),
+  ).toEqual({});
+
+  profileRedirect = false;
+  await connect();
 });
 
 test('invalid files stay local and a dropped PDF uploads', async () => {

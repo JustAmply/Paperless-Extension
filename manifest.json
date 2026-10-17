@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Paperless Upload",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Geöffnete PDFs oder lokale PDF-Dateien direkt an deinen Paperless-ngx-Server übertragen.",
   "minimum_chrome_version": "116",
   "permissions": ["activeTab", "tabs", "scripting", "storage", "offscreen"],

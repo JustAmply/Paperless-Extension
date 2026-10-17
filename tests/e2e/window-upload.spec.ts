@@ -38,8 +38,16 @@ test('window upload finds extensionless PDFs, skips HTML and other windows, and 
   try {
     server = createServer(async (request, response) => {
       if (request.method === 'GET' && request.url === '/paperless/api/') {
+        response.writeHead(302, { location: 'schema/view/' });
+        response.end();
+        return;
+      }
+      if (
+        request.method === 'GET' &&
+        request.url === '/paperless/api/profile/'
+      ) {
         response.writeHead(200, { 'content-type': 'application/json' });
-        response.end(JSON.stringify({ documents: 'fixture' }));
+        response.end(JSON.stringify({ email: '', auth_token: token }));
         return;
       }
       if (request.method === 'GET' && request.url?.startsWith('/download')) {
