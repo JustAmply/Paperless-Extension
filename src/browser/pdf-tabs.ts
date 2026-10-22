@@ -1,4 +1,4 @@
-import { UserError, type Source } from '../shared/model.js';
+import { sourceKey, UserError, type Source } from '../shared/model.js';
 import { readableSource } from '../shared/pdf.js';
 import { hostPermission } from '../shared/settings.js';
 
@@ -14,7 +14,10 @@ export async function windowSources(windowId: number): Promise<Source[]> {
   });
 }
 
-export async function windowPdfs(windowId: number): Promise<Source[]> {
+export async function windowPdfs(
+  windowId: number,
+  captured: Source[] = [],
+): Promise<Source[]> {
   const sources = await windowSources(windowId);
   const origins = [
     ...new Set(sources.map((source) => sourcePermission(source.url))),
@@ -34,6 +37,13 @@ export async function windowPdfs(windowId: number): Promise<Source[]> {
   }
   const pdfs = new Map<string, Source>();
   for (const source of sources) {
+    const cached = captured.find(
+      (pdf) => pdf.tabId === source.tabId && pdf.url === source.url,
+    );
+    if (cached) {
+      pdfs.set(sourceKey(cached), cached);
+      continue;
+    }
     try {
       // The top-level PDF embedder exposes its MIME type; the viewer's own
       // protected extension frames are neither inspected nor modified.
@@ -45,7 +55,7 @@ export async function windowPdfs(windowId: number): Promise<Source[]> {
         result?.result?.type === 'application/pdf' &&
         readableSource(result.result.url) === source.url
       ) {
-        pdfs.set(source.url, source);
+        pdfs.set(sourceKey(source), source);
       }
     } catch {
       // Tabs can close or navigate into a protected page during the scan.

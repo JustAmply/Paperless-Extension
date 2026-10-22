@@ -1,26 +1,14 @@
 import {
   isActive,
+  sourceKey,
   MAX_BATCH_FILES,
   UserError,
   type Job,
   type Source,
 } from '../shared/model.js';
 import { pdfName, validatePdf } from '../shared/pdf.js';
-
-let database: Promise<IDBDatabase> | undefined;
-
-function open(): Promise<IDBDatabase> {
-  database ??= new Promise((resolve, reject) => {
-    const request = indexedDB.open('paperless-upload', 1);
-    request.onupgradeneeded = () => {
-      request.result.createObjectStore('jobs', { keyPath: 'id' });
-      request.result.createObjectStore('files');
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-  return database;
-}
+import { openDatabase as open } from './database.js';
+import type { CapturedPdf } from './sources.js';
 
 async function transaction<T>(
   mode: IDBTransactionMode,
@@ -84,7 +72,7 @@ async function stage(
 ): Promise<void> {
   const db = await open();
   await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(['jobs', 'files'], 'readwrite');
+    const tx = db.transaction(['jobs', 'files', 'sources'], 'readwrite');
     const store = tx.objectStore('jobs');
     const current = store.getAll();
     let busy = false;
@@ -98,7 +86,7 @@ async function stage(
       const completed = new Map(
         jobs.flatMap((job) =>
           job.source && ['accepted', 'uncertain'].includes(job.status)
-            ? [[job.source.url, job] as const]
+            ? [[sourceKey(job.source), job] as const]
             : [],
         ),
       );
@@ -107,7 +95,9 @@ async function stage(
       entries.forEach((item, index) => {
         const isFile = item instanceof File;
         const kept =
-          !isFile && preserveUploads ? completed.get(item.url) : undefined;
+          !isFile && preserveUploads
+            ? completed.get(sourceKey(item))
+            : undefined;
         const job: Job =
           !isFile && kept
             ? { ...kept, source: item }
@@ -121,6 +111,35 @@ async function stage(
               };
         store.add(job);
         if (isFile) tx.objectStore('files').put(item, job.id);
+        else if (!kept) {
+          const captured = tx.objectStore('sources').get(item.tabId);
+          captured.onsuccess = () => {
+            const pdf = captured.result as CapturedPdf | undefined;
+            if (
+              item.fingerprint &&
+              (!pdf ||
+                pdf.url !== item.url ||
+                pdf.fingerprint !== item.fingerprint)
+            ) {
+              job.status = 'failed';
+              job.message =
+                'Die PDF im Tab hat sich geändert oder wurde geschlossen. Bitte öffne die Erweiterung erneut.';
+              store.put(job);
+              return;
+            }
+            if (!pdf || pdf.url !== item.url) return;
+            job.name = pdf.name;
+            job.source = { ...item, fingerprint: pdf.fingerprint };
+            if (pdf.file) tx.objectStore('files').put(pdf.file, job.id);
+            else {
+              job.status = 'failed';
+              job.message =
+                pdf.error ??
+                'Die PDF wird noch geladen. Bitte warte kurz und versuche es erneut.';
+            }
+            store.put(job);
+          };
+        }
       });
     };
     tx.oncomplete = () => resolve();

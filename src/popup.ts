@@ -3,6 +3,7 @@ import { request } from './shared/messaging.js';
 import {
   errorMessage,
   isActive,
+  sourceKey,
   UserError,
   type Source,
   type State,
@@ -48,6 +49,15 @@ let uploadError = '';
 let uploadNotice = '';
 let windowTabs: Source[] = [];
 
+function selectedSource(state: State): Source | undefined {
+  if (!currentUrl || currentTab?.id === undefined) return undefined;
+  return (
+    state.sources.find(
+      (source) => source.tabId === currentTab?.id && source.url === currentUrl,
+    ) ?? { url: currentUrl, tabId: currentTab.id }
+  );
+}
+
 function showSettings(open: boolean): void {
   ui.settings.hidden = !open;
   ui.upload.hidden = open;
@@ -63,7 +73,13 @@ function render(state: State): void {
   ui.sendWindow.disabled = active || !windowTabs.length;
   ui.toggle.disabled = active;
   ui.jobs.replaceChildren();
-  const sourceJob = state.jobs.find((job) => job.source?.url === currentUrl);
+  const currentSource = selectedSource(state);
+  const sourceJob = state.jobs.find(
+    (job) =>
+      currentSource &&
+      job.source &&
+      sourceKey(job.source) === sourceKey(currentSource),
+  );
   ui.send.disabled =
     active ||
     !state.settings.configured ||
@@ -238,10 +254,8 @@ ui.drop.addEventListener('drop', (event) => {
   if (files.length) void start(files).catch(showUploadError);
 });
 ui.send.addEventListener('click', () => {
-  if (!ui.send.disabled && currentUrl && currentTab?.id !== undefined)
-    void start({ url: currentUrl, tabId: currentTab.id }).catch(
-      showUploadError,
-    );
+  const source = selectedSource(currentState);
+  if (!ui.send.disabled && source) void start(source).catch(showUploadError);
 });
 ui.fileAccess.addEventListener('click', () => {
   void chrome.permissions

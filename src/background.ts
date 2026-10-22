@@ -1,4 +1,5 @@
 import { enqueueWindow, getJobs } from './data/jobs.js';
+import { capturedSources, clearCapturedPdf } from './data/sources.js';
 import { windowPdfs } from './browser/pdf-tabs.js';
 import {
   errorMessage,
@@ -28,6 +29,7 @@ async function state(): Promise<State> {
   return {
     settings: { url: config?.url ?? '', configured: Boolean(config) },
     jobs: await getJobs(),
+    sources: await capturedSources(),
   };
 }
 
@@ -140,7 +142,10 @@ async function handle(
         throw new UserError(
           'Bitte warte, bis die laufende Übertragung abgeschlossen ist.',
         );
-      const sources = await windowPdfs(message.windowId);
+      const sources = await windowPdfs(
+        message.windowId,
+        await capturedSources(),
+      );
       if (!sources.length)
         return {
           ok: true,
@@ -178,8 +183,17 @@ chrome.runtime.onMessage.addListener(
 );
 
 chrome.runtime.onStartup.addListener(() => {
+  void clearCapturedPdf();
   void getJobs().then(async (jobs) => {
     if (jobs.some(isActive)) await offscreen(true);
     await badge();
   });
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  void clearCapturedPdf(tabId);
+});
+
+chrome.tabs.onUpdated.addListener((tabId, change) => {
+  if (change.status === 'loading') void clearCapturedPdf(tabId);
 });

@@ -9,6 +9,11 @@ export interface Settings {
 export interface Source {
   url: string;
   tabId: number;
+  fingerprint?: string;
+}
+
+export function sourceKey(source: Source): string {
+  return JSON.stringify([source.url, source.fingerprint ?? '']);
 }
 
 export type JobStatus =
@@ -32,6 +37,7 @@ export interface Job {
 export interface State {
   settings: { url: string; configured: boolean };
   jobs: Job[];
+  sources: Source[];
 }
 
 export type BackgroundRequest =

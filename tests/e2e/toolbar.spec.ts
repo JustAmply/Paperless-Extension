@@ -49,12 +49,12 @@ async function popupSession(cdp: CDPSession, targetId: string) {
   };
 }
 
-function samplePdf(): Buffer {
+function samplePdf(padding = 0): Buffer {
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Count 1 /Kids [3 0 R] >>',
     '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 300] /Resources << >> /Contents 4 0 R >>',
-    '<< /Length 0 >>\nstream\n\nendstream',
+    `<< /Length ${padding} >>\nstream\n${' '.repeat(padding)}\nendstream`,
   ];
   let document = '%PDF-1.7\n';
   const offsets = objects.map((object, index) => {
@@ -67,187 +67,289 @@ function samplePdf(): Buffer {
   return Buffer.from(document);
 }
 
-test('the toolbar action uploads the active PDF without permanent source access or duplicate POSTs', async ({}, testInfo) => {
-  const pdf = samplePdf();
-  const uploads: {
-    authorization: string | undefined;
-    name: string;
-    content: Buffer;
-  }[] = [];
-  const sourceRequests: (string | undefined)[] = [];
-  let context: BrowserContext | undefined;
-  let server: Server | undefined;
-  try {
-    server = createServer(async (request, response) => {
-      if (request.method === 'GET' && request.url === '/paperless/api/') {
-        response.writeHead(302, { location: 'schema/view/' });
-        response.end();
-        return;
-      }
-      if (
-        request.method === 'GET' &&
-        request.url === '/paperless/api/profile/'
-      ) {
-        response.writeHead(200, { 'content-type': 'application/json' });
-        response.end(JSON.stringify({ email: '', auth_token: token }));
-        return;
-      }
-      if (request.method === 'GET' && request.url === '/download?id=42') {
-        sourceRequests.push(request.headers.authorization);
-        response.writeHead(200, {
-          'content-type': 'application/pdf',
-          'content-length': pdf.length,
-          'content-disposition': 'inline; filename="Toolbar.pdf"',
-          'cache-control': 'no-store',
-        });
-        response.end(pdf);
-        return;
-      }
-      if (
-        request.method === 'POST' &&
-        request.url === '/paperless/api/documents/post_document/'
-      ) {
-        const chunks: Buffer[] = [];
-        for await (const chunk of request) chunks.push(Buffer.from(chunk));
-        const form = await new Request('http://fixture.invalid/', {
-          method: 'POST',
-          headers: { 'content-type': request.headers['content-type'] ?? '' },
-          body: Buffer.concat(chunks),
-        }).formData();
-        const document = form.get('document');
-        if (!(document instanceof File)) throw new Error('Missing PDF upload');
-        uploads.push({
-          authorization: request.headers.authorization,
-          name: document.name,
-          content: Buffer.from(await document.arrayBuffer()),
-        });
-        response.writeHead(200, { 'content-type': 'application/json' });
-        response.end(JSON.stringify(taskId));
-        return;
-      }
-      response.writeHead(404);
-      response.end();
-    });
-    await new Promise<void>((resolve) =>
-      server!.listen(0, '127.0.0.1', resolve),
-    );
-    const address = server.address();
-    if (!address || typeof address === 'string')
-      throw new Error('Missing fixture port');
-    const baseUrl = `http://127.0.0.1:${address.port}/paperless/`;
-    // Match patterns ignore ports. Distinct hostnames keep the PDF source outside
-    // the server permission and exercise the real temporary activeTab grant.
-    const sourceUrl = `http://localhost:${address.port}/download?id=42`;
-    const extensionPath = path.resolve('dist');
-    context = await chromium.launchPersistentContext(
-      testInfo.outputPath('profile'),
-      {
-        channel: 'chromium',
-        headless: true,
-        args: [
-          `--disable-extensions-except=${extensionPath}`,
-          `--load-extension=${extensionPath}`,
-          '--enable-unsafe-extension-debugging',
-          '--disable-features=ExtensionsMenuAccessControl',
-        ],
-      },
-    );
-    const worker =
-      context.serviceWorkers()[0] ??
-      (await context.waitForEvent('serviceworker'));
-    const id = new URL(worker.url()).host;
-    const manager = await context.newPage();
-    await manager.goto('chrome://extensions/');
-    await manager.evaluate(
-      async ({ extensionId, host }) => {
-        const browser = chrome as typeof chrome & {
-          developerPrivate: {
-            addHostPermission: (
-              extensionId: string,
-              host: string,
-              callback: () => void,
-            ) => void;
-          };
-        };
-        await new Promise<void>((resolve, reject) =>
-          browser.developerPrivate.addHostPermission(extensionId, host, () => {
-            const error = chrome.runtime.lastError;
-            if (error) reject(new Error(error.message));
-            else resolve();
-          }),
-        );
-      },
-      { extensionId: id, host: `${new URL(baseUrl).origin}/*` },
-    );
-    await manager.close();
-    const setup = await context.newPage();
-    await setup.goto(`chrome-extension://${id}/popup.html`);
-    await setup.getByLabel('Paperless-Adresse').fill(baseUrl);
-    await setup.getByLabel('API-Token', { exact: true }).fill(token);
-    await setup.getByRole('button', { name: 'Verbinden', exact: true }).click();
-    await expect(setup.locator('#upload-panel')).toBeVisible();
-    const permissions = await worker.evaluate(() =>
-      chrome.permissions.getAll(),
-    );
-    expect(permissions.origins).toEqual([`${new URL(baseUrl).origin}/*`]);
-    await setup.close();
-    const page = await context.newPage();
-    await page.goto(sourceUrl);
-    await expect
-      .poll(() =>
-        page
-          .frames()
-          .some((frame) =>
-            frame
-              .url()
-              .startsWith(
-                'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/',
-              ),
-          ),
-      )
-      .toBe(true);
-    await page.bringToFront();
-    const browserCdp = await context.browser()!.newBrowserCDPSession();
-    const { targetInfos } = await browserCdp.send('Target.getTargets', {
-      filter: [{}],
-    });
-    const targetInfo = targetInfos.find(
-      (target) => target.type === 'tab' && target.url === sourceUrl,
-    );
-    if (!targetInfo)
-      throw new Error('The active PDF has no browser tab target');
-    const openAction = async () => {
-      await browserCdp.send('Extensions.triggerAction', {
-        id,
-        targetId: targetInfo.targetId,
-      });
-      let popupId: string | undefined;
-      await expect
-        .poll(async () => {
-          const targets = await browserCdp.send('Target.getTargets');
-          popupId = targets.targetInfos.find(
-            (target) => target.url === `chrome-extension://${id}/popup.html`,
-          )?.targetId;
-          return Boolean(popupId);
-        })
-        .toBe(true);
-      const command = await popupSession(browserCdp, popupId!);
-      await expect
-        .poll(async () => {
-          const result = await command('Runtime.evaluate', {
-            expression:
-              'document.querySelector("#upload-panel")?.hidden === false',
-            returnByValue: true,
+for (const sourceType of ['get', 'post', 'single-use'] as const) {
+  test(`the toolbar confirms upload of a ${sourceType} PDF without fetching it again or duplicating POSTs`, async ({}, testInfo) => {
+    test.setTimeout(60_000);
+    const pdf = samplePdf();
+    const uploads: {
+      authorization: string | undefined;
+      name: string;
+      content: Buffer;
+    }[] = [];
+    const sourceRequests: (string | undefined)[] = [];
+    const sourceMethods: string[] = [];
+    let context: BrowserContext | undefined;
+    let server: Server | undefined;
+    try {
+      server = createServer(async (request, response) => {
+        if (request.url === '/oversize.pdf') {
+          const large = samplePdf(50 * 1024 * 1024);
+          response.writeHead(200, {
+            'content-type': 'application/pdf',
+            'content-length': large.length,
           });
-          return (result['result'] as { value?: boolean }).value;
-        })
+          response.end(large);
+          return;
+        }
+        if (request.method === 'GET' && request.url === '/paperless/api/') {
+          response.writeHead(302, { location: 'schema/view/' });
+          response.end();
+          return;
+        }
+        if (
+          request.method === 'GET' &&
+          request.url === '/paperless/api/profile/'
+        ) {
+          response.writeHead(200, { 'content-type': 'application/json' });
+          response.end(JSON.stringify({ email: '', auth_token: token }));
+          return;
+        }
+        if (request.method === 'GET' && request.url === '/form') {
+          response.writeHead(200, { 'content-type': 'text/html' });
+          response.end(
+            '<form method="post" action="/download?id=42"><input name="document" value="42"><button>Open PDF</button></form>',
+          );
+          return;
+        }
+        if (request.url === '/download?id=42') {
+          sourceRequests.push(request.headers.authorization);
+          sourceMethods.push(request.method ?? '');
+          if (
+            (sourceType === 'post' && request.method !== 'POST') ||
+            (sourceType === 'single-use' && sourceRequests.length > 1)
+          ) {
+            response.writeHead(410);
+            response.end();
+            return;
+          }
+          if (sourceType === 'post') {
+            const chunks: Buffer[] = [];
+            for await (const chunk of request) chunks.push(Buffer.from(chunk));
+            expect(Buffer.concat(chunks).toString()).toBe('document=42');
+          }
+          const content =
+            sourceType === 'post' && sourceMethods.length > 1
+              ? Buffer.concat([pdf, Buffer.from('% different document\n')])
+              : pdf;
+          response.writeHead(200, {
+            'content-type': 'application/pdf',
+            'content-length': content.length,
+            'content-disposition': 'inline; filename="Toolbar.pdf"',
+            'cache-control': 'no-store',
+          });
+          response.end(content);
+          return;
+        }
+        if (
+          request.method === 'POST' &&
+          request.url === '/paperless/api/documents/post_document/'
+        ) {
+          const chunks: Buffer[] = [];
+          for await (const chunk of request) chunks.push(Buffer.from(chunk));
+          const form = await new Request('http://fixture.invalid/', {
+            method: 'POST',
+            headers: { 'content-type': request.headers['content-type'] ?? '' },
+            body: Buffer.concat(chunks),
+          }).formData();
+          const document = form.get('document');
+          if (!(document instanceof File))
+            throw new Error('Missing PDF upload');
+          uploads.push({
+            authorization: request.headers.authorization,
+            name: document.name,
+            content: Buffer.from(await document.arrayBuffer()),
+          });
+          response.writeHead(200, { 'content-type': 'application/json' });
+          response.end(JSON.stringify(taskId));
+          return;
+        }
+        response.writeHead(404);
+        response.end();
+      });
+      await new Promise<void>((resolve) =>
+        server!.listen(0, '127.0.0.1', resolve),
+      );
+      const address = server.address();
+      if (!address || typeof address === 'string')
+        throw new Error('Missing fixture port');
+      const baseUrl = `http://127.0.0.1:${address.port}/paperless/`;
+      // Match patterns ignore ports. Distinct hostnames keep the PDF source outside
+      // the server permission and exercise the real temporary activeTab grant.
+      const sourceUrl = `http://localhost:${address.port}/download?id=42`;
+      const navigationUrl =
+        sourceType === 'get' ? `${sourceUrl}#page=1&zoom=150` : sourceUrl;
+      const extensionPath = path.resolve('dist');
+      context = await chromium.launchPersistentContext(
+        testInfo.outputPath('profile'),
+        {
+          channel: 'chromium',
+          headless: true,
+          args: [
+            `--disable-extensions-except=${extensionPath}`,
+            `--load-extension=${extensionPath}`,
+            '--enable-unsafe-extension-debugging',
+            '--disable-features=ExtensionsMenuAccessControl',
+          ],
+        },
+      );
+      const worker =
+        context.serviceWorkers()[0] ??
+        (await context.waitForEvent('serviceworker'));
+      const id = new URL(worker.url()).host;
+      const sourceCache = () =>
+        worker.evaluate(async () => {
+          const db = await new Promise<IDBDatabase>((resolve, reject) => {
+            const request = indexedDB.open('paperless-upload');
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          });
+          try {
+            return await new Promise<
+              { tabId: number; size: number; error?: string }[]
+            >((resolve, reject) => {
+              const request = db
+                .transaction('sources')
+                .objectStore('sources')
+                .getAll();
+              request.onsuccess = () =>
+                resolve(
+                  request.result.map(
+                    (item: { tabId: number; file?: Blob; error?: string }) => ({
+                      tabId: item.tabId,
+                      size: item.file?.size ?? 0,
+                      ...(item.error ? { error: item.error } : {}),
+                    }),
+                  ),
+                );
+              request.onerror = () => reject(request.error);
+            });
+          } finally {
+            db.close();
+          }
+        });
+      const manager = await context.newPage();
+      await manager.goto('chrome://extensions/');
+      await manager.evaluate(
+        async ({ extensionId, host }) => {
+          const browser = chrome as typeof chrome & {
+            developerPrivate: {
+              addHostPermission: (
+                extensionId: string,
+                host: string,
+                callback: () => void,
+              ) => void;
+            };
+          };
+          await new Promise<void>((resolve, reject) =>
+            browser.developerPrivate.addHostPermission(
+              extensionId,
+              host,
+              () => {
+                const error = chrome.runtime.lastError;
+                if (error) reject(new Error(error.message));
+                else resolve();
+              },
+            ),
+          );
+        },
+        { extensionId: id, host: `${new URL(baseUrl).origin}/*` },
+      );
+      await manager.close();
+      const setup = await context.newPage();
+      await setup.goto(`chrome-extension://${id}/popup.html`);
+      await setup.getByLabel('Paperless-Adresse').fill(baseUrl);
+      await setup.getByLabel('API-Token', { exact: true }).fill(token);
+      await setup
+        .getByRole('button', { name: 'Verbinden', exact: true })
+        .click();
+      await expect(setup.locator('#upload-panel')).toBeVisible();
+      const permissions = await worker.evaluate(() =>
+        chrome.permissions.getAll(),
+      );
+      expect(permissions.origins).toEqual([`${new URL(baseUrl).origin}/*`]);
+      await setup.close();
+      const page = await context.newPage();
+      if (sourceType === 'post') {
+        await page.goto(`http://localhost:${address.port}/form`);
+        await page.getByRole('button', { name: 'Open PDF' }).click();
+        await page.waitForURL(sourceUrl);
+      } else await page.goto(navigationUrl);
+      await expect
+        .poll(() =>
+          page
+            .frames()
+            .some((frame) =>
+              frame
+                .url()
+                .startsWith(
+                  'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/',
+                ),
+            ),
+        )
         .toBe(true);
-      await command('Runtime.evaluate', {
+      if (sourceType === 'get') {
+        const handler = page
+          .frames()
+          .find(
+            (frame) => frame.url() === `chrome-extension://${id}/capture.html`,
+          );
+        expect(handler).toBeDefined();
+        await expect(handler!.locator('iframe')).toHaveAttribute(
+          'src',
+          /#page=1&zoom=150$/,
+        );
+        await mkdir(path.resolve('artifacts/screenshots'), { recursive: true });
+        await page.screenshot({
+          path: path.resolve('artifacts/screenshots/pdf-viewer.png'),
+        });
+      }
+      await page.bringToFront();
+      const browserCdp = await context.browser()!.newBrowserCDPSession();
+      const { targetInfos } = await browserCdp.send('Target.getTargets', {
+        filter: [{}],
+      });
+      const targetInfo = targetInfos.find(
+        (target) => target.type === 'tab' && target.url === navigationUrl,
+      );
+      if (!targetInfo)
+        throw new Error('The active PDF has no browser tab target');
+      const openAction = async () => {
+        await browserCdp.send('Extensions.triggerAction', {
+          id,
+          targetId: targetInfo.targetId,
+        });
+        let popupId: string | undefined;
+        await expect
+          .poll(async () => {
+            const targets = await browserCdp.send('Target.getTargets');
+            popupId = targets.targetInfos.find(
+              (target) => target.url === `chrome-extension://${id}/popup.html`,
+            )?.targetId;
+            return Boolean(popupId);
+          })
+          .toBe(true);
+        const command = await popupSession(browserCdp, popupId!);
+        await expect
+          .poll(async () => {
+            const result = await command('Runtime.evaluate', {
+              expression:
+                'document.querySelector("#send-current")?.textContent?.trim()',
+              returnByValue: true,
+            });
+            return (result['result'] as { value?: string })?.value;
+          })
+          .toBe('Aktuelle PDF hochladen');
+        return { popupId: popupId!, command };
+      };
+      const first = await openAction();
+      expect(uploads).toHaveLength(0);
+      expect(sourceMethods).toEqual([sourceType === 'post' ? 'POST' : 'GET']);
+      await first.command('Runtime.evaluate', {
         expression: 'document.querySelector("#send-current").click()',
       });
       await expect
         .poll(async () => {
-          const result = await command('Runtime.evaluate', {
+          const result = await first.command('Runtime.evaluate', {
             expression:
               'document.querySelector("#job-list [data-status=accepted] .job-message")?.textContent',
             returnByValue: true,
@@ -255,67 +357,198 @@ test('the toolbar action uploads the active PDF without permanent source access 
           return (result['result'] as { value?: string })?.value;
         })
         .toBe('An Paperless übertragen');
-      return { popupId: popupId!, command };
-    };
-    const first = await openAction();
-    await expect.poll(() => uploads.length).toBe(1);
-    expect(uploads[0]).toEqual({
-      authorization: `Token ${token}`,
-      name: 'Toolbar.pdf',
-      content: pdf,
-    });
-    expect(sourceRequests.length).toBeGreaterThanOrEqual(2);
-    expect(
-      sourceRequests.every((authorization) => authorization === undefined),
-    ).toBe(true);
-    const layout = await first.command('Page.getLayoutMetrics');
-    const contentSize = layout['cssContentSize'] as {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-    };
-    const screenshot = await first.command('Page.captureScreenshot', {
-      captureBeyondViewport: true,
-      clip: { ...contentSize, scale: 1 },
-    });
-    const screenshots = path.resolve('artifacts/screenshots');
-    await mkdir(screenshots, { recursive: true });
-    await writeFile(
-      path.join(screenshots, 'toolbar-uploaded.png'),
-      Buffer.from(screenshot['data'] as string, 'base64'),
-    );
-    await browserCdp.send('Target.closeTarget', { targetId: first.popupId });
-    const second = await openAction();
-    const stateResult = await second.command('Runtime.evaluate', {
-      expression:
-        'chrome.runtime.sendMessage({ target: "background", type: "state" })',
-      awaitPromise: true,
-      returnByValue: true,
-    });
-    const jobState = (stateResult['result'] as { value: unknown }).value;
-    expect(jobState).toHaveProperty('state.jobs.length', 1);
-    expect(jobState).toMatchObject({
-      state: {
-        jobs: [
-          {
-            status: 'accepted',
-            name: 'Toolbar.pdf',
-            source: { url: sourceUrl },
-          },
-        ],
-      },
-    });
-    expect(uploads).toHaveLength(1);
-    expect(
-      (await worker.evaluate(() => chrome.permissions.getAll())).origins,
-    ).toEqual(permissions.origins);
-    await browserCdp.send('Target.closeTarget', { targetId: second.popupId });
-  } finally {
-    await context?.close();
-    if (server)
-      await new Promise<void>((resolve, reject) =>
-        server!.close((error) => (error ? reject(error) : resolve())),
+      await expect.poll(() => uploads.length).toBe(1);
+      expect(uploads[0]).toEqual({
+        authorization: `Token ${token}`,
+        name: 'Dokument.pdf',
+        content: pdf,
+      });
+      expect(sourceRequests).toHaveLength(1);
+      expect(
+        sourceRequests.every((authorization) => authorization === undefined),
+      ).toBe(true);
+      const layout = await first.command('Page.getLayoutMetrics');
+      const contentSize = layout['cssContentSize'] as {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      };
+      const screenshot = await first.command('Page.captureScreenshot', {
+        captureBeyondViewport: true,
+        clip: { ...contentSize, scale: 1 },
+      });
+      const screenshots = path.resolve('artifacts/screenshots');
+      await mkdir(screenshots, { recursive: true });
+      await writeFile(
+        path.join(screenshots, 'toolbar-uploaded.png'),
+        Buffer.from(screenshot['data'] as string, 'base64'),
       );
-  }
-});
+      await browserCdp.send('Target.closeTarget', { targetId: first.popupId });
+      const second = await openAction();
+      const stateResult = await second.command('Runtime.evaluate', {
+        expression:
+          'chrome.runtime.sendMessage({ target: "background", type: "state" })',
+        awaitPromise: true,
+        returnByValue: true,
+      });
+      const jobState = (stateResult['result'] as { value: unknown }).value;
+      expect(jobState).toHaveProperty('state.jobs.length', 1);
+      expect(jobState).toMatchObject({
+        state: {
+          jobs: [
+            {
+              status: 'accepted',
+              name: 'Dokument.pdf',
+              source: { url: sourceUrl },
+            },
+          ],
+        },
+      });
+      expect(uploads).toHaveLength(1);
+      expect(sourceRequests).toHaveLength(1);
+      expect(
+        (await worker.evaluate(() => chrome.permissions.getAll())).origins,
+      ).toEqual(permissions.origins);
+      await browserCdp.send('Target.closeTarget', { targetId: second.popupId });
+      if (sourceType === 'post') {
+        await page.goto(`http://localhost:${address.port}/form`);
+        await page.getByRole('button', { name: 'Open PDF' }).click();
+        await page.waitForURL(sourceUrl);
+        await expect
+          .poll(() =>
+            page
+              .frames()
+              .some((frame) =>
+                frame
+                  .url()
+                  .startsWith(
+                    'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/',
+                  ),
+              ),
+          )
+          .toBe(true);
+        const next = await openAction();
+        await expect
+          .poll(async () => {
+            const result = await next.command('Runtime.evaluate', {
+              expression: 'document.querySelector("#send-current").disabled',
+              returnByValue: true,
+            });
+            return (result['result'] as { value?: boolean }).value;
+          })
+          .toBe(false);
+        expect(uploads).toHaveLength(1);
+        await next.command('Runtime.evaluate', {
+          expression: 'document.querySelector("#send-current").click()',
+        });
+        await expect.poll(() => uploads.length).toBe(2);
+        expect(uploads[1]?.content).toEqual(
+          Buffer.concat([pdf, Buffer.from('% different document\n')]),
+        );
+        expect(sourceMethods).toEqual(['POST', 'POST']);
+        await browserCdp.send('Target.closeTarget', { targetId: next.popupId });
+      }
+      if (sourceType === 'get') {
+        const original = (await sourceCache())[0]!;
+        const extra = [];
+        for (let index = 0; index < 10; index++) {
+          const tab = await context.newPage();
+          await tab.goto(sourceUrl);
+          await expect
+            .poll(async () => (await sourceCache()).length)
+            .toBe(index + 2);
+          extra.push(tab);
+        }
+        await expect
+          .poll(
+            async () =>
+              (await sourceCache()).filter((item) => item.size > 0).length,
+          )
+          .toBe(10);
+        await expect
+          .poll(async () =>
+            (await sourceCache()).find((item) => item.tabId === original.tabId),
+          )
+          .toMatchObject({
+            size: 0,
+            error: expect.stringContaining('nicht mehr verfügbar'),
+          });
+        for (const tab of extra) await tab.close();
+        await expect.poll(async () => (await sourceCache()).length).toBe(1);
+        const replacement = await context.newPage();
+        await replacement.goto(`chrome-extension://${id}/popup.html`);
+        await replacement.locator('#file-input').setInputFiles({
+          name: 'Local.pdf',
+          mimeType: 'application/pdf',
+          buffer: pdf,
+        });
+        await expect(
+          replacement.locator('[data-status=accepted]'),
+        ).toContainText('Local.pdf');
+        await replacement.close();
+        await page.bringToFront();
+        const evicted = await openAction();
+        await evicted.command('Runtime.evaluate', {
+          expression: 'document.querySelector("#send-current").click()',
+        });
+        await expect
+          .poll(async () => {
+            const result = await evicted.command('Runtime.evaluate', {
+              expression:
+                'document.querySelector("[data-status=failed] .job-message")?.textContent',
+              returnByValue: true,
+            });
+            return (result['result'] as { value?: string }).value;
+          })
+          .toContain('nicht mehr verfügbar');
+        expect(sourceRequests).toHaveLength(11);
+        expect(uploads).toHaveLength(2);
+        await browserCdp.send('Target.closeTarget', {
+          targetId: evicted.popupId,
+        });
+        await page.goto(`http://localhost:${address.port}/oversize.pdf`);
+        await expect
+          .poll(() =>
+            page
+              .frames()
+              .some((frame) =>
+                frame
+                  .url()
+                  .startsWith(
+                    'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/',
+                  ),
+              ),
+          )
+          .toBe(true);
+        expect(await sourceCache()).toEqual([
+          {
+            tabId: original.tabId,
+            size: 0,
+            error: expect.stringContaining('zu groß'),
+          },
+        ]);
+      }
+      await page.goto(`http://localhost:${address.port}/form`);
+      await expect.poll(async () => (await sourceCache()).length).toBe(0);
+      if (sourceType === 'get') {
+        const closed = await context.newPage();
+        await closed.goto(sourceUrl);
+        await expect
+          .poll(
+            async () =>
+              (await sourceCache()).filter((item) => item.size > 0).length,
+          )
+          .toBe(1);
+        await closed.close();
+        await expect.poll(async () => (await sourceCache()).length).toBe(0);
+      }
+    } finally {
+      await context?.close();
+      if (server)
+        await new Promise<void>((resolve, reject) =>
+          server!.close((error) => (error ? reject(error) : resolve())),
+        );
+    }
+  });
+}

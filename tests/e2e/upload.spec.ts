@@ -252,7 +252,7 @@ test('setup and file chooser upload work when the public API root redirects to S
     .poll(async () =>
       popup.evaluate(async () => {
         const database = await new Promise<IDBDatabase>((resolve, reject) => {
-          const request = indexedDB.open('paperless-upload', 1);
+          const request = indexedDB.open('paperless-upload');
           request.onsuccess = () => resolve(request.result);
           request.onerror = () => reject(request.error);
         });

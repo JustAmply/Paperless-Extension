@@ -122,7 +122,7 @@ test('window upload finds extensionless PDFs, skips HTML and other windows, and 
     const baseUrl = `http://127.0.0.1:${address.port}/paperless/`;
     const sourceOrigin = `http://localhost:${address.port}`;
     const firstUrl = `${new URL(baseUrl).origin}/download?id=First`;
-    const secondUrl = `${sourceOrigin}/download?id=Second`;
+    const secondUrl = `${sourceOrigin}/download/Second.pdf?id=Second`;
     const otherUrl = `${sourceOrigin}/download?id=OtherWindow`;
     const extensionPath = path.resolve('dist');
     context = await chromium.launchPersistentContext('', {
@@ -247,7 +247,7 @@ test('window upload finds extensionless PDFs, skips HTML and other windows, and 
     await popup.locator('#send-current').click();
     await expect(
       popup.locator('#job-list [data-status="accepted"]'),
-    ).toContainText('First.pdf');
+    ).toContainText('Dokument.pdf');
     await expect.poll(() => uploads.length).toBe(1);
     await popup.bringToFront();
     const htmlRequests = sourceRequests.filter(
@@ -264,9 +264,9 @@ test('window upload finds extensionless PDFs, skips HTML and other windows, and 
     await expect.poll(() => uploads.length).toBe(2);
     await expect(
       popup.locator('#job-list [data-status="accepted"]'),
-    ).toContainText(['First.pdf', 'Second.pdf']);
+    ).toContainText(['Dokument.pdf', 'Second.pdf']);
     expect(uploads.map((upload) => upload.name)).toEqual([
-      'First.pdf',
+      'Dokument.pdf',
       'Second.pdf',
     ]);
     expect(
@@ -303,7 +303,7 @@ test('window upload finds extensionless PDFs, skips HTML and other windows, and 
     });
 
     const unconfirmedEvent = context.waitForEvent('page');
-    const unconfirmedUrl = `${sourceOrigin}/download?id=Unconfirmed`;
+    const unconfirmedUrl = `${sourceOrigin}/download/Unconfirmed.pdf?id=Unconfirmed`;
     await worker.evaluate(
       async ({ url, windowId }) =>
         chrome.tabs.create({ url, windowId, active: false }),
@@ -336,7 +336,7 @@ test('window upload finds extensionless PDFs, skips HTML and other windows, and 
       popup.locator('#job-list [data-status="uncertain"]'),
     ).toContainText('Unconfirmed.pdf');
     expect(uploads.map((upload) => upload.name)).toEqual([
-      'First.pdf',
+      'Dokument.pdf',
       'Second.pdf',
       'Unconfirmed.pdf',
     ]);

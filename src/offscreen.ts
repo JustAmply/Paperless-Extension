@@ -37,8 +37,8 @@ async function processJob(job: Job): Promise<void> {
     const response = await request({ target: 'background', type: 'settings' });
     if (!response.settings)
       throw new UserError('Bitte richte deinen Paperless-Server ein.');
-    let file: Blob | undefined;
-    if (job.source) {
+    let file = await getFile(job.id);
+    if (!file && job.source) {
       await update({
         ...job,
         status: 'downloading',
@@ -55,8 +55,6 @@ async function processJob(job: Job): Promise<void> {
       }
       file = pdf.file;
       job.name = pdf.name;
-    } else {
-      file = await getFile(job.id);
     }
     if (!file)
       throw new UserError(

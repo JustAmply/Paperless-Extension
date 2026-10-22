@@ -7,6 +7,9 @@
   "permissions": ["activeTab", "tabs", "scripting", "storage", "offscreen"],
   "optional_host_permissions": ["https://*/*", "http://*/*", "file:///*"],
   "background": { "service_worker": "background.js", "type": "module" },
+  "mime_types_handler": {
+    "application/pdf": { "handler_url": "capture.html" }
+  },
   "action": {
     "default_title": "PDF an Paperless senden",
     "default_popup": "popup.html",
@@ -22,6 +25,6 @@
     "128": "assets/icon-128.png"
   },
   "content_security_policy": {
-    "extension_pages": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https: http: file:; object-src 'none'; base-uri 'none'; form-action 'none'"
+    "extension_pages": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; frame-src blob:; connect-src 'self' https: http: file:; object-src 'none'; base-uri 'none'; form-action 'none'"
   }
 }

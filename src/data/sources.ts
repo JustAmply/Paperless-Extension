@@ -1,0 +1,74 @@
+import type { Source } from '../shared/model.js';
+import { openDatabase } from './database.js';
+
+const MAX_CACHE_BYTES = 100 * 1024 * 1024;
+const MAX_CACHE_FILES = 10;
+
+export interface CapturedPdf extends Source {
+  fingerprint: string;
+  name: string;
+  createdAt: number;
+  file?: Blob;
+  error?: string;
+}
+
+const unavailable =
+  'Die zwischengespeicherte PDF ist nicht mehr verfügbar. Speichere sie im PDF-Viewer und ziehe sie hier hinein.';
+
+export async function capturePdf(pdf: CapturedPdf): Promise<void> {
+  const db = await openDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction('sources', 'readwrite');
+    const store = tx.objectStore('sources');
+    const request = store.getAll();
+    request.onsuccess = () => {
+      const previous = (request.result as CapturedPdf[])
+        .filter(
+          (item): item is CapturedPdf & { file: Blob } =>
+            item.tabId !== pdf.tabId && item.file !== undefined,
+        )
+        .sort((a, b) => a.createdAt - b.createdAt);
+      let bytes = previous.reduce(
+        (sum, item) => sum + item.file.size,
+        pdf.file?.size ?? 0,
+      );
+      let files = previous.length + (pdf.file ? 1 : 0);
+      for (const item of previous) {
+        if (bytes <= MAX_CACHE_BYTES && files <= MAX_CACHE_FILES) break;
+        bytes -= item.file.size;
+        files--;
+        const { file: _file, ...metadata } = item;
+        store.put({ ...metadata, error: unavailable });
+      }
+      store.put(pdf);
+    };
+    tx.oncomplete = () => resolve();
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
+export async function clearCapturedPdf(tabId?: number): Promise<void> {
+  const db = await openDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction('sources', 'readwrite');
+    const store = tx.objectStore('sources');
+    if (tabId === undefined) store.clear();
+    else store.delete(tabId);
+    tx.oncomplete = () => resolve();
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
+export async function capturedSources(): Promise<Source[]> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction('sources').objectStore('sources').getAll();
+    request.onsuccess = () =>
+      resolve(
+        (request.result as CapturedPdf[]).map(
+          ({ tabId, url, fingerprint }) => ({ tabId, url, fingerprint }),
+        ),
+      );
+    request.onerror = () => reject(request.error);
+  });
+}
