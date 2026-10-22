@@ -233,8 +233,7 @@ test('window upload finds extensionless PDFs, skips HTML and other windows, and 
       { tabId: firstTab.id, windowId: firstTab.windowId },
     );
 
-    // Opening the UI in an inactive tab preserves the active PDF for the same
-    // automatic single-tab upload used by a toolbar popup.
+    // Opening the UI in an inactive tab preserves the active PDF selection.
     const popupEvent = context.waitForEvent('page');
     await worker.evaluate(
       async ({ url, windowId }) =>
@@ -243,6 +242,9 @@ test('window upload finds extensionless PDFs, skips HTML and other windows, and 
     );
     const popup = await popupEvent;
     await popup.waitForURL(popupUrl);
+    await expect(popup.locator('#send-current')).toBeEnabled();
+    expect(uploads).toHaveLength(0);
+    await popup.locator('#send-current').click();
     await expect(
       popup.locator('#job-list [data-status="accepted"]'),
     ).toContainText('First.pdf');

@@ -205,9 +205,6 @@ p {
 .job-list:empty {
   display: none;
 }
-.retry-button {
-  margin: 8px 0 0 auto;
-}
 .job-list li {
   display: grid;
   grid-template-columns: 18px 1fr;
@@ -273,6 +270,9 @@ input::placeholder {
 }
 .primary:hover {
   background: var(--green-hover);
+}
+.current-button {
+  margin: 0 0 14px;
 }
 .form-status {
   font-size: 12px;

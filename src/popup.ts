@@ -41,6 +41,7 @@ const ui = {
 let currentState: State;
 let currentTab: chrome.tabs.Tab | undefined;
 let currentUrl: string | undefined;
+let localFileAccess = false;
 let staged = false;
 let polling = false;
 let uploadError = '';
@@ -60,11 +61,16 @@ function render(state: State): void {
   ui.toggle.hidden = !state.settings.configured;
   ui.drop.disabled = active;
   ui.sendWindow.disabled = active || !windowTabs.length;
-  ui.send.disabled = active;
   ui.toggle.disabled = active;
   ui.jobs.replaceChildren();
   const sourceJob = state.jobs.find((job) => job.source?.url === currentUrl);
-  ui.send.hidden = active || sourceJob?.status !== 'failed';
+  ui.send.disabled =
+    active ||
+    !state.settings.configured ||
+    !currentUrl ||
+    currentTab?.id === undefined ||
+    (currentUrl.startsWith('file:') && !localFileAccess) ||
+    (sourceJob !== undefined && sourceJob.status !== 'failed');
   const visible = state.jobs.filter((job) => job.status !== 'skipped');
   for (const job of visible) {
     const row = document.createElement('li');
@@ -106,9 +112,7 @@ async function refresh(): Promise<void> {
   if (result.state) render(result.state);
 }
 
-async function start(
-  input: File[] | { url: string; tabId: number },
-): Promise<void> {
+async function start(input: File[] | Source): Promise<void> {
   if (staged || currentState.jobs.some(isActive)) return;
   uploadError = '';
   uploadNotice = '';
@@ -162,7 +166,6 @@ ui.form.addEventListener('submit', (event) => {
       ui.tokenHelp.textContent =
         'Leer lassen, um den gespeicherten Token zu behalten.';
       showSettings(false);
-      await maybeUploadCurrent();
     } catch (error) {
       ui.settingsStatus.textContent = errorMessage(error);
       ui.settingsStatus.classList.add('error');
@@ -235,7 +238,7 @@ ui.drop.addEventListener('drop', (event) => {
   if (files.length) void start(files).catch(showUploadError);
 });
 ui.send.addEventListener('click', () => {
-  if (currentUrl && currentTab?.id !== undefined)
+  if (!ui.send.disabled && currentUrl && currentTab?.id !== undefined)
     void start({ url: currentUrl, tabId: currentTab.id }).catch(
       showUploadError,
     );
@@ -251,35 +254,21 @@ ui.fileAccess.addEventListener('click', () => {
           'Aktiviere unter chrome://extensions → Paperless Upload → Details den „Zugriff auf Datei-URLs“. Alternativ kannst du die PDF hier hineinziehen.',
         );
       }
+      localFileAccess = true;
       ui.fileAccess.hidden = true;
-      await maybeUploadCurrent();
+      render(currentState);
     })
     .catch(showUploadError);
 });
 
-async function maybeUploadCurrent(): Promise<void> {
-  if (
-    !currentState.settings.configured ||
-    !currentUrl ||
-    currentTab?.id === undefined ||
-    currentState.jobs.some(isActive)
-  )
-    return;
-  if (currentUrl.startsWith('file:')) {
-    const allowed =
+async function updateCurrentAccess(): Promise<void> {
+  if (currentUrl?.startsWith('file:')) {
+    localFileAccess =
       (await chrome.extension.isAllowedFileSchemeAccess()) &&
       (await chrome.permissions.contains({ origins: ['file:///*'] }));
-    if (!allowed) {
-      ui.fileAccess.hidden = false;
-      return;
-    }
+    ui.fileAccess.hidden = localFileAccess;
   }
-  const previous = currentState.jobs.some(
-    (job) => job.source?.url === currentUrl,
-  );
-  if (!previous) await start({ url: currentUrl, tabId: currentTab.id });
-  else if (currentState.jobs.some(isActive))
-    await request({ target: 'background', type: 'process' });
+  render(currentState);
 }
 
 async function initialize(): Promise<void> {
@@ -299,7 +288,7 @@ async function initialize(): Promise<void> {
   showSettings(!currentState.settings.configured);
   if (currentState.jobs.some(isActive))
     await request({ target: 'background', type: 'process' });
-  await maybeUploadCurrent();
+  await updateCurrentAccess();
   window.setInterval(() => {
     if (polling || staged) return;
     polling = true;

@@ -26,6 +26,7 @@ interface Upload {
 let server: Server;
 let baseUrl: string;
 let uploads: Upload[] = [];
+let sourceRequests = 0;
 let status = 200;
 let profileRedirect = false;
 let redirectVisits = 0;
@@ -73,6 +74,12 @@ test.beforeAll(async () => {
   await mkdir(screenshots, { recursive: true });
   server = createServer(async (request, response) => {
     try {
+      if (request.method === 'GET' && request.url === '/current.pdf') {
+        sourceRequests++;
+        response.writeHead(200, { 'content-type': 'application/pdf' });
+        response.end(pdf);
+        return;
+      }
       if (request.method === 'GET' && request.url === '/paperless/api/') {
         response.writeHead(302, { location: 'schema/view/' });
         response.end();
@@ -158,6 +165,7 @@ test.beforeAll(async () => {
 
 test.beforeEach(async () => {
   uploads = [];
+  sourceRequests = 0;
   status = 200;
   profileRedirect = false;
   redirectVisits = 0;
@@ -305,6 +313,74 @@ test('setup rejects invalid tokens and login redirects without saving settings o
 
   profileRedirect = false;
   await connect();
+});
+
+async function useCurrentPdf(): Promise<void> {
+  // These tests open the popup in a tab. Supply the active source URL while
+  // keeping real extension storage, requests, and upload processing intact.
+  await popup.addInitScript((url) => {
+    const query = chrome.tabs.query.bind(chrome.tabs);
+    chrome.tabs.query = async (queryInfo) => {
+      const tabs = await query(queryInfo);
+      return queryInfo.active ? tabs.map((tab) => ({ ...tab, url })) : tabs;
+    };
+  }, new URL('/current.pdf', baseUrl).href);
+  await popup.reload();
+}
+
+test('opening the popup and saving settings require an explicit current PDF upload, including failed retries', async () => {
+  await useCurrentPdf();
+  await connect();
+  const send = popup.getByRole('button', { name: 'Aktuelle PDF hochladen' });
+  await expect(send).toBeEnabled();
+  expect(sourceRequests).toBe(0);
+  expect(uploads).toHaveLength(0);
+  await popup.reload();
+  await expect(send).toBeEnabled();
+  expect(sourceRequests).toBe(0);
+  expect(uploads).toHaveLength(0);
+
+  status = 401;
+  await send.click();
+  await expect(popup.locator('#job-list [data-status="failed"]')).toBeVisible();
+  await expect(send).toBeEnabled();
+  await popup.reload();
+  await expect(send).toBeEnabled();
+  expect(sourceRequests).toBe(1);
+  expect(uploads).toHaveLength(1);
+
+  status = 200;
+  await send.click();
+  await expect(
+    popup.locator('#job-list [data-status="accepted"]'),
+  ).toBeVisible();
+  await expect(send).toBeDisabled();
+  await popup.reload();
+  await expect(
+    popup.locator('#job-list [data-status="accepted"]'),
+  ).toBeVisible();
+  await expect(send).toBeDisabled();
+  expect(sourceRequests).toBe(2);
+  expect(uploads).toHaveLength(2);
+});
+
+test('the current PDF action remains disabled after an uncertain upload', async () => {
+  await useCurrentPdf();
+  await connect();
+  status = 502;
+  const send = popup.getByRole('button', { name: 'Aktuelle PDF hochladen' });
+  await send.click();
+  await expect(
+    popup.locator('#job-list [data-status="uncertain"]'),
+  ).toBeVisible();
+  await expect(send).toBeDisabled();
+  await popup.reload();
+  await expect(
+    popup.locator('#job-list [data-status="uncertain"]'),
+  ).toBeVisible();
+  await expect(send).toBeDisabled();
+  expect(sourceRequests).toBe(1);
+  expect(uploads).toHaveLength(1);
 });
 
 test('invalid files stay local and a dropped PDF uploads', async () => {

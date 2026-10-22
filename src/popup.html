@@ -76,6 +76,14 @@
         </p>
       </section>
       <section id="upload-panel" aria-label="PDFs hochladen" hidden>
+        <button
+          id="send-current"
+          class="primary current-button"
+          type="button"
+          disabled
+        >
+          Aktuelle PDF hochladen
+        </button>
         <button id="drop-zone" class="drop-zone" type="button">
           <span class="drop-icon"
             ><svg viewBox="0 0 32 32" aria-hidden="true">
@@ -110,17 +118,6 @@
           aria-atomic="true"
         ></div>
         <ul id="job-list" class="job-list" aria-label="Übertragungen"></ul>
-        <button
-          id="send-current"
-          class="icon-button retry-button"
-          title="Aktuelle PDF erneut senden"
-          aria-label="Aktuelle PDF erneut senden"
-          hidden
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 16V4m-5 5 5-5 5 5M5 15v5h14v-5" />
-          </svg>
-        </button>
       </section>
       <p id="fatal-error" class="form-status error" role="alert" hidden></p>
     </main>

@@ -19,6 +19,8 @@ PDF selection            Trusted token storage      Source retrieval + multipart
 
 The popup stages selected PDF blobs in IndexedDB and asks the background worker to process them. The worker creates one offscreen document using the `BLOBS` reason. Chrome messages carry control data and small status objects, never binary files. The offscreen runner reads blobs directly and uses `FormData` for upload. This avoids JSON serialization and base64 memory overhead.
 
+The toolbar action opens the popup without staging a new job. Only **Aktuelle PDF hochladen**, file selection/drop, or the window action starts a new batch. Saving settings and granting local file access do not start uploads. Reopening the popup can resume jobs already queued by an earlier explicit action; accepted and uncertain results disable the matching current-tab action, while failed jobs require an explicit retry.
+
 The Chrome service worker owns `chrome.storage`, optional permissions, badges, and offscreen creation/closure. The offscreen document owns requests because Chrome can terminate a worker whose fetch waits more than 30 seconds. It closes after the queue is drained. A popup poll refreshes visible status every 500 ms only while that popup exists. There is no permanent page script, polling job, or worker keepalive.
 
 ## Data and lifecycle

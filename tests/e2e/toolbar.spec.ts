@@ -236,6 +236,19 @@ test('the toolbar action uploads the active PDF without permanent source access 
         .poll(async () => {
           const result = await command('Runtime.evaluate', {
             expression:
+              'document.querySelector("#upload-panel")?.hidden === false',
+            returnByValue: true,
+          });
+          return (result['result'] as { value?: boolean }).value;
+        })
+        .toBe(true);
+      await command('Runtime.evaluate', {
+        expression: 'document.querySelector("#send-current").click()',
+      });
+      await expect
+        .poll(async () => {
+          const result = await command('Runtime.evaluate', {
+            expression:
               'document.querySelector("#job-list [data-status=accepted] .job-message")?.textContent',
             returnByValue: true,
           });

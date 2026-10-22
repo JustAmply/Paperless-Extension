@@ -1,6 +1,6 @@
 # Paperless Upload
 
-A small, unofficial Chrome extension that sends PDFs directly to your own Paperless-ngx server. Configure your server address and API token once in the popup. Then click the pinned extension icon while a PDF is open: the upload starts automatically. The same popup accepts PDF files through drag and drop or the file picker, and can send all PDF tabs in the current window.
+A small, unofficial Chrome extension that sends PDFs directly to your own Paperless-ngx server. Configure your server address and API token once in the popup. While a PDF is open, click the pinned extension icon and then **Aktuelle PDF hochladen** to send it. Opening the popup or saving settings never starts a new upload. The same popup accepts PDF files through drag and drop or the file picker, and can send all PDF tabs in the current window.
 
 There are no document-management features, tracking services, accounts, or runtime dependencies.
 
@@ -13,7 +13,7 @@ There are no document-management features, tracking services, accounts, or runti
 
 Find the token in Paperless under **My Profile → API Token**. Use the base address, such as `https://paperless.example.com/`, or `https://example.com/paperless/` for a subpath installation. Do not enter an `/api/` endpoint. HTTPS is recommended; HTTP is available for local installations, with a visible warning.
 
-Once configured, clicking the toolbar icon checks the current HTTP(S) document and sends it if it contains a PDF. File URLs additionally need the permission offered in the popup and Chrome's **Allow access to file URLs** switch in the extension details. Drag and drop and the file picker work without file-URL access.
+Once configured, open the toolbar popup and choose **Aktuelle PDF hochladen** to check the current HTTP(S) document and send it if it contains a PDF. File URLs additionally need the permission offered in the popup and Chrome's **Allow access to file URLs** switch in the extension details. Drag and drop and the file picker work without file-URL access.
 
 Choose **PDF-Tabs hochladen** to send the PDFs open in the same browser window. Chrome asks for access to the sites in that window so the extension can read each tab's document type; ordinary HTML pages are inspected without downloading them again. Only PDFs are fetched and uploaded. Other windows are excluded. Identical URLs, including different PDF page fragments, are sent once. Confirmed and unconfirmed uploads from the latest batch are preserved instead of repeated when using the window action again.
 
