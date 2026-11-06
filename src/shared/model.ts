@@ -16,6 +16,13 @@ export function sourceKey(source: Source): string {
   return JSON.stringify([source.url, source.fingerprint ?? '']);
 }
 
+export interface SourceInfo extends Source {
+  name: string;
+  availability: 'ready' | 'loading' | 'unavailable' | 'unchecked';
+  size?: number;
+  error?: string;
+}
+
 export type JobStatus =
   | 'queued'
   | 'downloading'
@@ -37,7 +44,7 @@ export interface Job {
 export interface State {
   settings: { url: string; configured: boolean };
   jobs: Job[];
-  sources: Source[];
+  sources: SourceInfo[];
 }
 
 export type BackgroundRequest =

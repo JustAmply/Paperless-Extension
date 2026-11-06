@@ -1,4 +1,4 @@
-import type { Source } from '../shared/model.js';
+import type { Source, SourceInfo } from '../shared/model.js';
 import { openDatabase } from './database.js';
 
 const MAX_CACHE_BYTES = 100 * 1024 * 1024;
@@ -59,14 +59,22 @@ export async function clearCapturedPdf(tabId?: number): Promise<void> {
   });
 }
 
-export async function capturedSources(): Promise<Source[]> {
+export async function capturedSources(): Promise<SourceInfo[]> {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
     const request = db.transaction('sources').objectStore('sources').getAll();
     request.onsuccess = () =>
       resolve(
         (request.result as CapturedPdf[]).map(
-          ({ tabId, url, fingerprint }) => ({ tabId, url, fingerprint }),
+          ({ tabId, url, fingerprint, name, file, error }) => ({
+            tabId,
+            url,
+            fingerprint,
+            name,
+            availability: file ? 'ready' : error ? 'unavailable' : 'loading',
+            ...(file ? { size: file.size } : {}),
+            ...(error ? { error } : {}),
+          }),
         ),
       );
     request.onerror = () => reject(request.error);

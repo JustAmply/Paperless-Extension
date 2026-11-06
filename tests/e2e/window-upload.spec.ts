@@ -243,6 +243,10 @@ test('window upload finds extensionless PDFs, skips HTML and other windows, and 
     const popup = await popupEvent;
     await popup.waitForURL(popupUrl);
     await expect(popup.locator('#send-current')).toBeEnabled();
+    await expect(popup.locator('#document-availability')).toContainText(
+      'Bereit zum Hochladen',
+    );
+    await expect(popup.locator('#document-availability')).toContainText('KB');
     expect(uploads).toHaveLength(0);
     await popup.locator('#send-current').click();
     await expect(

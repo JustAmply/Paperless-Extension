@@ -8,7 +8,7 @@ import {
   type Source,
   type State,
 } from './shared/model.js';
-import { readableSource } from './shared/pdf.js';
+import { pdfName, readableSource } from './shared/pdf.js';
 import { hostPermission, normalizeServer } from './shared/settings.js';
 import { sourcePermission, windowSources } from './browser/pdf-tabs.js';
 
@@ -30,6 +30,9 @@ const ui = {
   httpWarning: element('http-warning'),
   tokenHelp: element('token-help'),
   send: element<HTMLButtonElement>('send-current'),
+  documentName: element('document-name'),
+  documentOrigin: element('document-origin'),
+  documentAvailability: element('document-availability'),
   fileAccess: element<HTMLButtonElement>('file-access'),
   drop: element<HTMLButtonElement>('drop-zone'),
   sendWindow: element<HTMLButtonElement>('send-window'),
@@ -76,6 +79,28 @@ function render(state: State): void {
   ui.toggle.disabled = active;
   ui.jobs.replaceChildren();
   const currentSource = selectedSource(state);
+  const captured = state.sources.find(
+    (source) => source.tabId === currentTab?.id && source.url === currentUrl,
+  );
+  ui.documentName.textContent =
+    captured?.name ??
+    (currentUrl ? pdfName(currentUrl) : 'Kein abrufbares Dokument');
+  ui.documentOrigin.textContent = currentUrl
+    ? currentUrl.startsWith('file:')
+      ? 'Lokale Datei'
+      : new URL(currentUrl).hostname
+    : 'Öffne eine PDF oder wähle eine Datei aus.';
+  ui.documentAvailability.textContent = captured
+    ? captured.availability === 'ready'
+      ? `Bereit zum Hochladen · ${new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 }).format((captured.size ?? 0) / 1024)} KB`
+      : (captured.error ?? 'PDF wird noch geladen …')
+    : currentUrl
+      ? 'Verfügbarkeit wird beim Hochladen geprüft.'
+      : '';
+  ui.documentAvailability.classList.toggle(
+    'error',
+    captured?.availability === 'unavailable',
+  );
   const sourceJob = state.jobs.find(
     (job) =>
       currentSource &&
@@ -87,6 +112,7 @@ function render(state: State): void {
     !state.settings.configured ||
     !currentUrl ||
     currentTab?.id === undefined ||
+    (captured !== undefined && captured.availability !== 'ready') ||
     (currentUrl.startsWith('file:') && !localFileAccess) ||
     (sourceJob !== undefined &&
       ['accepted', 'uncertain'].includes(sourceJob.status));

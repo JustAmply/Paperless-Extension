@@ -489,14 +489,18 @@ for (const sourceType of ['get', 'post', 'single-use'] as const) {
         await replacement.close();
         await page.bringToFront();
         const evicted = await openAction();
-        await evicted.command('Runtime.evaluate', {
-          expression: 'document.querySelector("#send-current").click()',
+        const unavailableButton = await evicted.command('Runtime.evaluate', {
+          expression: 'document.querySelector("#send-current").disabled',
+          returnByValue: true,
         });
+        expect((unavailableButton['result'] as { value: boolean }).value).toBe(
+          true,
+        );
         await expect
           .poll(async () => {
             const result = await evicted.command('Runtime.evaluate', {
               expression:
-                'document.querySelector("[data-status=failed] .job-message")?.textContent',
+                'document.querySelector("#document-availability")?.textContent',
               returnByValue: true,
             });
             return (result['result'] as { value?: string }).value;

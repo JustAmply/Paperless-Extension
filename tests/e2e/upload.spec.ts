@@ -337,6 +337,10 @@ test('opening the popup and saving settings require an explicit current PDF uplo
   await connect();
   const send = popup.getByRole('button', { name: 'Aktuelle PDF hochladen' });
   await expect(send).toBeEnabled();
+  await expect(popup.locator('#document-name')).toHaveText('current.pdf');
+  await expect(popup.locator('#document-availability')).toContainText(
+    'beim Hochladen geprüft',
+  );
   expect(sourceRequests).toBe(0);
   expect(uploads).toHaveLength(0);
   await popup.reload();
