@@ -117,7 +117,11 @@
           aria-live="polite"
           aria-atomic="true"
         ></div>
-        <ul id="job-list" class="job-list" aria-label="Übertragungen"></ul>
+        <p id="batch-summary" class="batch-summary" role="status" hidden></p>
+        <ul id="job-list" class="job-list" aria-label="Letzte Übertragung"></ul>
+        <button id="dismiss-failures" class="text-button" type="button" hidden>
+          Fehlermeldungen schließen
+        </button>
       </section>
       <p id="fatal-error" class="form-status error" role="alert" hidden></p>
     </main>

@@ -199,8 +199,14 @@ p {
   list-style: none;
   padding: 0;
   margin: 12px 0 0;
-  max-height: 128px;
+  max-height: 190px;
   overflow-y: auto;
+}
+.batch-summary {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
 }
 .job-list:empty {
   display: none;

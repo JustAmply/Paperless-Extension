@@ -25,6 +25,8 @@ The local capture cache holds up to 10 PDFs and 100 MiB in total. Older files ar
 
 **An Paperless übertragen** means the API accepted the PDF for processing. Paperless still performs its import, OCR, duplicate checks, and workflows. If confirmation is lost, check Paperless before manually sending again; the extension never automatically repeats an upload POST.
 
+Source errors (including expired links returning HTTP 404/410) describe the recovery path: save the open PDF from its viewer, then select or drop that file into the popup. **Fehlermeldungen schließen** removes failed and skipped entries from the latest batch and updates the toolbar badge. It also clears transient notices. It never retries a request, removes an active job, or clears confirmed/unconfirmed upload protection. A non-PDF response stays visible instead of silently disabling the current-tab action. The batch summary shows progress and how many documents were accepted for processing.
+
 ## Browser limitations
 
 - Chrome 116 or newer is supported. Chrome 151 or newer is required to capture an already received PDF response through `chrome.mimeHandler`. Earlier Chrome versions and uncaptured sources use a fresh authenticated GET for HTTP(S) URLs or read an allowed file URL. That fallback cannot reconstruct POST bodies or consumed download links.

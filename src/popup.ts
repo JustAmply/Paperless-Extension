@@ -36,6 +36,8 @@ const ui = {
   input: element<HTMLInputElement>('file-input'),
   status: element('upload-status'),
   jobs: element('job-list'),
+  summary: element('batch-summary'),
+  dismiss: element<HTMLButtonElement>('dismiss-failures'),
   fatal: element('fatal-error'),
 };
 
@@ -86,15 +88,32 @@ function render(state: State): void {
     !currentUrl ||
     currentTab?.id === undefined ||
     (currentUrl.startsWith('file:') && !localFileAccess) ||
-    (sourceJob !== undefined && sourceJob.status !== 'failed');
-  const visible = state.jobs.filter((job) => job.status !== 'skipped');
-  for (const job of visible) {
+    (sourceJob !== undefined &&
+      ['accepted', 'uncertain'].includes(sourceJob.status));
+  const completed = state.jobs.filter((job) => !isActive(job)).length;
+  const accepted = state.jobs.filter((job) => job.status === 'accepted').length;
+  ui.summary.hidden = !state.jobs.length;
+  ui.summary.textContent = active
+    ? `${completed} von ${state.jobs.length} abgeschlossen`
+    : `Letzte Übertragung: ${accepted} von ${state.jobs.length} zur Verarbeitung angenommen`;
+  ui.dismiss.hidden =
+    !uploadError &&
+    !uploadNotice &&
+    !state.jobs.some((job) => ['failed', 'skipped'].includes(job.status));
+  ui.dismiss.disabled = active;
+  for (const job of state.jobs) {
     const row = document.createElement('li');
     row.dataset['status'] = job.status;
     const indicator = document.createElement('span');
     indicator.className = 'job-indicator';
     indicator.textContent =
-      job.status === 'accepted' ? '✓' : isActive(job) ? '↥' : '!';
+      job.status === 'accepted'
+        ? '✓'
+        : isActive(job)
+          ? '↥'
+          : job.status === 'skipped'
+            ? '–'
+            : '!';
     const name = document.createElement('span');
     name.className = 'job-name';
     name.textContent = job.name;
@@ -121,6 +140,7 @@ function showUploadError(error: unknown): void {
   uploadError = errorMessage(error);
   ui.status.textContent = uploadError;
   ui.status.classList.add('error');
+  ui.dismiss.hidden = false;
 }
 
 async function refresh(): Promise<void> {
@@ -198,6 +218,18 @@ ui.toggle.addEventListener('click', () =>
   showSettings(ui.settings.hidden === true),
 );
 ui.drop.addEventListener('click', () => ui.input.click());
+ui.dismiss.addEventListener('click', () => {
+  if (staged || currentState.jobs.some(isActive)) return;
+  void (async () => {
+    const result = await request({
+      target: 'background',
+      type: 'dismiss-failures',
+    });
+    uploadError = '';
+    uploadNotice = '';
+    if (result.state) render(result.state);
+  })().catch(showUploadError);
+});
 ui.sendWindow.addEventListener('click', () => {
   if (staged || currentState.jobs.some(isActive) || !currentTab) return;
   const windowId = currentTab.windowId;

@@ -32,48 +32,58 @@ const recovered = (async () => {
   }
 })();
 
-async function processJob(job: Job): Promise<void> {
-  try {
-    const response = await request({ target: 'background', type: 'settings' });
-    if (!response.settings)
-      throw new UserError('Bitte richte deinen Paperless-Server ein.');
-    let file = await getFile(job.id);
-    if (!file && job.source) {
-      await update({
+async function transfer(job: Job): Promise<Job> {
+  const response = await request({ target: 'background', type: 'settings' });
+  if (!response.settings)
+    throw new UserError('Bitte richte deinen Paperless-Server ein.');
+  let file = await getFile(job.id);
+  if (!file && job.source) {
+    await update({
+      ...job,
+      status: 'downloading',
+      message: 'Geöffnete PDF wird abgerufen …',
+    });
+    const pdf = await downloadPdf(job.source.url);
+    if (!pdf) {
+      return {
         ...job,
-        status: 'downloading',
-        message: 'Geöffnete PDF wird abgerufen …',
-      });
-      const pdf = await downloadPdf(job.source.url);
-      if (!pdf) {
-        await update({
-          ...job,
-          status: 'skipped',
-          message: 'Keine PDF im aktuellen Tab',
-        });
-        return;
-      }
-      file = pdf.file;
-      job.name = pdf.name;
+        status: 'skipped',
+        message:
+          'Keine PDF erhalten. Die Website liefert möglicherweise eine Anmeldeseite. Speichere die PDF im Viewer und wähle sie hier aus.',
+      };
     }
-    if (!file)
-      throw new UserError(
-        'Die Datei ist nicht mehr verfügbar. Bitte wähle sie erneut aus.',
-      );
-    await validatePdf(file);
-    await update({
-      ...job,
-      status: 'uploading',
-      message: 'Wird an Paperless übertragen …',
-    });
-    const status = await uploadPdf(response.settings, file, job.name);
-    await update({
-      ...job,
-      status,
-      message: status === 'accepted' ? 'An Paperless übertragen' : uncertain,
-    });
+    file = pdf.file;
+    job.name = pdf.name;
+  }
+  if (!file)
+    throw new UserError(
+      'Die Datei ist nicht mehr verfügbar. Bitte wähle sie erneut aus.',
+    );
+  await validatePdf(file);
+  await update({
+    ...job,
+    status: 'uploading',
+    message: 'Wird an Paperless übertragen …',
+  });
+  const status = await uploadPdf(response.settings, file, job.name);
+  return {
+    ...job,
+    status,
+    message: status === 'accepted' ? 'An Paperless übertragen' : uncertain,
+  };
+}
+
+async function processJob(job: Job): Promise<void> {
+  let result: Job;
+  try {
+    result = await transfer(job);
   } catch (error) {
-    await update({ ...job, status: 'failed', message: errorMessage(error) });
+    result = { ...job, status: 'failed', message: errorMessage(error) };
+  }
+  try {
+    // A failed status write or badge notification must not turn a completed
+    // POST into a retryable failure. Interrupted uploads recover as uncertain.
+    await update(result);
   } finally {
     await deleteFile(job.id);
   }

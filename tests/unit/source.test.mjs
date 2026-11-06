@@ -106,3 +106,38 @@ test('source HTTP and network failures explain the manual upload path', async (t
     /herunter.*hinein/,
   );
 });
+
+test('expired PDF links explain that nothing was sent to Paperless', async (t) => {
+  const fetchMock = t.mock.method(
+    globalThis,
+    'fetch',
+    async () => new Response(null, { status: 404 }),
+  );
+  await assert.rejects(downloadPdf('https://files.example/once'), (error) => {
+    assert.match(error.message, /HTTP 404/);
+    assert.match(error.message, /abgelaufen oder nur einmal gültig/);
+    assert.match(error.message, /nichts an Paperless gesendet/);
+    assert.match(error.message, /PDF-Viewer/);
+    return true;
+  });
+  assert.equal(fetchMock.mock.callCount(), 1);
+});
+
+test('a broken response stream keeps actionable guidance even when cancellation rejects', async (t) => {
+  let reads = 0;
+  const stream = new ReadableStream({
+    pull(controller) {
+      if (reads++ === 0) controller.enqueue(encode('%PDF-1.7\n'));
+      else controller.error(new TypeError('Connection interrupted'));
+    },
+  });
+  t.mock.method(globalThis, 'fetch', async () => new Response(stream));
+  await assert.rejects(
+    downloadPdf('https://files.example/interrupted.pdf'),
+    (error) => {
+      assert.match(error.message, /Abruf der PDF wurde unterbrochen/);
+      assert.match(error.message, /PDF-Viewer/);
+      return true;
+    },
+  );
+});

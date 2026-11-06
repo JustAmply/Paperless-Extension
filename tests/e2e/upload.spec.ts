@@ -27,6 +27,8 @@ let server: Server;
 let baseUrl: string;
 let uploads: Upload[] = [];
 let sourceRequests = 0;
+let sourceStatus = 200;
+let sourceBody = pdf;
 let status = 200;
 let profileRedirect = false;
 let redirectVisits = 0;
@@ -76,8 +78,8 @@ test.beforeAll(async () => {
     try {
       if (request.method === 'GET' && request.url === '/current.pdf') {
         sourceRequests++;
-        response.writeHead(200, { 'content-type': 'application/pdf' });
-        response.end(pdf);
+        response.writeHead(sourceStatus, { 'content-type': 'application/pdf' });
+        response.end(sourceBody);
         return;
       }
       if (request.method === 'GET' && request.url === '/paperless/api/') {
@@ -166,6 +168,8 @@ test.beforeAll(async () => {
 test.beforeEach(async () => {
   uploads = [];
   sourceRequests = 0;
+  sourceStatus = 200;
+  sourceBody = pdf;
   status = 200;
   profileRedirect = false;
   redirectVisits = 0;
@@ -383,6 +387,74 @@ test('the current PDF action remains disabled after an uncertain upload', async 
   expect(uploads).toHaveLength(1);
 });
 
+test('a source 404 can be dismissed permanently without retrying or uploading', async () => {
+  await useCurrentPdf();
+  await connect();
+  sourceStatus = 404;
+  await popup.locator('#send-current').click();
+  await expect(popup.locator('#job-list [data-status="failed"]')).toContainText(
+    'HTTP 404',
+  );
+  await popup.reload();
+  await expect(popup.locator('#job-list')).toContainText('HTTP 404');
+  await screenshot('source-error');
+  await popup
+    .getByRole('button', { name: 'Fehlermeldungen schließen' })
+    .click();
+  await expect(popup.locator('#job-list li')).toHaveCount(0);
+  await popup.reload();
+  await expect(popup.locator('#dismiss-failures')).toBeHidden();
+  await expect(popup.locator('#job-list li')).toHaveCount(0);
+  const worker = context.serviceWorkers()[0]!;
+  expect(await worker.evaluate(() => chrome.action.getBadgeText({}))).toBe('');
+  expect(sourceRequests).toBe(1);
+  expect(uploads).toHaveLength(0);
+  await chooseFile('Saved from viewer.pdf');
+  await expect(
+    popup.locator('#job-list [data-status="accepted"]'),
+  ).toBeVisible();
+  expect(uploads).toHaveLength(1);
+});
+
+test('non-PDF responses remain visible and do not lock the current action', async () => {
+  await useCurrentPdf();
+  await connect();
+  sourceBody = Buffer.from('<html>Sign in</html>');
+  await popup.locator('#send-current').click();
+  await expect(
+    popup.locator('#job-list [data-status="skipped"]'),
+  ).toContainText('Keine PDF');
+  await expect(popup.locator('#send-current')).toBeEnabled();
+  expect(uploads).toHaveLength(0);
+  sourceBody = pdf;
+  await popup.locator('#send-current').click();
+  await expect(
+    popup.locator('#job-list [data-status="accepted"]'),
+  ).toBeVisible();
+  expect(uploads).toHaveLength(1);
+});
+
+test('dismissing validation errors retains uncertain outcomes and duplicate protection', async () => {
+  await useCurrentPdf();
+  await connect();
+  status = 502;
+  await popup.locator('#send-current').click();
+  await expect(
+    popup.locator('#job-list [data-status="uncertain"]'),
+  ).toBeVisible();
+  await chooseFile('invalid.pdf', Buffer.from('not a PDF'));
+  await expect(popup.locator('#upload-status')).toContainText('keine PDF');
+  await popup
+    .getByRole('button', { name: 'Fehlermeldungen schließen' })
+    .click();
+  await expect(popup.locator('#upload-status')).toBeEmpty();
+  await expect(
+    popup.locator('#job-list [data-status="uncertain"]'),
+  ).toBeVisible();
+  await expect(popup.locator('#send-current')).toBeDisabled();
+  expect(uploads).toHaveLength(1);
+});
+
 test('invalid files stay local and a dropped PDF uploads', async () => {
   await connect();
   await chooseFile('fake.pdf', Buffer.from('<html>This is not a PDF</html>'));
@@ -510,4 +582,41 @@ test('an interrupted POST becomes uncertain after recovery without being sent ag
     popup.locator('#job-list [data-status="uncertain"]'),
   ).toContainText('Prüfe zuerst den Paperless-Posteingang');
   expect(uploads).toHaveLength(1);
+});
+
+test('closing failures preserves completed uploads and cannot alter an active batch', async () => {
+  await connect();
+  slow = true;
+  status = 401;
+  await popup.locator('#file-input').setInputFiles([
+    { name: 'Rejected.pdf', mimeType: 'application/pdf', buffer: pdf },
+    { name: 'Accepted.pdf', mimeType: 'application/pdf', buffer: pdf },
+  ]);
+  await expect.poll(() => uploads.length).toBe(1);
+  release?.();
+  await expect.poll(() => uploads.length).toBe(2);
+  await expect(popup.locator('#job-list [data-status="failed"]')).toContainText(
+    'Rejected.pdf',
+  );
+  await expect(popup.locator('#dismiss-failures')).toBeDisabled();
+  await popup.evaluate(() =>
+    chrome.runtime.sendMessage({
+      target: 'background',
+      type: 'dismiss-failures',
+    }),
+  );
+  await expect(popup.locator('#job-list li')).toHaveCount(2);
+  status = 200;
+  release?.();
+  await expect(
+    popup.locator('#job-list [data-status="accepted"]'),
+  ).toContainText('Accepted.pdf');
+  await popup.locator('#dismiss-failures').click();
+  await expect(popup.locator('#job-list li')).toHaveCount(1);
+  await expect(
+    popup.locator('#job-list [data-status="accepted"]'),
+  ).toBeVisible();
+  await popup.reload();
+  await expect(popup.locator('#job-list li')).toHaveCount(1);
+  expect(uploads).toHaveLength(2);
 });

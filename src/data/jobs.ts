@@ -52,6 +52,27 @@ export async function putJob(job: Job): Promise<void> {
   await transaction('readwrite', (store) => store.put(job));
 }
 
+export async function dismissFailures(): Promise<void> {
+  const db = await open();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(['jobs', 'files'], 'readwrite');
+    const store = tx.objectStore('jobs');
+    const request = store.getAll();
+    request.onsuccess = () => {
+      const jobs: Job[] = request.result;
+      // Check and remove in one transaction so a new batch cannot race this action.
+      if (jobs.some(isActive)) return;
+      for (const job of jobs) {
+        if (job.status !== 'failed' && job.status !== 'skipped') continue;
+        store.delete(job.id);
+        tx.objectStore('files').delete(job.id);
+      }
+    };
+    tx.oncomplete = () => resolve();
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
 export async function enqueue(input: File[] | Source): Promise<void> {
   if (Array.isArray(input)) {
     if (!input.length || input.length > MAX_BATCH_FILES) {

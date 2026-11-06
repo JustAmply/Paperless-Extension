@@ -1,6 +1,9 @@
 import { MAX_PDF_BYTES, UserError } from '../shared/model.js';
 import { hasPdfSignature, pdfName } from '../shared/pdf.js';
 
+const manualUpload =
+  'Lade die PDF aus dem geöffneten PDF-Viewer herunter und wähle sie hier aus oder ziehe sie hinein.';
+
 export async function downloadPdf(
   url: string,
 ): Promise<{ file: Blob; name: string } | undefined> {
@@ -13,12 +16,18 @@ export async function downloadPdf(
     });
   } catch {
     throw new UserError(
-      'Die PDF lässt sich nicht erneut abrufen. Lade sie herunter und ziehe sie hier hinein.',
+      `Die PDF lässt sich nicht erneut abrufen. ${manualUpload}`,
     );
   }
   if (!response.ok) {
+    const reason =
+      response.status === 404 || response.status === 410
+        ? 'Die ursprüngliche PDF-Adresse ist nicht mehr verfügbar. Der Link kann abgelaufen oder nur einmal gültig sein.'
+        : response.status === 401 || response.status === 403
+          ? 'Die Website verweigert den Zugriff auf die PDF. Möglicherweise ist die Anmeldung abgelaufen.'
+          : 'Die Website konnte die PDF nicht liefern.';
     throw new UserError(
-      `Die PDF konnte nicht geladen werden (HTTP ${response.status}). Lade sie herunter und ziehe sie hier hinein.`,
+      `${reason} (HTTP ${response.status}) Es wurde nichts an Paperless gesendet. ${manualUpload}`,
     );
   }
   if (!response.body) return undefined;
@@ -58,7 +67,13 @@ export async function downloadPdf(
       file,
       name: pdfName(url, response.headers.get('content-disposition') ?? ''),
     };
+  } catch (error) {
+    if (error instanceof UserError) throw error;
+    throw new UserError(
+      `Der Abruf der PDF wurde unterbrochen. ${manualUpload}`,
+    );
   } finally {
-    await reader.cancel();
+    // An errored stream also rejects cancellation; preserve the read error above.
+    await reader.cancel().catch(() => undefined);
   }
 }
