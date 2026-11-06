@@ -1,15 +1,9 @@
-import {
-  dismissFailures,
-  enqueueWindow,
-  getJobs,
-  updateImportResult,
-} from './data/jobs.js';
+import { dismissFailures, enqueueWindow, getJobs } from './data/jobs.js';
 import { capturedSources, clearCapturedPdf } from './data/sources.js';
 import { windowPdfs } from './browser/pdf-tabs.js';
 import {
   errorMessage,
   isActive,
-  sourceKey,
   UserError,
   type BackgroundRequest,
   type BackgroundResponse,
@@ -18,31 +12,12 @@ import {
 } from './shared/model.js';
 import { hostPermission, validateSettings } from './shared/settings.js';
 import { verifyConnection } from './services/paperless.js';
-import { pdfName } from './shared/pdf.js';
-import { checkImport } from './services/import-task.js';
+import { hasImportWork } from './shared/job-state.js';
 
 const initialized = chrome.storage.local.setAccessLevel({
   accessLevel: 'TRUSTED_CONTEXTS',
 });
 let lifecycle: Promise<unknown> = Promise.resolve();
-const importChecks = new Map<string, Promise<void>>();
-
-async function refreshImport(jobId: string): Promise<void> {
-  const config = await settings();
-  const job = (await getJobs()).find((item) => item.id === jobId);
-  if (!config || job?.status !== 'accepted' || !job.importTask) return;
-  if (config.url !== job.importTask.serverUrl)
-    throw new UserError(
-      'Dieser Upload gehört zu einem anderen Paperless-Server.',
-    );
-  if (
-    job.importTask.result &&
-    ['success', 'failure', 'duplicate'].includes(job.importTask.result.status)
-  )
-    return;
-  const result = await checkImport(config, job.importTask.taskId);
-  await updateImportResult(job, result);
-}
 
 async function settings(): Promise<Settings | undefined> {
   await initialized;
@@ -79,7 +54,10 @@ async function offscreen(start: boolean): Promise<void> {
           target: 'offscreen',
           type: 'process',
         });
-      } else if (contexts.length && !(await getJobs()).some(isActive)) {
+      } else if (
+        contexts.length &&
+        !(await getJobs()).some((job) => isActive(job) || hasImportWork(job))
+      ) {
         await chrome.offscreen.closeDocument();
       }
     });
@@ -90,17 +68,14 @@ async function offscreen(start: boolean): Promise<void> {
 async function badge(): Promise<void> {
   const jobs = await getJobs();
   const busy = jobs.some(isActive);
-  const failed = jobs.some((job) =>
-    ['failed', 'uncertain'].includes(job.status),
+  const failed = jobs.some(
+    (job) =>
+      !job.dismissed &&
+      (['failed', 'uncertain'].includes(job.status) ||
+        job.importTask?.result?.status === 'failure'),
   );
   await chrome.action.setBadgeText({
-    text: busy
-      ? '…'
-      : failed
-        ? '!'
-        : jobs.some((job) => job.status === 'accepted')
-          ? '✓'
-          : '',
+    text: busy ? '…' : failed ? '!' : '',
   });
   await chrome.action.setBadgeBackgroundColor({
     color: failed ? '#9c452d' : '#005616',
@@ -120,19 +95,6 @@ async function handle(
       await dismissFailures();
       await badge();
       return { ok: true, state: await state() };
-    case 'check-import': {
-      if (sender.url !== chrome.runtime.getURL('popup.html'))
-        throw new UserError('Zugriff verweigert.');
-      let check = importChecks.get(message.jobId);
-      if (!check) {
-        check = refreshImport(message.jobId).finally(() => {
-          importChecks.delete(message.jobId);
-        });
-        importChecks.set(message.jobId, check);
-      }
-      await check;
-      return { ok: true, state: await state() };
-    }
     case 'settings': {
       if (sender.url !== chrome.runtime.getURL('offscreen.html'))
         throw new UserError('Zugriff verweigert.');
@@ -166,7 +128,10 @@ async function handle(
       await chrome.storage.local.set({ settings: next });
       if (
         previous &&
-        hostPermission(previous.url) !== hostPermission(next.url)
+        hostPermission(previous.url) !== hostPermission(next.url) &&
+        !(await chrome.permissions.contains({
+          origins: [`${new URL(previous.url).protocol}//*/*`],
+        }))
       ) {
         await chrome.permissions.remove({
           origins: [hostPermission(previous.url)],
@@ -178,27 +143,6 @@ async function handle(
       await offscreen(true);
       await badge();
       return { ok: true };
-    case 'scan-window': {
-      if (sender.url !== chrome.runtime.getURL('popup.html'))
-        throw new UserError('Zugriff verweigert.');
-      const captured = await capturedSources();
-      const sources = await windowPdfs(message.windowId, captured);
-      return {
-        ok: true,
-        sources: sources.map(
-          (source) =>
-            captured.find(
-              (pdf) =>
-                pdf.tabId === source.tabId &&
-                sourceKey(pdf) === sourceKey(source),
-            ) ?? {
-              ...source,
-              name: pdfName(source.url),
-              availability: 'unchecked' as const,
-            },
-        ),
-      };
-    }
     case 'upload-window': {
       if (sender.url !== chrome.runtime.getURL('popup.html'))
         throw new UserError('Zugriff verweigert.');
@@ -212,28 +156,13 @@ async function handle(
         message.windowId,
         await capturedSources(),
       );
-      if (
-        !message.sources.length ||
-        message.sources.some(
-          (selected) =>
-            !sources.some(
-              (source) =>
-                source.tabId === selected.tabId &&
-                sourceKey(source) === sourceKey(selected),
-            ),
-        )
-      )
-        throw new UserError(
-          'Die ausgewählten PDF-Tabs haben sich geändert. Bitte öffne die Tab-Auswahl erneut.',
-        );
-      const selected = sources.filter((source) =>
-        message.sources.some(
-          (item) =>
-            item.tabId === source.tabId &&
-            sourceKey(item) === sourceKey(source),
-        ),
-      );
-      await enqueueWindow(selected);
+      if (!sources.length)
+        return {
+          ok: true,
+          message: 'Keine PDF-Tabs in diesem Fenster gefunden.',
+          state: await state(),
+        };
+      await enqueueWindow(sources);
       await offscreen(true);
       await badge();
       return { ok: true, state: await state() };
@@ -266,7 +195,8 @@ chrome.runtime.onMessage.addListener(
 chrome.runtime.onStartup.addListener(() => {
   void clearCapturedPdf();
   void getJobs().then(async (jobs) => {
-    if (jobs.some(isActive)) await offscreen(true);
+    if (jobs.some((job) => isActive(job) || hasImportWork(job)))
+      await offscreen(true);
     await badge();
   });
 });

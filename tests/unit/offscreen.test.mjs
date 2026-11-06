@@ -2,6 +2,11 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { errorMessage, UserError } from '../../dist/shared/model.js';
+import {
+  hasImportWork,
+  importDeadline,
+  nextImportCheck,
+} from '../../dist/shared/job-state.js';
 
 const source = (
   await readFile(new URL('../../dist/offscreen.js', import.meta.url), 'utf8')
@@ -21,8 +26,10 @@ async function runner({
   };
   let deleted = false;
   let uploads = 0;
+  let importRequests = 0;
+  let serverUrl = 'https://fixture.invalid/';
   const effects = {
-    getJobs: async () => [],
+    getJobs: async () => [stored],
     getFile: async () => new Blob(['%PDF-1.7']),
     deleteFile: async () => {
       deleted = true;
@@ -34,7 +41,7 @@ async function runner({
     request: async (message) => {
       if (message.type === 'settings')
         return {
-          settings: { url: 'https://fixture.invalid/', token: 'fixture' },
+          settings: { url: serverUrl, token: 'fixture' },
         };
       if (failNotification && stored.status === outcome)
         throw new Error('Notification failed');
@@ -51,18 +58,42 @@ async function runner({
         : { status: outcome };
     },
     downloadPdf: async () => {},
+    hasImportWork,
+    importDeadline,
+    nextImportCheck,
+    checkImport: async () => {
+      importRequests++;
+      return { status: 'success', message: 'Imported', documentId: 42 };
+    },
+    updateImportResult: async (job, result) => {
+      if (stored.id === job.id)
+        stored = {
+          ...stored,
+          importTask: { ...stored.importTask, result, checkedAt: Date.now() },
+        };
+    },
     chrome: { runtime: { onMessage: { addListener() {} } } },
   };
   // Exercise the built runner with deterministic storage/network failures,
   // without creating an extension context or making a real upload request.
-  const { processJob, recovered } = new Function(
+  const { processJob, processImport, drain, recovered } = new Function(
     ...Object.keys(effects),
-    `${source}\nreturn { processJob, recovered };`,
+    `${source}\nreturn { processJob, processImport, drain, recovered };`,
   )(...Object.values(effects));
   await recovered;
   return {
     run: () => processJob(stored),
-    state: () => ({ stored, deleted, uploads }),
+    drain,
+    check: () => processImport(stored),
+    expire: () => {
+      stored.importTask.startedAt = 0;
+      stored.importTask.checkedAt = 1;
+      stored.importTask.result = { status: 'pending', message: 'Processing' };
+    },
+    setServer: (url) => {
+      serverUrl = url;
+    },
+    state: () => ({ stored, deleted, uploads, importRequests }),
   };
 }
 
@@ -91,4 +122,35 @@ test('an explicit API rejection remains a failed upload with its explanation', a
   assert.equal(job.state().stored.message, 'Keine Berechtigung.');
   assert.equal(job.state().uploads, 1);
   assert.equal(job.state().deleted, true);
+});
+
+test('the runner automatically confirms an accepted upload without a popup command', async () => {
+  const job = await runner();
+  await job.drain();
+  assert.equal(job.state().uploads, 1);
+  assert.equal(job.state().importRequests, 1);
+  assert.equal(job.state().stored.importTask.result.status, 'success');
+  assert.equal(job.state().stored.status, 'accepted');
+});
+
+test('expired automatic checks terminate without a GET or duplicate POST', async () => {
+  const job = await runner();
+  await job.run();
+  job.expire();
+  await job.drain();
+  assert.equal(job.state().uploads, 1);
+  assert.equal(job.state().importRequests, 0);
+  assert.equal(job.state().stored.importTask.result.status, 'unavailable');
+  assert.equal(hasImportWork(job.state().stored), false);
+});
+
+test('automatic checks never use a changed server to look up an older upload', async () => {
+  const job = await runner();
+  await job.run();
+  job.setServer('https://other-fixture.invalid/');
+  await job.drain();
+  assert.equal(job.state().uploads, 1);
+  assert.equal(job.state().importRequests, 0);
+  assert.equal(job.state().stored.importTask.result.status, 'unavailable');
+  assert.equal(hasImportWork(job.state().stored), false);
 });

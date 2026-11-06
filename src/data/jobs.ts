@@ -10,6 +10,7 @@ import {
 import { pdfName, validatePdf } from '../shared/pdf.js';
 import { openDatabase as open } from './database.js';
 import type { CapturedPdf } from './sources.js';
+import { canDismissJob } from '../shared/job-state.js';
 
 async function transaction<T>(
   mode: IDBTransactionMode,
@@ -89,8 +90,9 @@ export async function dismissFailures(): Promise<void> {
       // Check and remove in one transaction so a new batch cannot race this action.
       if (jobs.some(isActive)) return;
       for (const job of jobs) {
-        if (job.status !== 'failed' && job.status !== 'skipped') continue;
-        store.delete(job.id);
+        if (!canDismissJob(job)) continue;
+        if (job.status === 'accepted') store.put({ ...job, dismissed: true });
+        else store.delete(job.id);
         tx.objectStore('files').delete(job.id);
       }
     };

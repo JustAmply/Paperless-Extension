@@ -6,13 +6,16 @@ import {
   sourceKey,
   UserError,
   type Source,
-  type SourceInfo,
   type State,
-  type Job,
 } from './shared/model.js';
 import { pdfName, readableSource } from './shared/pdf.js';
-import { hostPermission, normalizeServer } from './shared/settings.js';
-import { sourcePermission, windowSources } from './browser/pdf-tabs.js';
+import { normalizeServer } from './shared/settings.js';
+import { windowSources } from './browser/pdf-tabs.js';
+import {
+  canDismissJob,
+  hasImportWork,
+  isJobVisible,
+} from './shared/job-state.js';
 
 function element<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -32,24 +35,19 @@ const ui = {
   httpWarning: element('http-warning'),
   tokenHelp: element('token-help'),
   send: element<HTMLButtonElement>('send-current'),
+  documentCard: element('document-card'),
   documentName: element('document-name'),
   documentOrigin: element('document-origin'),
   documentAvailability: element('document-availability'),
   fileAccess: element<HTMLButtonElement>('file-access'),
   drop: element<HTMLButtonElement>('drop-zone'),
   sendWindow: element<HTMLButtonElement>('send-window'),
-  selection: element('window-selection'),
-  options: element('window-options'),
-  sendSelected: element<HTMLButtonElement>('send-selected'),
-  cancelSelection: element<HTMLButtonElement>('cancel-selection'),
   input: element<HTMLInputElement>('file-input'),
   status: element('upload-status'),
   jobs: element('job-list'),
   summary: element('batch-summary'),
   dismiss: element<HTMLButtonElement>('dismiss-failures'),
-  checkImports: element<HTMLButtonElement>('check-imports'),
-  stopImports: element<HTMLButtonElement>('stop-import-checks'),
-  importHint: element('import-hint'),
+  webAccess: element('web-access-note'),
   fatal: element('fatal-error'),
 };
 
@@ -62,102 +60,13 @@ let polling = false;
 let uploadError = '';
 let uploadNotice = '';
 let windowTabs: Source[] = [];
-let selection: SourceInfo[] = [];
 let renderedJobs = '';
-let checkingImports = false;
-let trackImportsUntil = 0;
-let nextImportCheck = 0;
+const webOrigins = ['https://*/*', 'http://*/*'];
+let allWebAccess = false;
 
-function canCheckImport(job: Job): boolean {
-  return (
-    job.status === 'accepted' &&
-    job.importTask !== undefined &&
-    job.importTask.serverUrl === currentState.settings.url &&
-    (!job.importTask.result ||
-      ['pending', 'unavailable'].includes(job.importTask.result.status))
-  );
-}
-
-async function refreshImports(manual: boolean): Promise<void> {
-  if (checkingImports) return;
-  checkingImports = true;
-  render(currentState);
-  try {
-    for (const job of currentState.jobs.filter(canCheckImport)) {
-      if (!manual && job.importTask?.result?.status !== 'pending') continue;
-      if (Date.now() >= trackImportsUntil) break;
-      const response = await request({
-        target: 'background',
-        type: 'check-import',
-        jobId: job.id,
-      });
-      if (response.state) render(response.state);
-    }
-  } finally {
-    checkingImports = false;
-    nextImportCheck = Date.now() + 5_000;
-    if (
-      !currentState.jobs.some(
-        (job) =>
-          canCheckImport(job) && job.importTask?.result?.status === 'pending',
-      )
-    )
-      trackImportsUntil = 0;
-    render(currentState);
-  }
-}
-
-function updateSelection(): void {
-  const active = staged || currentState.jobs.some(isActive);
-  let count = 0;
-  for (const [index, source] of selection.entries()) {
-    const checkbox = ui.options.querySelector<HTMLInputElement>(
-      `input[data-index="${index}"]`,
-    );
-    if (!checkbox) continue;
-    const job = currentState.jobs.find(
-      (item) => item.source && sourceKey(item.source) === sourceKey(source),
-    );
-    const completed = job && ['accepted', 'uncertain'].includes(job.status);
-    const available = ['ready', 'unchecked'].includes(source.availability);
-    checkbox.disabled = active || Boolean(completed) || !available;
-    if (completed) checkbox.checked = true;
-    if (!available) checkbox.checked = false;
-    if (checkbox.checked && !checkbox.disabled) count++;
-    const detail = checkbox.parentElement?.querySelector('.selection-detail');
-    if (detail)
-      detail.textContent = completed
-        ? job.message
-        : (source.error ??
-          (source.availability === 'loading'
-            ? 'PDF wird noch geladen. Auswahl bitte erneut öffnen.'
-            : new URL(source.url).hostname || 'Lokale Datei'));
-  }
-  ui.sendSelected.disabled = active || !count;
-  ui.sendSelected.textContent = count
-    ? `Auswahl hochladen (${count})`
-    : 'Auswahl hochladen';
-  ui.cancelSelection.disabled = active;
-}
-
-function showSelection(sources: SourceInfo[]): void {
-  selection = sources;
-  ui.options.replaceChildren();
-  for (const [index, source] of sources.entries()) {
-    const label = document.createElement('label');
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.dataset['index'] = String(index);
-    checkbox.checked = true;
-    const name = document.createElement('span');
-    name.textContent = source.name;
-    const detail = document.createElement('span');
-    detail.className = 'selection-detail';
-    label.append(checkbox, name, detail);
-    ui.options.append(label);
-  }
-  ui.selection.hidden = false;
-  updateSelection();
+async function updateWebAccess(): Promise<void> {
+  allWebAccess = await chrome.permissions.contains({ origins: webOrigins });
+  ui.webAccess.hidden = allWebAccess;
 }
 
 function selectedSource(state: State): Source | undefined {
@@ -183,15 +92,8 @@ function render(state: State): void {
   ui.drop.disabled = active;
   ui.sendWindow.disabled = active || !windowTabs.length;
   ui.toggle.disabled = active;
-  updateSelection();
-  const tracking = Date.now() < trackImportsUntil;
-  ui.checkImports.hidden = !state.jobs.some(canCheckImport);
-  ui.checkImports.disabled = checkingImports || tracking;
-  ui.stopImports.hidden = !tracking;
-  ui.importHint.hidden = ui.checkImports.hidden && !tracking;
-  ui.importHint.textContent = tracking
-    ? 'Prüft wartende Importe alle 5 Sekunden, höchstens 2 Minuten. Schließen des Popups beendet die Prüfung.'
-    : 'Optional: Prüft den Import in Paperless, ohne die PDF erneut zu senden.';
+  ui.documentCard.hidden = !currentUrl;
+  ui.send.hidden = !currentUrl;
   const currentSource = selectedSource(state);
   const captured = state.sources.find(
     (source) => source.tabId === currentTab?.id && source.url === currentUrl,
@@ -230,29 +132,47 @@ function render(state: State): void {
     (currentUrl.startsWith('file:') && !localFileAccess) ||
     (sourceJob !== undefined &&
       ['accepted', 'uncertain'].includes(sourceJob.status));
+  ui.send.textContent =
+    sourceJob?.status === 'accepted'
+      ? 'Bereits an Paperless übertragen'
+      : sourceJob?.status === 'uncertain'
+        ? 'Übertragung unbestätigt'
+        : 'Aktuelle PDF hochladen';
   const completed = state.jobs.filter((job) => !isActive(job)).length;
-  const accepted = state.jobs.filter((job) => job.status === 'accepted').length;
-  ui.summary.hidden = !state.jobs.length;
+  const engaged = new Set(
+    Array.from(ui.jobs.children)
+      .filter((row) => row.matches(':hover, :focus-within'))
+      .map((row) => (row as HTMLElement).dataset['jobId']),
+  );
+  const visibleJobs = state.jobs.filter(
+    (job) => isJobVisible(job) || engaged.has(job.id),
+  );
+  ui.summary.hidden = !visibleJobs.length;
   ui.summary.textContent = active
     ? `${completed} von ${state.jobs.length} abgeschlossen`
-    : `Letzte Übertragung: ${accepted} von ${state.jobs.length} zur Verarbeitung angenommen`;
+    : 'Letzte Übertragung';
   ui.dismiss.hidden =
-    !uploadError &&
-    !uploadNotice &&
-    !state.jobs.some((job) => ['failed', 'skipped'].includes(job.status));
+    !uploadError && !uploadNotice && !state.jobs.some(canDismissJob);
   ui.dismiss.disabled = active;
-  const jobsKey = JSON.stringify([state.jobs, state.settings.url]);
+  const jobsKey = JSON.stringify([visibleJobs, state.settings.url]);
   if (jobsKey !== renderedJobs) {
     renderedJobs = jobsKey;
     ui.jobs.replaceChildren();
-    for (const job of state.jobs) {
+    for (const job of visibleJobs) {
       const row = document.createElement('li');
       row.dataset['status'] = job.status;
+      row.dataset['jobId'] = job.id;
       const indicator = document.createElement('span');
       indicator.className = 'job-indicator';
       indicator.textContent =
         job.status === 'accepted'
-          ? '✓'
+          ? hasImportWork(job)
+            ? '↥'
+            : job.importTask?.result?.status === 'failure'
+              ? '!'
+              : job.importTask?.result?.status === 'unavailable'
+                ? '?'
+                : '✓'
           : isActive(job)
             ? '↥'
             : job.status === 'skipped'
@@ -266,11 +186,14 @@ function render(state: State): void {
       message.className = 'job-message';
       message.textContent = job.message;
       row.append(indicator, name, message);
+      if (job.importTask?.result?.status === 'failure')
+        indicator.classList.add('error');
       if (job.importTask) {
         const result = job.importTask.result;
         const detail = document.createElement('span');
         detail.className = 'import-result';
-        detail.textContent = result?.message ?? 'Import noch nicht geprüft';
+        detail.textContent =
+          result?.message ?? 'Import wird automatisch geprüft …';
         if (result) detail.dataset['importStatus'] = result.status;
         row.append(detail);
         if (result?.documentId) {
@@ -345,7 +268,9 @@ ui.form.addEventListener('submit', (event) => {
   try {
     url = normalizeServer(ui.url.value);
     // Chrome requires the permission request in the original user gesture.
-    permission = chrome.permissions.request({ origins: [hostPermission(url)] });
+    permission = allWebAccess
+      ? Promise.resolve(true)
+      : chrome.permissions.request({ origins: webOrigins });
   } catch (error) {
     ui.settingsStatus.textContent = errorMessage(error);
     ui.settingsStatus.classList.add('error');
@@ -357,13 +282,16 @@ ui.form.addEventListener('submit', (event) => {
   void (async () => {
     try {
       if (!(await permission))
-        throw new UserError('Der Zugriff auf den Server wurde nicht erlaubt.');
+        throw new UserError(
+          'Der Webseitenzugriff wurde nicht erlaubt. Bitte bestätige die Freigabe in Chrome.',
+        );
       const result = await request({
         target: 'background',
         type: 'save',
         url,
         token: ui.token.value,
       });
+      await updateWebAccess();
       ui.token.value = '';
       if (result.state) render(result.state);
       ui.settingsStatus.textContent = '';
@@ -389,14 +317,6 @@ ui.toggle.addEventListener('click', () =>
   showSettings(ui.settings.hidden === true),
 );
 ui.drop.addEventListener('click', () => ui.input.click());
-ui.checkImports.addEventListener('click', () => {
-  trackImportsUntil = Date.now() + 120_000;
-  void refreshImports(true).catch(showUploadError);
-});
-ui.stopImports.addEventListener('click', () => {
-  trackImportsUntil = 0;
-  render(currentState);
-});
 ui.dismiss.addEventListener('click', () => {
   if (staged || currentState.jobs.some(isActive)) return;
   void (async () => {
@@ -412,11 +332,16 @@ ui.dismiss.addEventListener('click', () => {
 ui.sendWindow.addEventListener('click', () => {
   if (staged || currentState.jobs.some(isActive) || !currentTab) return;
   const windowId = currentTab.windowId;
-  const permission = chrome.permissions.request({
-    origins: [
-      ...new Set(windowTabs.map((source) => sourcePermission(source.url))),
-    ],
-  });
+  // Request broad web access once, directly inside the click gesture.
+  const origins = [
+    ...(!allWebAccess ? webOrigins : []),
+    ...(windowTabs.some((source) => source.url.startsWith('file:'))
+      ? ['file:///*']
+      : []),
+  ];
+  const permission = origins.length
+    ? chrome.permissions.request({ origins })
+    : Promise.resolve(true);
   uploadError = '';
   uploadNotice = '';
   staged = true;
@@ -429,51 +354,16 @@ ui.sendWindow.addEventListener('click', () => {
         );
       const response = await request({
         target: 'background',
-        type: 'scan-window',
+        type: 'upload-window',
         windowId,
       });
-      showSelection(response.sources ?? []);
-      uploadNotice = response.sources?.length ? '' : 'Keine PDF-Tabs gefunden.';
+      await updateWebAccess();
+      uploadNotice = response.message ?? '';
     } catch (error) {
       showUploadError(error);
     } finally {
       staged = false;
       windowTabs = await windowSources(windowId);
-      await refresh();
-    }
-  })().catch(showUploadError);
-});
-ui.options.addEventListener('change', updateSelection);
-ui.cancelSelection.addEventListener('click', () => {
-  ui.selection.hidden = true;
-  selection = [];
-});
-ui.sendSelected.addEventListener('click', () => {
-  if (ui.sendSelected.disabled || !currentTab) return;
-  const sources = selection.filter(
-    (_source, index) =>
-      ui.options.querySelector<HTMLInputElement>(`input[data-index="${index}"]`)
-        ?.checked,
-  );
-  const windowId = currentTab.windowId;
-  staged = true;
-  uploadError = '';
-  uploadNotice = '';
-  render(currentState);
-  void (async () => {
-    try {
-      await request({
-        target: 'background',
-        type: 'upload-window',
-        windowId,
-        sources,
-      });
-      ui.selection.hidden = true;
-      selection = [];
-    } catch (error) {
-      showUploadError(error);
-    } finally {
-      staged = false;
       await refresh();
     }
   })().catch(showUploadError);
@@ -536,6 +426,7 @@ async function initialize(): Promise<void> {
   [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
   currentUrl = readableSource(currentTab?.url);
   if (currentTab) windowTabs = await windowSources(currentTab.windowId);
+  await updateWebAccess();
   await refresh();
   ui.url.value = currentState.settings.url;
   ui.httpWarning.hidden = !ui.url.value.startsWith('http://');
@@ -547,18 +438,11 @@ async function initialize(): Promise<void> {
       'Leer lassen, um den gespeicherten Token zu behalten.';
   }
   showSettings(!currentState.settings.configured);
-  if (currentState.jobs.some(isActive))
+  if (currentState.jobs.some((job) => isActive(job) || hasImportWork(job)))
     await request({ target: 'background', type: 'process' });
   await updateCurrentAccess();
   window.setInterval(() => {
     if (polling || staged) return;
-    if (
-      Date.now() < trackImportsUntil &&
-      Date.now() >= nextImportCheck &&
-      !checkingImports
-    ) {
-      void refreshImports(false).catch(showUploadError);
-    }
     polling = true;
     void refresh()
       .catch(showUploadError)
@@ -567,6 +451,13 @@ async function initialize(): Promise<void> {
       });
   }, 500);
 }
+
+chrome.permissions.onAdded.addListener(() => {
+  void updateWebAccess().catch(showUploadError);
+});
+chrome.permissions.onRemoved.addListener(() => {
+  void updateWebAccess().catch(showUploadError);
+});
 
 void initialize().catch((error: unknown) => {
   ui.fatal.textContent = errorMessage(error);

@@ -3,7 +3,13 @@ import type { Settings, ImportResult } from '../shared/model.js';
 const unavailable: ImportResult = {
   status: 'unavailable',
   message:
-    'Importstatus derzeit nicht verfügbar. Prüfe ihn später erneut oder öffne Paperless.',
+    'Importstatus nicht verfügbar. Die PDF wurde übertragen; prüfe den Import in Paperless.',
+};
+const retryable: ImportResult = {
+  status: 'unavailable',
+  retryable: true,
+  message:
+    'Importstatus vorübergehend nicht verfügbar. Wird automatisch erneut geprüft …',
 };
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -43,10 +49,17 @@ export async function checkImport(
           'Kein Zugriff auf den Importstatus. Prüfe den API-Token und die Aufgaben-Berechtigung in Paperless.',
       };
     }
-    if (!response.ok) return unavailable;
-    body = await response.json();
+    if (!response.ok)
+      return response.status >= 500 || response.status === 429
+        ? retryable
+        : unavailable;
+    try {
+      body = await response.json();
+    } catch {
+      return unavailable;
+    }
   } catch {
-    return unavailable;
+    return retryable;
   }
 
   // API v10 uses a paginated list; earlier versions return the array directly.
@@ -59,6 +72,7 @@ export async function checkImport(
   const task: unknown = tasks.find(
     (item: unknown) => record(item) && item['task_id'] === taskId,
   );
+  if (task === undefined) return retryable;
   if (!record(task) || typeof task['status'] !== 'string') return unavailable;
   const status = task['status'].toLowerCase();
   if (['pending', 'started', 'retry'].includes(status)) {

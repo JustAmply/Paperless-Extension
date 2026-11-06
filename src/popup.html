@@ -63,6 +63,10 @@
             Bei HTTP werden Token und PDFs unverschlüsselt übertragen. Verwende
             HTTPS, wenn dein Server es unterstützt.
           </p>
+          <p class="field-note">
+            Chrome fragt einmalig nach Zugriff auf alle Webseiten, damit du PDFs
+            ohne weitere Freigaben hochladen kannst.
+          </p>
           <button id="save-settings" class="primary" type="submit">
             Verbinden
           </button>
@@ -119,26 +123,11 @@
             <rect x="3" y="7" width="14" height="14" rx="2" />
             <path d="M7 3h12a2 2 0 0 1 2 2v12M7 14h6m-3-3 3 3-3 3" />
           </svg>
-          PDF-Tabs auswählen
+          Alle PDF-Tabs hochladen
         </button>
-        <section
-          id="window-selection"
-          class="window-selection"
-          aria-label="PDF-Tabs auswählen"
-          hidden
-        >
-          <p class="field-note">
-            Wähle die PDFs für diese Übertragung. Bereits gesendete Dateien
-            bleiben gesperrt.
-          </p>
-          <div id="window-options" class="window-options"></div>
-          <button id="send-selected" class="primary" type="button" disabled>
-            Auswahl hochladen
-          </button>
-          <button id="cancel-selection" class="text-button" type="button">
-            Auswahl schließen
-          </button>
-        </section>
+        <p id="web-access-note" class="field-note" hidden>
+          Chrome fragt einmalig nach Zugriff auf alle Webseiten.
+        </p>
         <button id="file-access" class="text-button" hidden>
           Zugriff auf lokale PDFs erlauben
         </button>
@@ -151,18 +140,6 @@
         ></div>
         <p id="batch-summary" class="batch-summary" role="status" hidden></p>
         <ul id="job-list" class="job-list" aria-label="Letzte Übertragung"></ul>
-        <button id="check-imports" class="text-button" type="button" hidden>
-          Importstatus prüfen
-        </button>
-        <button
-          id="stop-import-checks"
-          class="text-button"
-          type="button"
-          hidden
-        >
-          Prüfung stoppen
-        </button>
-        <p id="import-hint" class="field-note" role="status" hidden></p>
         <button id="dismiss-failures" class="text-button" type="button" hidden>
           Fehlermeldungen schließen
         </button>

@@ -119,6 +119,10 @@ test('network, HTTP, and invalid JSON errors leave upload acceptance untouched',
       async () => new Response('private detail', { status }),
     );
     assert.equal((await checkImport(settings, taskId)).status, 'unavailable');
+    assert.equal(
+      (await checkImport(settings, taskId)).retryable === true,
+      status === 429 || status >= 500,
+    );
   }
   fetch.mock.mockImplementation(
     async () => new Response('<html>Sign in</html>'),

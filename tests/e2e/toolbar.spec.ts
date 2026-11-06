@@ -173,8 +173,7 @@ for (const sourceType of ['get', 'post', 'single-use'] as const) {
       if (!address || typeof address === 'string')
         throw new Error('Missing fixture port');
       const baseUrl = `http://127.0.0.1:${address.port}/paperless/`;
-      // Match patterns ignore ports. Distinct hostnames keep the PDF source outside
-      // the server permission and exercise the real temporary activeTab grant.
+      // Distinct hostnames still verify source requests never carry the API token.
       const sourceUrl = `http://localhost:${address.port}/download?id=42`;
       const navigationUrl =
         sourceType === 'get' ? `${sourceUrl}#page=1&zoom=150` : sourceUrl;
@@ -252,7 +251,7 @@ for (const sourceType of ['get', 'post', 'single-use'] as const) {
             ),
           );
         },
-        { extensionId: id, host: `${new URL(baseUrl).origin}/*` },
+        { extensionId: id, host: '*://*/*' },
       );
       await manager.close();
       const setup = await context.newPage();
@@ -266,7 +265,13 @@ for (const sourceType of ['get', 'post', 'single-use'] as const) {
       const permissions = await worker.evaluate(() =>
         chrome.permissions.getAll(),
       );
-      expect(permissions.origins).toEqual([`${new URL(baseUrl).origin}/*`]);
+      expect(
+        await worker.evaluate(() =>
+          chrome.permissions.contains({
+            origins: ['http://*/*', 'https://*/*'],
+          }),
+        ),
+      ).toBe(true);
       await setup.close();
       const page = await context.newPage();
       if (sourceType === 'post') {
@@ -332,13 +337,12 @@ for (const sourceType of ['get', 'post', 'single-use'] as const) {
         await expect
           .poll(async () => {
             const result = await command('Runtime.evaluate', {
-              expression:
-                'document.querySelector("#send-current")?.textContent?.trim()',
+              expression: 'document.querySelector("#upload-panel")?.hidden',
               returnByValue: true,
             });
             return (result['result'] as { value?: string })?.value;
           })
-          .toBe('Aktuelle PDF hochladen');
+          .toBe(false);
         return { popupId: popupId!, command };
       };
       const first = await openAction();

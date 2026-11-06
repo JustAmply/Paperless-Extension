@@ -38,10 +38,13 @@ export interface Job {
   status: JobStatus;
   message: string;
   createdAt: number;
+  completedAt?: number;
+  dismissed?: boolean;
   source?: Source;
   importTask?: {
     taskId: string;
     serverUrl: string;
+    startedAt?: number;
     result?: ImportResult;
     checkedAt?: number;
   };
@@ -51,6 +54,7 @@ export interface ImportResult {
   status: 'pending' | 'success' | 'failure' | 'duplicate' | 'unavailable';
   message: string;
   documentId?: number;
+  retryable?: boolean;
 }
 
 export interface State {
@@ -62,15 +66,12 @@ export interface State {
 export type BackgroundRequest =
   | { target: 'background'; type: 'state' }
   | { target: 'background'; type: 'dismiss-failures' }
-  | { target: 'background'; type: 'check-import'; jobId: string }
   | { target: 'background'; type: 'save'; url: string; token: string }
   | { target: 'background'; type: 'process' }
-  | { target: 'background'; type: 'scan-window'; windowId: number }
   | {
       target: 'background';
       type: 'upload-window';
       windowId: number;
-      sources: Source[];
     }
   | { target: 'background'; type: 'changed' }
   | { target: 'background'; type: 'idle' }
@@ -82,7 +83,6 @@ export interface BackgroundResponse {
   state?: State;
   settings?: Settings;
   message?: string;
-  sources?: SourceInfo[];
 }
 
 export function isActive(job: Job): boolean {

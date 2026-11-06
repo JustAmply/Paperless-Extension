@@ -24,7 +24,7 @@ export async function windowPdfs(
   ];
   if (origins.length && !(await chrome.permissions.contains({ origins }))) {
     throw new UserError(
-      'Die Tabs haben sich geändert oder der Zugriff fehlt. Bitte klicke erneut auf „PDF-Tabs auswählen“.',
+      'Der Webseitenzugriff fehlt. Bitte klicke erneut auf „Alle PDF-Tabs hochladen“ und erlaube den Zugriff in Chrome.',
     );
   }
   if (

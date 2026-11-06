@@ -82,6 +82,11 @@ test.beforeAll(async () => {
   await mkdir(screenshots, { recursive: true });
   server = createServer(async (request, response) => {
     try {
+      if (request.method === 'GET' && request.url === '/paperless/') {
+        response.writeHead(200, { 'content-type': 'text/html' });
+        response.end('<!doctype html><title>Fixture</title><p>No PDF</p>');
+        return;
+      }
       if (
         request.method === 'GET' &&
         request.url === `/paperless/api/tasks/?task_id=${taskId}`
@@ -196,6 +201,35 @@ test.beforeAll(async () => {
   baseUrl = `http://127.0.0.1:${address.port}/paperless/`;
 });
 
+async function grantWebAccess(): Promise<void> {
+  // Pregrant the one-time web permission through Chrome's real management API. Native
+  // permission dialogs are outside Playwright's page automation surface.
+  const manager = await context.newPage();
+  await manager.goto('chrome://extensions/');
+  await manager.evaluate(
+    async ({ id, host }) => {
+      const browser = chrome as typeof chrome & {
+        developerPrivate: {
+          addHostPermission: (
+            extensionId: string,
+            host: string,
+            callback: () => void,
+          ) => void;
+        };
+      };
+      await new Promise<void>((resolve, reject) => {
+        browser.developerPrivate.addHostPermission(id, host, () => {
+          const error = chrome.runtime.lastError;
+          if (error) reject(new Error(error.message));
+          else resolve();
+        });
+      });
+    },
+    { id: new URL(popupUrl).host, host: '*://*/*' },
+  );
+  await manager.close();
+}
+
 test.beforeEach(async () => {
   uploads = [];
   sourceRequests = 0;
@@ -230,32 +264,7 @@ test.beforeEach(async () => {
   const extensionId = new URL(worker.url()).host;
   popupUrl = `chrome-extension://${extensionId}/popup.html`;
 
-  // Grant only the fixture origin through Chrome's real management API. Native
-  // permission dialogs are outside Playwright's page automation surface.
-  const manager = await context.newPage();
-  await manager.goto('chrome://extensions/');
-  await manager.evaluate(
-    async ({ id, host }) => {
-      const browser = chrome as typeof chrome & {
-        developerPrivate: {
-          addHostPermission: (
-            extensionId: string,
-            host: string,
-            callback: () => void,
-          ) => void;
-        };
-      };
-      await new Promise<void>((resolve, reject) => {
-        browser.developerPrivate.addHostPermission(id, host, () => {
-          const error = chrome.runtime.lastError;
-          if (error) reject(new Error(error.message));
-          else resolve();
-        });
-      });
-    },
-    { id: extensionId, host: `${new URL(baseUrl).origin}/*` },
-  );
-  await manager.close();
+  await grantWebAccess();
   popup = await openPopup();
   await expect(popup.locator('#settings-panel')).toBeVisible();
 });
@@ -373,7 +382,7 @@ async function useCurrentPdf(): Promise<void> {
 test('opening the popup and saving settings require an explicit current PDF upload, including failed retries', async () => {
   await useCurrentPdf();
   await connect();
-  const send = popup.getByRole('button', { name: 'Aktuelle PDF hochladen' });
+  const send = popup.locator('#send-current');
   await expect(send).toBeEnabled();
   await expect(popup.locator('#document-name')).toHaveText('current.pdf');
   await expect(popup.locator('#document-availability')).toContainText(
@@ -414,7 +423,7 @@ test('the current PDF action remains disabled after an uncertain upload', async 
   await useCurrentPdf();
   await connect();
   status = 502;
-  const send = popup.getByRole('button', { name: 'Aktuelle PDF hochladen' });
+  const send = popup.locator('#send-current');
   await send.click();
   await expect(
     popup.locator('#job-list [data-status="uncertain"]'),
@@ -663,18 +672,16 @@ test('closing failures preserves completed uploads and cannot alter an active ba
   expect(uploads).toHaveLength(2);
 });
 
-test('optional import checks follow pending tasks to success and persist the document link', async () => {
+test('imports are checked automatically and successful rows disappear without allowing a duplicate upload', async () => {
   await useCurrentPdf();
   await connect();
-  await popup.locator('#send-current').click();
-  await expect(popup.locator('[data-status="accepted"]')).toBeVisible();
-  expect(taskRequests).toBe(0);
   taskStatus = 'STARTED';
   relatedDocument = null;
-  await popup.locator('#check-imports').click();
+  await popup.locator('#send-current').click();
   await expect(popup.locator('[data-import-status="pending"]')).toContainText(
     'verarbeitet',
   );
+  expect(taskRequests).toBe(1);
   taskStatus = 'SUCCESS';
   relatedDocument = '42';
   await expect(popup.locator('[data-import-status="success"]')).toContainText(
@@ -684,32 +691,30 @@ test('optional import checks follow pending tasks to success and persist the doc
     'href',
     `${baseUrl}documents/42/details`,
   );
-  await expect(popup.locator('#stop-import-checks')).toBeHidden();
   await screenshot('import-success');
+  await popup.locator('.document-link').focus();
+  await popup.waitForTimeout(8_500);
+  await expect(popup.locator('.document-link')).toBeVisible();
+  await popup.locator('#drop-zone').focus();
+  await expect(popup.locator('#job-list li')).toHaveCount(0);
+  await expect(popup.locator('#batch-summary')).toBeHidden();
   await popup.reload();
-  await expect(popup.locator('[data-import-status="success"]')).toBeVisible();
+  await expect(popup.locator('#job-list li')).toHaveCount(0);
   await expect(popup.locator('#send-current')).toBeDisabled();
-  await expect(popup.locator('#check-imports')).toBeHidden();
+  await expect(popup.locator('#send-current')).toHaveText(
+    'Bereits an Paperless übertragen',
+  );
   expect(uploads).toHaveLength(1);
   expect(taskRequests).toBe(2);
 });
 
 for (const duplicate of [false, true]) {
-  test(`import ${duplicate ? 'duplicates' : 'failures'} remain separate from accepted uploads`, async () => {
+  test(`automatic import ${duplicate ? 'duplicate' : 'failure'} results remain separate from upload acceptance`, async () => {
     await useCurrentPdf();
     await connect();
-    await popup.locator('#send-current').click();
-    await expect(popup.locator('[data-status="accepted"]')).toBeVisible();
-    taskHttpStatus = 403;
-    await popup.locator('#check-imports').click();
-    await expect(
-      popup.locator('[data-import-status="unavailable"]'),
-    ).toContainText('Aufgaben-Berechtigung');
-    await expect(popup.locator('#check-imports')).toBeEnabled();
-    taskHttpStatus = 200;
     taskStatus = 'FAILURE';
     relatedDocument = duplicate ? '42' : null;
-    await popup.locator('#check-imports').click();
+    await popup.locator('#send-current').click();
     await expect(
       popup.locator(
         `[data-import-status="${duplicate ? 'duplicate' : 'failure'}"]`,
@@ -721,63 +726,133 @@ for (const duplicate of [false, true]) {
       duplicate ? 1 : 0,
     );
     expect(uploads).toHaveLength(1);
+    if (!duplicate) {
+      await popup.locator('#dismiss-failures').click();
+      await expect(popup.locator('#job-list li')).toHaveCount(0);
+      await popup.reload();
+      await expect(popup.locator('#send-current')).toBeDisabled();
+      await expect(popup.locator('#job-list li')).toHaveCount(0);
+    }
   });
 }
 
-test('import checks stop with the popup and never query an old task on a new server', async () => {
+test('unavailable task permissions stay visible and can be dismissed without another POST', async () => {
+  await useCurrentPdf();
   await connect();
-  await chooseFile();
-  await expect(popup.locator('[data-status="accepted"]')).toBeVisible();
-  taskStatus = 'PENDING';
-  await popup.locator('#check-imports').click();
-  await expect(popup.locator('[data-import-status="pending"]')).toBeVisible();
-  await popup.reload();
-  await expect(popup.locator('#stop-import-checks')).toBeHidden();
-  await expect(popup.locator('#check-imports')).toBeEnabled();
-  // Wait beyond the polling interval to prove reopening did not resume checks.
-  await popup.waitForTimeout(5_500);
+  taskHttpStatus = 403;
+  await popup.locator('#send-current').click();
+  await expect(
+    popup.locator('[data-import-status="unavailable"]'),
+  ).toContainText('Aufgaben-Berechtigung');
+  await popup.mouse.move(0, 0);
+  await popup.waitForTimeout(8_500);
+  await expect(
+    popup.locator('[data-import-status="unavailable"]'),
+  ).toBeVisible();
   expect(taskRequests).toBe(1);
+  await popup.locator('#dismiss-failures').click();
+  await expect(popup.locator('#job-list li')).toHaveCount(0);
+  await expect(popup.locator('#send-current')).toBeDisabled();
+  expect(uploads).toHaveLength(1);
+});
+
+test('automatic import checks continue after closing the popup', async () => {
+  await connect();
+  taskStatus = 'PENDING';
+  await chooseFile();
+  await expect(popup.locator('[data-import-status="pending"]')).toBeVisible();
+  await popup.close();
+  taskStatus = 'SUCCESS';
+  await expect.poll(() => taskRequests).toBe(2);
+  popup = await openPopup();
+  await expect(popup.locator('[data-import-status="success"]')).toBeVisible();
+  expect(uploads).toHaveLength(1);
+});
+
+test('automatic import checks never query an old task on a new server', async () => {
+  await connect();
+  taskStatus = 'PENDING';
+  await chooseFile();
+  await expect(popup.locator('[data-import-status="pending"]')).toBeVisible();
   await popup.evaluate(async (url) => {
     await chrome.storage.local.set({
       settings: { url, token: 'new-fixture-token' },
     });
   }, new URL('/other-server/', baseUrl).href);
-  await expect(popup.locator('#check-imports')).toBeHidden();
   await expect(popup.locator('.import-result')).toContainText(
     'anderen Paperless-Server',
   );
-  const response = await popup.evaluate(async () => {
-    const state = await chrome.runtime.sendMessage({
-      target: 'background',
-      type: 'state',
-    });
-    return chrome.runtime.sendMessage({
-      target: 'background',
-      type: 'check-import',
-      jobId: state.state.jobs[0].id,
-    });
-  });
-  expect(response.ok).toBe(false);
+  await popup.waitForTimeout(5_500);
   expect(taskRequests).toBe(1);
   expect(uploads).toHaveLength(1);
 });
 
 test('an in-flight import check cannot resurrect a replaced batch', async () => {
   await connect();
-  await chooseFile('Old.pdf');
-  await expect(popup.locator('[data-status="accepted"]')).toBeVisible();
   slowTask = true;
-  await popup.locator('#check-imports').click();
+  await chooseFile('Old.pdf');
   await expect.poll(() => taskRequests).toBe(1);
   await chooseFile('New.pdf');
-  await expect(popup.locator('[data-status="accepted"]')).toContainText(
-    'New.pdf',
-  );
+  await expect(popup.locator('#job-list')).toContainText('New.pdf');
+  slowTask = false;
   releaseTask?.();
-  await expect(popup.locator('#check-imports')).toBeEnabled();
+  await expect(popup.locator('[data-import-status="success"]')).toBeVisible();
   await popup.reload();
   await expect(popup.locator('#job-list li')).toHaveCount(1);
   await expect(popup.locator('#job-list')).toContainText('New.pdf');
-  await expect(popup.locator('[data-import-status="success"]')).toHaveCount(0);
   expect(uploads).toHaveLength(2);
+});
+
+test('web access is requested once, denial does not upload, and granted access is reused', async () => {
+  await connect();
+  const ordinary = await context.newPage();
+  await ordinary.goto(baseUrl);
+  await popup.reload();
+  await popup.evaluate(() =>
+    chrome.permissions.remove({ origins: ['http://*/*', 'https://*/*'] }),
+  );
+  await expect(popup.locator('#web-access-note')).toBeVisible();
+  const requests: string[][] = [];
+  await popup.exposeFunction('recordPermissionRequest', (origins: string[]) =>
+    requests.push(origins),
+  );
+  await popup.evaluate(() => {
+    const fixture = window as Window & {
+      recordPermissionRequest: (origins: string[]) => Promise<void>;
+    };
+    const original = chrome.permissions.request.bind(chrome.permissions);
+    window.addEventListener(
+      'restore-permission-request',
+      () => {
+        chrome.permissions.request = original;
+      },
+      { once: true },
+    );
+    chrome.permissions.request = async (permissions) => {
+      await fixture.recordPermissionRequest(permissions.origins ?? []);
+      return false;
+    };
+  });
+  await popup.locator('#send-window').click();
+  await expect(popup.locator('#upload-status')).toContainText('nicht erlaubt');
+  expect(requests).toEqual([['https://*/*', 'http://*/*']]);
+  expect(uploads).toHaveLength(0);
+  await popup.evaluate(() =>
+    window.dispatchEvent(new Event('restore-permission-request')),
+  );
+  await popup.locator('#send-window').click();
+  await expect(popup.locator('#web-access-note')).toBeHidden();
+  await popup.evaluate(() => {
+    chrome.permissions.request = async () => {
+      throw new Error('Unexpected repeated permission request');
+    };
+  });
+  await expect(popup.locator('#web-access-note')).toBeHidden();
+  await popup.locator('#send-window').click();
+  await expect(popup.locator('#upload-status')).toContainText('Keine PDF-Tabs');
+  await popup.locator('#send-window').click();
+  await expect(popup.locator('#send-window')).toBeEnabled();
+  expect(requests).toHaveLength(1);
+  expect(uploads).toHaveLength(0);
+  await ordinary.close();
 });
