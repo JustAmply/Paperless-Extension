@@ -265,6 +265,16 @@ test('window upload finds extensionless PDFs, skips HTML and other windows, and 
     ).length;
 
     await popup.locator('#send-window').click();
+    await expect(popup.locator('#window-options input')).toHaveCount(2);
+    expect(uploads).toHaveLength(1);
+    const secondChoice = popup
+      .locator('#window-options label')
+      .filter({ hasText: 'Second.pdf' })
+      .locator('input');
+    await secondChoice.uncheck();
+    await expect(popup.locator('#send-selected')).toBeDisabled();
+    await secondChoice.check();
+    await popup.locator('#send-selected').click();
     await expect.poll(() => uploads.length).toBe(2);
     await expect(
       popup.locator('#job-list [data-status="accepted"]'),
@@ -297,6 +307,7 @@ test('window upload finds extensionless PDFs, skips HTML and other windows, and 
     await expect(popup.locator('#send-window')).toBeEnabled();
     await popup.locator('#send-window').click();
     await expect(popup.locator('#send-window')).toBeEnabled();
+    await expect(popup.locator('#send-selected')).toBeDisabled();
     expect(uploads).toHaveLength(2);
     const screenshots = path.resolve('artifacts/screenshots');
     await mkdir(screenshots, { recursive: true });
@@ -329,6 +340,8 @@ test('window upload finds extensionless PDFs, skips HTML and other windows, and 
       )
       .toBe(true);
     await popup.locator('#send-window').click();
+    await expect(popup.locator('#send-selected')).toBeEnabled();
+    await popup.locator('#send-selected').click();
     await expect(
       popup.locator('#job-list [data-status="uncertain"]'),
     ).toContainText('Unconfirmed.pdf');
@@ -336,6 +349,7 @@ test('window upload finds extensionless PDFs, skips HTML and other windows, and 
     await expect(popup.locator('#send-window')).toBeEnabled();
     await popup.locator('#send-window').click();
     await expect(popup.locator('#send-window')).toBeEnabled();
+    await expect(popup.locator('#send-selected')).toBeDisabled();
     await expect(
       popup.locator('#job-list [data-status="uncertain"]'),
     ).toContainText('Unconfirmed.pdf');
@@ -363,6 +377,31 @@ test('window upload finds extensionless PDFs, skips HTML and other windows, and 
     expect(permissions.origins?.sort()).toEqual(
       [`${new URL(baseUrl).origin}/*`, `${sourceOrigin}/*`].sort(),
     );
+
+    const stale = await context.newPage();
+    await stale.goto(`${sourceOrigin}/download/Stale.pdf?id=Stale`);
+    await expect
+      .poll(async () =>
+        popup.evaluate(async () => {
+          const response = await chrome.runtime.sendMessage({
+            target: 'background',
+            type: 'state',
+          });
+          return response?.state?.sources.some(
+            (source: { name: string; availability: string }) =>
+              source.name === 'Stale.pdf' && source.availability === 'ready',
+          );
+        }),
+      )
+      .toBe(true);
+    await popup.locator('#send-window').click();
+    await expect(popup.locator('#send-selected')).toBeEnabled();
+    await stale.close();
+    await popup.locator('#send-selected').click();
+    await expect(popup.locator('#upload-status')).toContainText(
+      'haben sich geändert',
+    );
+    expect(uploads).toHaveLength(3);
   } finally {
     await context?.close();
     if (server)

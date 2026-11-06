@@ -52,7 +52,13 @@ export type BackgroundRequest =
   | { target: 'background'; type: 'dismiss-failures' }
   | { target: 'background'; type: 'save'; url: string; token: string }
   | { target: 'background'; type: 'process' }
-  | { target: 'background'; type: 'upload-window'; windowId: number }
+  | { target: 'background'; type: 'scan-window'; windowId: number }
+  | {
+      target: 'background';
+      type: 'upload-window';
+      windowId: number;
+      sources: Source[];
+    }
   | { target: 'background'; type: 'changed' }
   | { target: 'background'; type: 'idle' }
   | { target: 'background'; type: 'settings' };
@@ -63,6 +69,7 @@ export interface BackgroundResponse {
   state?: State;
   settings?: Settings;
   message?: string;
+  sources?: SourceInfo[];
 }
 
 export function isActive(job: Job): boolean {

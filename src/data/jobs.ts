@@ -113,6 +113,9 @@ async function stage(
       );
       store.clear();
       tx.objectStore('files').clear();
+      if (preserveUploads) {
+        for (const job of completed.values()) store.put(job);
+      }
       entries.forEach((item, index) => {
         const isFile = item instanceof File;
         const kept =
@@ -130,7 +133,7 @@ async function stage(
                 createdAt: Date.now() + index,
                 ...(!isFile ? { source: item } : {}),
               };
-        store.add(job);
+        store.put(job);
         if (isFile) tx.objectStore('files').put(item, job.id);
         else if (!kept) {
           const captured = tx.objectStore('sources').get(item.tabId);

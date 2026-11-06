@@ -119,8 +119,26 @@
             <rect x="3" y="7" width="14" height="14" rx="2" />
             <path d="M7 3h12a2 2 0 0 1 2 2v12M7 14h6m-3-3 3 3-3 3" />
           </svg>
-          PDF-Tabs hochladen
+          PDF-Tabs auswählen
         </button>
+        <section
+          id="window-selection"
+          class="window-selection"
+          aria-label="PDF-Tabs auswählen"
+          hidden
+        >
+          <p class="field-note">
+            Wähle die PDFs für diese Übertragung. Bereits gesendete Dateien
+            bleiben gesperrt.
+          </p>
+          <div id="window-options" class="window-options"></div>
+          <button id="send-selected" class="primary" type="button" disabled>
+            Auswahl hochladen
+          </button>
+          <button id="cancel-selection" class="text-button" type="button">
+            Auswahl schließen
+          </button>
+        </section>
         <button id="file-access" class="text-button" hidden>
           Zugriff auf lokale PDFs erlauben
         </button>

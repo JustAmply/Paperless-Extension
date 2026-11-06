@@ -4,6 +4,7 @@ import { windowPdfs } from './browser/pdf-tabs.js';
 import {
   errorMessage,
   isActive,
+  sourceKey,
   UserError,
   type BackgroundRequest,
   type BackgroundResponse,
@@ -12,6 +13,7 @@ import {
 } from './shared/model.js';
 import { hostPermission, validateSettings } from './shared/settings.js';
 import { verifyConnection } from './services/paperless.js';
+import { pdfName } from './shared/pdf.js';
 
 const initialized = chrome.storage.local.setAccessLevel({
   accessLevel: 'TRUSTED_CONTEXTS',
@@ -139,6 +141,27 @@ async function handle(
       await offscreen(true);
       await badge();
       return { ok: true };
+    case 'scan-window': {
+      if (sender.url !== chrome.runtime.getURL('popup.html'))
+        throw new UserError('Zugriff verweigert.');
+      const captured = await capturedSources();
+      const sources = await windowPdfs(message.windowId, captured);
+      return {
+        ok: true,
+        sources: sources.map(
+          (source) =>
+            captured.find(
+              (pdf) =>
+                pdf.tabId === source.tabId &&
+                sourceKey(pdf) === sourceKey(source),
+            ) ?? {
+              ...source,
+              name: pdfName(source.url),
+              availability: 'unchecked' as const,
+            },
+        ),
+      };
+    }
     case 'upload-window': {
       if (sender.url !== chrome.runtime.getURL('popup.html'))
         throw new UserError('Zugriff verweigert.');
@@ -152,13 +175,28 @@ async function handle(
         message.windowId,
         await capturedSources(),
       );
-      if (!sources.length)
-        return {
-          ok: true,
-          message: 'Keine PDF-Tabs gefunden.',
-          state: await state(),
-        };
-      await enqueueWindow(sources);
+      if (
+        !message.sources.length ||
+        message.sources.some(
+          (selected) =>
+            !sources.some(
+              (source) =>
+                source.tabId === selected.tabId &&
+                sourceKey(source) === sourceKey(selected),
+            ),
+        )
+      )
+        throw new UserError(
+          'Die ausgewählten PDF-Tabs haben sich geändert. Bitte öffne die Tab-Auswahl erneut.',
+        );
+      const selected = sources.filter((source) =>
+        message.sources.some(
+          (item) =>
+            item.tabId === source.tabId &&
+            sourceKey(item) === sourceKey(source),
+        ),
+      );
+      await enqueueWindow(selected);
       await offscreen(true);
       await badge();
       return { ok: true, state: await state() };

@@ -6,6 +6,7 @@ import {
   sourceKey,
   UserError,
   type Source,
+  type SourceInfo,
   type State,
 } from './shared/model.js';
 import { pdfName, readableSource } from './shared/pdf.js';
@@ -36,6 +37,10 @@ const ui = {
   fileAccess: element<HTMLButtonElement>('file-access'),
   drop: element<HTMLButtonElement>('drop-zone'),
   sendWindow: element<HTMLButtonElement>('send-window'),
+  selection: element('window-selection'),
+  options: element('window-options'),
+  sendSelected: element<HTMLButtonElement>('send-selected'),
+  cancelSelection: element<HTMLButtonElement>('cancel-selection'),
   input: element<HTMLInputElement>('file-input'),
   status: element('upload-status'),
   jobs: element('job-list'),
@@ -53,6 +58,60 @@ let polling = false;
 let uploadError = '';
 let uploadNotice = '';
 let windowTabs: Source[] = [];
+let selection: SourceInfo[] = [];
+
+function updateSelection(): void {
+  const active = staged || currentState.jobs.some(isActive);
+  let count = 0;
+  for (const [index, source] of selection.entries()) {
+    const checkbox = ui.options.querySelector<HTMLInputElement>(
+      `input[data-index="${index}"]`,
+    );
+    if (!checkbox) continue;
+    const job = currentState.jobs.find(
+      (item) => item.source && sourceKey(item.source) === sourceKey(source),
+    );
+    const completed = job && ['accepted', 'uncertain'].includes(job.status);
+    const available = ['ready', 'unchecked'].includes(source.availability);
+    checkbox.disabled = active || Boolean(completed) || !available;
+    if (completed) checkbox.checked = true;
+    if (!available) checkbox.checked = false;
+    if (checkbox.checked && !checkbox.disabled) count++;
+    const detail = checkbox.parentElement?.querySelector('.selection-detail');
+    if (detail)
+      detail.textContent = completed
+        ? job.message
+        : (source.error ??
+          (source.availability === 'loading'
+            ? 'PDF wird noch geladen. Auswahl bitte erneut öffnen.'
+            : new URL(source.url).hostname || 'Lokale Datei'));
+  }
+  ui.sendSelected.disabled = active || !count;
+  ui.sendSelected.textContent = count
+    ? `Auswahl hochladen (${count})`
+    : 'Auswahl hochladen';
+  ui.cancelSelection.disabled = active;
+}
+
+function showSelection(sources: SourceInfo[]): void {
+  selection = sources;
+  ui.options.replaceChildren();
+  for (const [index, source] of sources.entries()) {
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.dataset['index'] = String(index);
+    checkbox.checked = true;
+    const name = document.createElement('span');
+    name.textContent = source.name;
+    const detail = document.createElement('span');
+    detail.className = 'selection-detail';
+    label.append(checkbox, name, detail);
+    ui.options.append(label);
+  }
+  ui.selection.hidden = false;
+  updateSelection();
+}
 
 function selectedSource(state: State): Source | undefined {
   if (!currentUrl || currentTab?.id === undefined) return undefined;
@@ -77,6 +136,7 @@ function render(state: State): void {
   ui.drop.disabled = active;
   ui.sendWindow.disabled = active || !windowTabs.length;
   ui.toggle.disabled = active;
+  updateSelection();
   ui.jobs.replaceChildren();
   const currentSource = selectedSource(state);
   const captured = state.sources.find(
@@ -276,15 +336,51 @@ ui.sendWindow.addEventListener('click', () => {
         );
       const response = await request({
         target: 'background',
-        type: 'upload-window',
+        type: 'scan-window',
         windowId,
       });
-      uploadNotice = response.message ?? '';
+      showSelection(response.sources ?? []);
+      uploadNotice = response.sources?.length ? '' : 'Keine PDF-Tabs gefunden.';
     } catch (error) {
       showUploadError(error);
     } finally {
       staged = false;
       windowTabs = await windowSources(windowId);
+      await refresh();
+    }
+  })().catch(showUploadError);
+});
+ui.options.addEventListener('change', updateSelection);
+ui.cancelSelection.addEventListener('click', () => {
+  ui.selection.hidden = true;
+  selection = [];
+});
+ui.sendSelected.addEventListener('click', () => {
+  if (ui.sendSelected.disabled || !currentTab) return;
+  const sources = selection.filter(
+    (_source, index) =>
+      ui.options.querySelector<HTMLInputElement>(`input[data-index="${index}"]`)
+        ?.checked,
+  );
+  const windowId = currentTab.windowId;
+  staged = true;
+  uploadError = '';
+  uploadNotice = '';
+  render(currentState);
+  void (async () => {
+    try {
+      await request({
+        target: 'background',
+        type: 'upload-window',
+        windowId,
+        sources,
+      });
+      ui.selection.hidden = true;
+      selection = [];
+    } catch (error) {
+      showUploadError(error);
+    } finally {
+      staged = false;
       await refresh();
     }
   })().catch(showUploadError);

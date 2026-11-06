@@ -245,7 +245,7 @@ label {
   font-weight: 600;
   margin: 18px 0 7px;
 }
-input:not([type='file']) {
+input:not([type='file']):not([type='checkbox']) {
   display: block;
   width: 100%;
   min-height: 39px;
@@ -301,6 +301,35 @@ input::placeholder {
 }
 .document-detail.error {
   color: var(--error);
+}
+.window-selection {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.window-options {
+  max-height: 160px;
+  overflow-y: auto;
+}
+.window-options label {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 4px 8px;
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.window-options input {
+  grid-row: span 2;
+  accent-color: var(--green);
+}
+.selection-detail {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.window-selection .primary {
+  margin-top: 12px;
 }
 .form-status {
   font-size: 12px;
