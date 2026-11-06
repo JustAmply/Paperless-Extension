@@ -80,6 +80,7 @@ svg {
 .icon-button {
   display: grid;
   place-items: center;
+  padding: 0;
   width: 34px;
   height: 34px;
   flex: 0 0 auto;
@@ -251,6 +252,7 @@ p {
 .document-link {
   color: var(--green);
 }
+.job-indicator.error,
 .job-list li[data-status='uncertain'] .job-indicator,
 .job-list li[data-status='failed'] .job-indicator {
   color: var(--error);

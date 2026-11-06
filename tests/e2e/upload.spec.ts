@@ -856,3 +856,27 @@ test('web access is requested once, denial does not upload, and granted access i
   expect(uploads).toHaveLength(0);
   await ordinary.close();
 });
+
+test('settings artwork is centered and the ready screen has no secondary workflow buttons', async () => {
+  await connect();
+  const centers = await popup.locator('#settings-toggle').evaluate((button) => {
+    const svg = button.querySelector('svg')!;
+    const gear = svg.querySelector('path')!;
+    const circle = svg.querySelector('circle')!;
+    const bounds = [button, svg, gear, circle].map((node) => {
+      const box = node.getBoundingClientRect();
+      return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    });
+    return bounds;
+  });
+  for (const center of centers.slice(1)) {
+    expect(Math.abs(center.x - centers[0]!.x)).toBeLessThan(0.25);
+    expect(Math.abs(center.y - centers[0]!.y)).toBeLessThan(0.25);
+  }
+  await expect(
+    popup.locator(
+      '#check-imports, #stop-import-checks, #send-selected, #window-selection',
+    ),
+  ).toHaveCount(0);
+  await expect(popup.locator('#web-access-note')).toBeHidden();
+});
