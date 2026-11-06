@@ -8,6 +8,7 @@ import {
   type Source,
   type SourceInfo,
   type State,
+  type Job,
 } from './shared/model.js';
 import { pdfName, readableSource } from './shared/pdf.js';
 import { hostPermission, normalizeServer } from './shared/settings.js';
@@ -46,6 +47,9 @@ const ui = {
   jobs: element('job-list'),
   summary: element('batch-summary'),
   dismiss: element<HTMLButtonElement>('dismiss-failures'),
+  checkImports: element<HTMLButtonElement>('check-imports'),
+  stopImports: element<HTMLButtonElement>('stop-import-checks'),
+  importHint: element('import-hint'),
   fatal: element('fatal-error'),
 };
 
@@ -59,6 +63,49 @@ let uploadError = '';
 let uploadNotice = '';
 let windowTabs: Source[] = [];
 let selection: SourceInfo[] = [];
+let renderedJobs = '';
+let checkingImports = false;
+let trackImportsUntil = 0;
+let nextImportCheck = 0;
+
+function canCheckImport(job: Job): boolean {
+  return (
+    job.status === 'accepted' &&
+    job.importTask !== undefined &&
+    job.importTask.serverUrl === currentState.settings.url &&
+    (!job.importTask.result ||
+      ['pending', 'unavailable'].includes(job.importTask.result.status))
+  );
+}
+
+async function refreshImports(manual: boolean): Promise<void> {
+  if (checkingImports) return;
+  checkingImports = true;
+  render(currentState);
+  try {
+    for (const job of currentState.jobs.filter(canCheckImport)) {
+      if (!manual && job.importTask?.result?.status !== 'pending') continue;
+      if (Date.now() >= trackImportsUntil) break;
+      const response = await request({
+        target: 'background',
+        type: 'check-import',
+        jobId: job.id,
+      });
+      if (response.state) render(response.state);
+    }
+  } finally {
+    checkingImports = false;
+    nextImportCheck = Date.now() + 5_000;
+    if (
+      !currentState.jobs.some(
+        (job) =>
+          canCheckImport(job) && job.importTask?.result?.status === 'pending',
+      )
+    )
+      trackImportsUntil = 0;
+    render(currentState);
+  }
+}
 
 function updateSelection(): void {
   const active = staged || currentState.jobs.some(isActive);
@@ -137,7 +184,14 @@ function render(state: State): void {
   ui.sendWindow.disabled = active || !windowTabs.length;
   ui.toggle.disabled = active;
   updateSelection();
-  ui.jobs.replaceChildren();
+  const tracking = Date.now() < trackImportsUntil;
+  ui.checkImports.hidden = !state.jobs.some(canCheckImport);
+  ui.checkImports.disabled = checkingImports || tracking;
+  ui.stopImports.hidden = !tracking;
+  ui.importHint.hidden = ui.checkImports.hidden && !tracking;
+  ui.importHint.textContent = tracking
+    ? 'Prüft wartende Importe alle 5 Sekunden, höchstens 2 Minuten. Schließen des Popups beendet die Prüfung.'
+    : 'Optional: Prüft den Import in Paperless, ohne die PDF erneut zu senden.';
   const currentSource = selectedSource(state);
   const captured = state.sources.find(
     (source) => source.tabId === currentTab?.id && source.url === currentUrl,
@@ -187,28 +241,59 @@ function render(state: State): void {
     !uploadNotice &&
     !state.jobs.some((job) => ['failed', 'skipped'].includes(job.status));
   ui.dismiss.disabled = active;
-  for (const job of state.jobs) {
-    const row = document.createElement('li');
-    row.dataset['status'] = job.status;
-    const indicator = document.createElement('span');
-    indicator.className = 'job-indicator';
-    indicator.textContent =
-      job.status === 'accepted'
-        ? '✓'
-        : isActive(job)
-          ? '↥'
-          : job.status === 'skipped'
-            ? '–'
-            : '!';
-    const name = document.createElement('span');
-    name.className = 'job-name';
-    name.textContent = job.name;
-    name.title = job.name;
-    const message = document.createElement('span');
-    message.className = 'job-message';
-    message.textContent = job.message;
-    row.append(indicator, name, message);
-    ui.jobs.append(row);
+  const jobsKey = JSON.stringify([state.jobs, state.settings.url]);
+  if (jobsKey !== renderedJobs) {
+    renderedJobs = jobsKey;
+    ui.jobs.replaceChildren();
+    for (const job of state.jobs) {
+      const row = document.createElement('li');
+      row.dataset['status'] = job.status;
+      const indicator = document.createElement('span');
+      indicator.className = 'job-indicator';
+      indicator.textContent =
+        job.status === 'accepted'
+          ? '✓'
+          : isActive(job)
+            ? '↥'
+            : job.status === 'skipped'
+              ? '–'
+              : '!';
+      const name = document.createElement('span');
+      name.className = 'job-name';
+      name.textContent = job.name;
+      name.title = job.name;
+      const message = document.createElement('span');
+      message.className = 'job-message';
+      message.textContent = job.message;
+      row.append(indicator, name, message);
+      if (job.importTask) {
+        const result = job.importTask.result;
+        const detail = document.createElement('span');
+        detail.className = 'import-result';
+        detail.textContent = result?.message ?? 'Import noch nicht geprüft';
+        if (result) detail.dataset['importStatus'] = result.status;
+        row.append(detail);
+        if (result?.documentId) {
+          const link = document.createElement('a');
+          link.className = 'document-link';
+          link.href = new URL(
+            `documents/${result.documentId}/details`,
+            job.importTask.serverUrl,
+          ).href;
+          link.textContent =
+            result.status === 'duplicate'
+              ? 'Vorhandenes Dokument öffnen ↗'
+              : 'Dokument öffnen ↗';
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          row.append(link);
+        } else if (job.importTask.serverUrl !== state.settings.url) {
+          detail.textContent =
+            'Importstatus gehört zu einem anderen Paperless-Server.';
+        }
+      }
+      ui.jobs.append(row);
+    }
   }
   ui.status.classList.toggle('error', Boolean(uploadError));
   ui.status.textContent =
@@ -304,6 +389,14 @@ ui.toggle.addEventListener('click', () =>
   showSettings(ui.settings.hidden === true),
 );
 ui.drop.addEventListener('click', () => ui.input.click());
+ui.checkImports.addEventListener('click', () => {
+  trackImportsUntil = Date.now() + 120_000;
+  void refreshImports(true).catch(showUploadError);
+});
+ui.stopImports.addEventListener('click', () => {
+  trackImportsUntil = 0;
+  render(currentState);
+});
 ui.dismiss.addEventListener('click', () => {
   if (staged || currentState.jobs.some(isActive)) return;
   void (async () => {
@@ -459,6 +552,13 @@ async function initialize(): Promise<void> {
   await updateCurrentAccess();
   window.setInterval(() => {
     if (polling || staged) return;
+    if (
+      Date.now() < trackImportsUntil &&
+      Date.now() >= nextImportCheck &&
+      !checkingImports
+    ) {
+      void refreshImports(false).catch(showUploadError);
+    }
     polling = true;
     void refresh()
       .catch(showUploadError)

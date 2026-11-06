@@ -79,7 +79,7 @@ export async function uploadPdf(
   settings: Settings,
   file: Blob,
   name: string,
-): Promise<'accepted' | 'uncertain'> {
+): Promise<{ status: 'accepted'; taskId: string } | { status: 'uncertain' }> {
   const body = new FormData();
   body.append('document', file, name);
   let response: Response;
@@ -94,19 +94,19 @@ export async function uploadPdf(
       },
     );
   } catch {
-    return 'uncertain';
+    return { status: 'uncertain' };
   }
   if (!response.ok) {
-    if (response.status >= 500) return 'uncertain';
+    if (response.status >= 500) return { status: 'uncertain' };
     throw rejection(response.status);
   }
   try {
     const task: unknown = await response.json();
     return typeof task === 'string' &&
       /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(task)
-      ? 'accepted'
-      : 'uncertain';
+      ? { status: 'accepted', taskId: task }
+      : { status: 'uncertain' };
   } catch {
-    return 'uncertain';
+    return { status: 'uncertain' };
   }
 }

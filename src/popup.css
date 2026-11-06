@@ -235,6 +235,25 @@ p {
   margin-top: 3px;
   line-height: 1.4;
 }
+.import-result,
+.document-link {
+  grid-column: 2;
+  font-size: 11px;
+  line-height: 1.4;
+  margin-top: 5px;
+}
+.import-result {
+  color: var(--muted);
+}
+.import-result[data-import-status='failure'] {
+  color: var(--error);
+}
+.document-link {
+  color: var(--green);
+}
+#stop-import-checks {
+  margin-left: 12px;
+}
 .job-list li[data-status='uncertain'] .job-indicator,
 .job-list li[data-status='failed'] .job-indicator {
   color: var(--error);

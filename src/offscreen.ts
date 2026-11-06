@@ -65,11 +65,20 @@ async function transfer(job: Job): Promise<Job> {
     status: 'uploading',
     message: 'Wird an Paperless übertragen …',
   });
-  const status = await uploadPdf(response.settings, file, job.name);
+  const outcome = await uploadPdf(response.settings, file, job.name);
   return {
     ...job,
-    status,
-    message: status === 'accepted' ? 'An Paperless übertragen' : uncertain,
+    status: outcome.status,
+    message:
+      outcome.status === 'accepted' ? 'An Paperless übertragen' : uncertain,
+    ...(outcome.status === 'accepted'
+      ? {
+          importTask: {
+            taskId: outcome.taskId,
+            serverUrl: response.settings.url,
+          },
+        }
+      : {}),
   };
 }
 

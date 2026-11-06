@@ -5,6 +5,7 @@ import {
   UserError,
   type Job,
   type Source,
+  type ImportResult,
 } from '../shared/model.js';
 import { pdfName, validatePdf } from '../shared/pdf.js';
 import { openDatabase as open } from './database.js';
@@ -50,6 +51,31 @@ export async function deleteFile(id: string): Promise<void> {
 
 export async function putJob(job: Job): Promise<void> {
   await transaction('readwrite', (store) => store.put(job));
+}
+
+export async function updateImportResult(
+  job: Job,
+  result: ImportResult,
+): Promise<void> {
+  await transaction('readwrite', (store) => {
+    const request = store.get(job.id);
+    request.onsuccess = () => {
+      const current = request.result as Job | undefined;
+      // A new upload batch may have replaced this job while the GET was in flight.
+      if (
+        current?.status === 'accepted' &&
+        current.importTask &&
+        current.importTask.taskId === job.importTask?.taskId &&
+        current.importTask.serverUrl === job.importTask.serverUrl
+      ) {
+        store.put({
+          ...current,
+          importTask: { ...current.importTask, result, checkedAt: Date.now() },
+        });
+      }
+    };
+    return request;
+  });
 }
 
 export async function dismissFailures(): Promise<void> {

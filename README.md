@@ -27,6 +27,8 @@ The local capture cache holds up to 10 PDFs and 100 MiB in total. Older files ar
 
 **An Paperless übertragen** means the API accepted the PDF for processing. Paperless still performs its import, OCR, duplicate checks, and workflows. If confirmation is lost, check Paperless before manually sending again; the extension never automatically repeats an upload POST.
 
+Choose **Importstatus prüfen** to query Paperless for accepted uploads from the latest batch. Waiting imports refresh every five seconds for up to two minutes while the popup stays open; **Prüfung stoppen** or closing the popup stops further checks. Reopening does not restart polling. The result distinguishes processing, successful import, duplicate, import failure, and an unavailable status. Successful imports and known duplicates link directly to the document. Task permissions may be required in addition to upload permission. Upload acceptance remains unchanged even if the import fails or cannot be checked. Task IDs and the original server URL are stored locally without credentials; tasks from another configured server are not queried. Older uploads without a recorded task ID cannot be checked retroactively.
+
 Source errors (including expired links returning HTTP 404/410) describe the recovery path: save the open PDF from its viewer, then select or drop that file into the popup. **Fehlermeldungen schließen** removes failed and skipped entries from the latest batch and updates the toolbar badge. It also clears transient notices. It never retries a request, removes an active job, or clears confirmed/unconfirmed upload protection. A non-PDF response stays visible instead of silently disabling the current-tab action. The batch summary shows progress and how many documents were accepted for processing.
 
 ## Browser limitations
@@ -38,7 +40,7 @@ Source errors (including expired links returning HTTP 404/410) describe the reco
 - If a window contains local `file:` tabs, enable Chrome's **Allow access to file URLs** switch before using the window action. Without it, the scan stops with an instruction instead of silently omitting those tabs.
 - Some login/referrer-dependent documents may remain unavailable to the GET fallback. Save the PDF and drop it into the popup instead.
 - Server redirects are rejected so the API token stays bound to the configured destination. Enter the final server URL, including its correct subpath. An authentication gateway must permit Paperless token authentication for `/api/`.
-- Browser shutdown interrupts in-flight work. On the next opening, interrupted uploads are marked unconfirmed rather than retried. Files still waiting in the queue can proceed. The extension does not poll Paperless's import tasks.
+- Browser shutdown interrupts in-flight work. On the next opening, interrupted uploads are marked unconfirmed rather than retried. Files still waiting in the queue can proceed. Optional import checks only run while the popup is open and never resend a PDF.
 
 ## Development
 

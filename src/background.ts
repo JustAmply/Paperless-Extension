@@ -1,4 +1,9 @@
-import { dismissFailures, enqueueWindow, getJobs } from './data/jobs.js';
+import {
+  dismissFailures,
+  enqueueWindow,
+  getJobs,
+  updateImportResult,
+} from './data/jobs.js';
 import { capturedSources, clearCapturedPdf } from './data/sources.js';
 import { windowPdfs } from './browser/pdf-tabs.js';
 import {
@@ -14,11 +19,30 @@ import {
 import { hostPermission, validateSettings } from './shared/settings.js';
 import { verifyConnection } from './services/paperless.js';
 import { pdfName } from './shared/pdf.js';
+import { checkImport } from './services/import-task.js';
 
 const initialized = chrome.storage.local.setAccessLevel({
   accessLevel: 'TRUSTED_CONTEXTS',
 });
 let lifecycle: Promise<unknown> = Promise.resolve();
+const importChecks = new Map<string, Promise<void>>();
+
+async function refreshImport(jobId: string): Promise<void> {
+  const config = await settings();
+  const job = (await getJobs()).find((item) => item.id === jobId);
+  if (!config || job?.status !== 'accepted' || !job.importTask) return;
+  if (config.url !== job.importTask.serverUrl)
+    throw new UserError(
+      'Dieser Upload gehört zu einem anderen Paperless-Server.',
+    );
+  if (
+    job.importTask.result &&
+    ['success', 'failure', 'duplicate'].includes(job.importTask.result.status)
+  )
+    return;
+  const result = await checkImport(config, job.importTask.taskId);
+  await updateImportResult(job, result);
+}
 
 async function settings(): Promise<Settings | undefined> {
   await initialized;
@@ -96,6 +120,19 @@ async function handle(
       await dismissFailures();
       await badge();
       return { ok: true, state: await state() };
+    case 'check-import': {
+      if (sender.url !== chrome.runtime.getURL('popup.html'))
+        throw new UserError('Zugriff verweigert.');
+      let check = importChecks.get(message.jobId);
+      if (!check) {
+        check = refreshImport(message.jobId).finally(() => {
+          importChecks.delete(message.jobId);
+        });
+        importChecks.set(message.jobId, check);
+      }
+      await check;
+      return { ok: true, state: await state() };
+    }
     case 'settings': {
       if (sender.url !== chrome.runtime.getURL('offscreen.html'))
         throw new UserError('Zugriff verweigert.');

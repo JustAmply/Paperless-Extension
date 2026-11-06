@@ -29,6 +29,12 @@ let uploads: Upload[] = [];
 let sourceRequests = 0;
 let sourceStatus = 200;
 let sourceBody = pdf;
+let taskRequests = 0;
+let taskStatus = 'SUCCESS';
+let taskHttpStatus = 200;
+let relatedDocument: string | null = '42';
+let slowTask = false;
+let releaseTask: (() => void) | undefined;
 let status = 200;
 let profileRedirect = false;
 let redirectVisits = 0;
@@ -76,6 +82,31 @@ test.beforeAll(async () => {
   await mkdir(screenshots, { recursive: true });
   server = createServer(async (request, response) => {
     try {
+      if (
+        request.method === 'GET' &&
+        request.url === `/paperless/api/tasks/?task_id=${taskId}`
+      ) {
+        taskRequests++;
+        expect(request.headers.authorization).toBe(`Token ${token}`);
+        expect(request.headers.cookie).toBeUndefined();
+        if (slowTask)
+          await new Promise<void>((resolve) => {
+            releaseTask = resolve;
+          });
+        response.writeHead(taskHttpStatus, {
+          'content-type': 'application/json',
+        });
+        response.end(
+          JSON.stringify([
+            {
+              task_id: taskId,
+              status: taskStatus,
+              related_document: relatedDocument,
+            },
+          ]),
+        );
+        return;
+      }
       if (request.method === 'GET' && request.url === '/current.pdf') {
         sourceRequests++;
         response.writeHead(sourceStatus, { 'content-type': 'application/pdf' });
@@ -170,6 +201,12 @@ test.beforeEach(async () => {
   sourceRequests = 0;
   sourceStatus = 200;
   sourceBody = pdf;
+  taskRequests = 0;
+  taskStatus = 'SUCCESS';
+  taskHttpStatus = 200;
+  relatedDocument = '42';
+  slowTask = false;
+  releaseTask = undefined;
   status = 200;
   profileRedirect = false;
   redirectVisits = 0;
@@ -225,6 +262,7 @@ test.beforeEach(async () => {
 
 test.afterEach(async () => {
   release?.();
+  releaseTask?.();
   await context?.close();
 });
 
@@ -622,5 +660,124 @@ test('closing failures preserves completed uploads and cannot alter an active ba
   ).toBeVisible();
   await popup.reload();
   await expect(popup.locator('#job-list li')).toHaveCount(1);
+  expect(uploads).toHaveLength(2);
+});
+
+test('optional import checks follow pending tasks to success and persist the document link', async () => {
+  await useCurrentPdf();
+  await connect();
+  await popup.locator('#send-current').click();
+  await expect(popup.locator('[data-status="accepted"]')).toBeVisible();
+  expect(taskRequests).toBe(0);
+  taskStatus = 'STARTED';
+  relatedDocument = null;
+  await popup.locator('#check-imports').click();
+  await expect(popup.locator('[data-import-status="pending"]')).toContainText(
+    'verarbeitet',
+  );
+  taskStatus = 'SUCCESS';
+  relatedDocument = '42';
+  await expect(popup.locator('[data-import-status="success"]')).toContainText(
+    'importiert',
+  );
+  await expect(popup.locator('.document-link')).toHaveAttribute(
+    'href',
+    `${baseUrl}documents/42/details`,
+  );
+  await expect(popup.locator('#stop-import-checks')).toBeHidden();
+  await screenshot('import-success');
+  await popup.reload();
+  await expect(popup.locator('[data-import-status="success"]')).toBeVisible();
+  await expect(popup.locator('#send-current')).toBeDisabled();
+  await expect(popup.locator('#check-imports')).toBeHidden();
+  expect(uploads).toHaveLength(1);
+  expect(taskRequests).toBe(2);
+});
+
+for (const duplicate of [false, true]) {
+  test(`import ${duplicate ? 'duplicates' : 'failures'} remain separate from accepted uploads`, async () => {
+    await useCurrentPdf();
+    await connect();
+    await popup.locator('#send-current').click();
+    await expect(popup.locator('[data-status="accepted"]')).toBeVisible();
+    taskHttpStatus = 403;
+    await popup.locator('#check-imports').click();
+    await expect(
+      popup.locator('[data-import-status="unavailable"]'),
+    ).toContainText('Aufgaben-Berechtigung');
+    await expect(popup.locator('#check-imports')).toBeEnabled();
+    taskHttpStatus = 200;
+    taskStatus = 'FAILURE';
+    relatedDocument = duplicate ? '42' : null;
+    await popup.locator('#check-imports').click();
+    await expect(
+      popup.locator(
+        `[data-import-status="${duplicate ? 'duplicate' : 'failure'}"]`,
+      ),
+    ).toBeVisible();
+    await expect(popup.locator('[data-status="accepted"]')).toBeVisible();
+    await expect(popup.locator('#send-current')).toBeDisabled();
+    await expect(popup.locator('.document-link')).toHaveCount(
+      duplicate ? 1 : 0,
+    );
+    expect(uploads).toHaveLength(1);
+  });
+}
+
+test('import checks stop with the popup and never query an old task on a new server', async () => {
+  await connect();
+  await chooseFile();
+  await expect(popup.locator('[data-status="accepted"]')).toBeVisible();
+  taskStatus = 'PENDING';
+  await popup.locator('#check-imports').click();
+  await expect(popup.locator('[data-import-status="pending"]')).toBeVisible();
+  await popup.reload();
+  await expect(popup.locator('#stop-import-checks')).toBeHidden();
+  await expect(popup.locator('#check-imports')).toBeEnabled();
+  // Wait beyond the polling interval to prove reopening did not resume checks.
+  await popup.waitForTimeout(5_500);
+  expect(taskRequests).toBe(1);
+  await popup.evaluate(async (url) => {
+    await chrome.storage.local.set({
+      settings: { url, token: 'new-fixture-token' },
+    });
+  }, new URL('/other-server/', baseUrl).href);
+  await expect(popup.locator('#check-imports')).toBeHidden();
+  await expect(popup.locator('.import-result')).toContainText(
+    'anderen Paperless-Server',
+  );
+  const response = await popup.evaluate(async () => {
+    const state = await chrome.runtime.sendMessage({
+      target: 'background',
+      type: 'state',
+    });
+    return chrome.runtime.sendMessage({
+      target: 'background',
+      type: 'check-import',
+      jobId: state.state.jobs[0].id,
+    });
+  });
+  expect(response.ok).toBe(false);
+  expect(taskRequests).toBe(1);
+  expect(uploads).toHaveLength(1);
+});
+
+test('an in-flight import check cannot resurrect a replaced batch', async () => {
+  await connect();
+  await chooseFile('Old.pdf');
+  await expect(popup.locator('[data-status="accepted"]')).toBeVisible();
+  slowTask = true;
+  await popup.locator('#check-imports').click();
+  await expect.poll(() => taskRequests).toBe(1);
+  await chooseFile('New.pdf');
+  await expect(popup.locator('[data-status="accepted"]')).toContainText(
+    'New.pdf',
+  );
+  releaseTask?.();
+  await expect(popup.locator('#check-imports')).toBeEnabled();
+  await popup.reload();
+  await expect(popup.locator('#job-list li')).toHaveCount(1);
+  await expect(popup.locator('#job-list')).toContainText('New.pdf');
+  await expect(popup.locator('[data-import-status="success"]')).toHaveCount(0);
   expect(uploads).toHaveLength(2);
 });

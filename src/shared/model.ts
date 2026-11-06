@@ -39,6 +39,18 @@ export interface Job {
   message: string;
   createdAt: number;
   source?: Source;
+  importTask?: {
+    taskId: string;
+    serverUrl: string;
+    result?: ImportResult;
+    checkedAt?: number;
+  };
+}
+
+export interface ImportResult {
+  status: 'pending' | 'success' | 'failure' | 'duplicate' | 'unavailable';
+  message: string;
+  documentId?: number;
 }
 
 export interface State {
@@ -50,6 +62,7 @@ export interface State {
 export type BackgroundRequest =
   | { target: 'background'; type: 'state' }
   | { target: 'background'; type: 'dismiss-failures' }
+  | { target: 'background'; type: 'check-import'; jobId: string }
   | { target: 'background'; type: 'save'; url: string; token: string }
   | { target: 'background'; type: 'process' }
   | { target: 'background'; type: 'scan-window'; windowId: number }

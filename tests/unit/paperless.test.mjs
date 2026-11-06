@@ -60,7 +60,10 @@ test('upload confines the token to the configured destination and sends the name
     request = new Request(input, init);
     return Response.json(taskId);
   });
-  assert.equal(await uploadPdf(settings, pdf, 'Rechnung März.pdf'), 'accepted');
+  assert.deepEqual(await uploadPdf(settings, pdf, 'Rechnung März.pdf'), {
+    status: 'accepted',
+    taskId,
+  });
   assert.equal(
     request.url,
     'https://paperless.example/archive/api/documents/post_document/',
@@ -117,7 +120,9 @@ test('ambiguous upload outcomes are uncertain and are never automatically repeat
   ];
   for (const outcome of outcomes) {
     const fetchMock = t.mock.method(globalThis, 'fetch', async () => outcome());
-    assert.equal(await uploadPdf(settings, pdf, 'invoice.pdf'), 'uncertain');
+    assert.deepEqual(await uploadPdf(settings, pdf, 'invoice.pdf'), {
+      status: 'uncertain',
+    });
     assert.equal(fetchMock.mock.callCount(), 1);
     fetchMock.mock.restore();
   }

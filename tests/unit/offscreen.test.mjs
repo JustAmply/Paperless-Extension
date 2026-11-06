@@ -46,7 +46,9 @@ async function runner({
     uploadPdf: async () => {
       uploads++;
       if (outcome instanceof Error) throw outcome;
-      return outcome;
+      return outcome === 'accepted'
+        ? { status: outcome, taskId: 'fixture-task' }
+        : { status: outcome };
     },
     downloadPdf: async () => {},
     chrome: { runtime: { onMessage: { addListener() {} } } },
