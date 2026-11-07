@@ -56,12 +56,33 @@ test('filenames prefer server metadata and remove path and control characters', 
     'Rechnung Juli.PDF',
   );
   assert.equal(
-    pdfName('https://files.example/', 'attachment; filename="invoice.html"'),
-    'Dokument.pdf',
-  );
-  assert.equal(
     pdfName('https://files.example/', 'attachment; filename="50%.pdf"'),
     '50%.pdf',
+  );
+});
+
+test('PDF names preserve explicit filenames without treating URL routes as filenames', () => {
+  const url = 'https://files.example/download?id=42';
+  assert.equal(
+    pdfName(url, 'attachment; filename="Invoice 2026"'),
+    'Invoice 2026.pdf',
+  );
+  assert.equal(
+    pdfName(url, 'attachment; filename="invoice.html"'),
+    'invoice.html.pdf',
+  );
+  assert.equal(pdfName(url), 'Dokument.pdf');
+});
+
+test('long PDF filenames are truncated before the suffix', () => {
+  const stem = 'a'.repeat(181);
+  assert.equal(
+    pdfName(`https://files.example/${stem}.PDF`),
+    `${stem.slice(0, 176)}.PDF`,
+  );
+  assert.equal(
+    pdfName('https://files.example/', `attachment; filename="${stem}"`),
+    `${stem.slice(0, 176)}.pdf`,
   );
 });
 

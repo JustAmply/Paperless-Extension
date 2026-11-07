@@ -20,24 +20,31 @@ export async function validatePdf(file: Blob): Promise<void> {
   }
 }
 
+function decodeName(name: string): string {
+  try {
+    return decodeURIComponent(name).trim();
+  } catch {
+    // Servers sometimes send a literal percent sign in an unencoded filename.
+    return name.trim();
+  }
+}
+
 export function pdfName(url: string, disposition = ''): string {
   const encoded = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(disposition)?.[1];
   const plain = /filename\s*=\s*"([^"]+)"|filename\s*=\s*([^;]+)/i.exec(
     disposition,
   );
-  let name =
-    encoded ??
-    plain?.[1] ??
-    plain?.[2] ??
-    new URL(url).pathname.split('/').pop() ??
-    '';
-  try {
-    name = decodeURIComponent(name.trim());
-  } catch {
-    // Servers sometimes send a literal percent sign in an unencoded filename.
-  }
-  name = name.replace(/[\u0000-\u001f\u007f/\\:*?"<>|]/g, '_').slice(0, 180);
-  return name.toLowerCase().endsWith('.pdf') ? name : 'Dokument.pdf';
+  const provided = decodeName(encoded ?? plain?.[1] ?? plain?.[2] ?? '');
+  const name =
+    provided || decodeName(new URL(url).pathname.split('/').pop() ?? '');
+  const hasSuffix = name.toLowerCase().endsWith('.pdf');
+  const stem = hasSuffix ? name.slice(0, -4) : name;
+  if (!stem || (!provided && !hasSuffix)) return 'Dokument.pdf';
+  const suffix = hasSuffix ? name.slice(-4) : '.pdf';
+  const safeStem = stem
+    .replace(/[\u0000-\u001f\u007f/\\:*?"<>|]/g, '_')
+    .slice(0, 180 - suffix.length);
+  return safeStem + suffix;
 }
 
 export function readableSource(url: string | undefined): string | undefined {
