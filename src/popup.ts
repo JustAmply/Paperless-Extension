@@ -11,7 +11,11 @@ import {
 } from './shared/model.js';
 import { readableSource } from './shared/pdf.js';
 import { normalizeServer } from './shared/settings.js';
-import { isPdfTab, windowSources } from './browser/pdf-tabs.js';
+import {
+  canAccessFileTabs,
+  isPdfTab,
+  windowSources,
+} from './browser/pdf-tabs.js';
 import {
   canDismissJob,
   hasImportWork,
@@ -63,6 +67,15 @@ let renderedJobs = '';
 const webOrigins = ['https://*/*', 'http://*/*'];
 let allWebAccess = false;
 
+function hasFileTabs(): boolean {
+  return windowTabs.some((source) => source.url.startsWith('file:'));
+}
+
+async function updateWindowTabs(windowId: number): Promise<void> {
+  windowTabs = await windowSources(windowId);
+  localFileAccess = hasFileTabs() && (await canAccessFileTabs());
+}
+
 async function updateWebAccess(): Promise<void> {
   allWebAccess = await chrome.permissions.contains({ origins: webOrigins });
   ui.webAccess.hidden = allWebAccess;
@@ -99,7 +112,7 @@ function render(state: State): void {
       : undefined;
   const isLocal = activeSource?.url.startsWith('file:');
   ui.send.hidden = !currentSource;
-  ui.fileAccess.hidden = !isLocal || localFileAccess;
+  ui.fileAccess.hidden = !hasFileTabs() || localFileAccess;
   ui.currentStatus.textContent =
     captured?.error ??
     (captured?.availability === 'loading' ? 'PDF wird geladen …' : '');
@@ -343,15 +356,9 @@ ui.sendWindow.addEventListener('click', () => {
   if (staged || currentState.jobs.some(isActive) || !currentTab) return;
   const windowId = currentTab.windowId;
   // Request broad web access once, directly inside the click gesture.
-  const origins = [
-    ...(!allWebAccess ? webOrigins : []),
-    ...(windowTabs.some((source) => source.url.startsWith('file:'))
-      ? ['file:///*']
-      : []),
-  ];
-  const permission = origins.length
-    ? chrome.permissions.request({ origins })
-    : Promise.resolve(true);
+  const permission = allWebAccess
+    ? Promise.resolve(true)
+    : chrome.permissions.request({ origins: webOrigins });
   uploadError = '';
   uploadNotice = '';
   staged = true;
@@ -373,7 +380,7 @@ ui.sendWindow.addEventListener('click', () => {
       showUploadError(error);
     } finally {
       staged = false;
-      windowTabs = await windowSources(windowId);
+      await updateWindowTabs(windowId);
       await refresh();
     }
   })().catch(showUploadError);
@@ -435,15 +442,9 @@ async function updateCurrentPdf(): Promise<void> {
 async function initialize(): Promise<void> {
   [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const url = readableSource(currentTab?.url);
-  if (url && currentTab?.id !== undefined) {
+  if (url && currentTab?.id !== undefined)
     activeSource = { url, tabId: currentTab.id };
-    if (url.startsWith('file:')) {
-      localFileAccess =
-        (await chrome.extension.isAllowedFileSchemeAccess()) &&
-        (await chrome.permissions.contains({ origins: ['file:///*'] }));
-    }
-  }
-  if (currentTab) windowTabs = await windowSources(currentTab.windowId);
+  if (currentTab) await updateWindowTabs(currentTab.windowId);
   await updateWebAccess();
   await refresh();
   await updateCurrentPdf();

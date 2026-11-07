@@ -1,7 +1,8 @@
 import { chromium, expect, test, type BrowserContext } from '@playwright/test';
 import { createServer, type Server } from 'node:http';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 function samplePdf(): Buffer {
   const objects = [
@@ -21,7 +22,7 @@ function samplePdf(): Buffer {
   return Buffer.from(document);
 }
 
-test('window upload finds extensionless PDFs, skips HTML and other windows, and avoids repeated uploads', async () => {
+test('window upload finds PDFs, skips inaccessible local tabs and other windows, and avoids repeated uploads', async ({}, testInfo) => {
   const pdf = samplePdf();
   const token = 'window-fixture-token';
   const uploads: {
@@ -188,6 +189,10 @@ test('window upload finds extensionless PDFs, skips HTML and other windows, and 
     await duplicate.goto(firstUrl);
     const ordinary = await context.newPage();
     await ordinary.goto(`${sourceOrigin}/ordinary`);
+    const localPath = testInfo.outputPath('local.html');
+    await writeFile(localPath, '<!doctype html><title>Local HTML tab</title>');
+    const local = await context.newPage();
+    await local.goto(pathToFileURL(localPath).href);
     for (const page of [first, second, duplicate]) {
       await expect
         .poll(() =>
@@ -269,6 +274,10 @@ test('window upload finds extensionless PDFs, skips HTML and other windows, and 
     });
     await popup.locator('#send-window').click();
     await expect.poll(() => uploads.length).toBe(2);
+    await expect(popup.locator('#upload-status')).toContainText(
+      'Lokale Tabs wurden übersprungen.',
+    );
+    await expect(popup.locator('#file-access')).toBeVisible();
     await expect(
       popup.locator('#job-list [data-status="accepted"]'),
     ).toContainText(['Dokument.pdf', 'Second.pdf']);

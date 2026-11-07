@@ -149,20 +149,23 @@ async function handle(
         throw new UserError(
           'Bitte warte, bis die laufende Übertragung abgeschlossen ist.',
         );
-      const sources = await windowPdfs(
+      const { sources, skippedLocalTabs } = await windowPdfs(
         message.windowId,
         await capturedSources(),
       );
+      const localNotice = skippedLocalTabs
+        ? 'Lokale Tabs wurden übersprungen. Erlaube den Zugriff auf lokale PDFs, um sie einzubeziehen.'
+        : '';
       if (!sources.length)
         return {
           ok: true,
-          message: 'Keine PDF-Tabs in diesem Fenster gefunden.',
+          message: localNotice || 'Keine PDF-Tabs in diesem Fenster gefunden.',
           state: await state(),
         };
       await enqueueWindow(sources);
       await offscreen(true);
       await badge();
-      return { ok: true, state: await state() };
+      return { ok: true, message: localNotice, state: await state() };
     }
     case 'changed':
       await badge();

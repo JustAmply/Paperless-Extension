@@ -2,8 +2,11 @@ import { sourceKey, UserError, type Source } from '../shared/model.js';
 import { readableSource } from '../shared/pdf.js';
 import { hostPermission } from '../shared/settings.js';
 
-export function sourcePermission(url: string): string {
-  return url.startsWith('file:') ? 'file:///*' : hostPermission(url);
+export async function canAccessFileTabs(): Promise<boolean> {
+  return (
+    (await chrome.extension.isAllowedFileSchemeAccess()) &&
+    (await chrome.permissions.contains({ origins: ['file:///*'] }))
+  );
 }
 
 export async function windowSources(windowId: number): Promise<Source[]> {
@@ -34,26 +37,26 @@ export async function isPdfTab(source: Source): Promise<boolean> {
 export async function windowPdfs(
   windowId: number,
   captured: Source[] = [],
-): Promise<Source[]> {
+): Promise<{ sources: Source[]; skippedLocalTabs: boolean }> {
   const sources = await windowSources(windowId);
+  const skippedLocalTabs =
+    sources.some((source) => source.url.startsWith('file:')) &&
+    !(await canAccessFileTabs());
   const origins = [
-    ...new Set(sources.map((source) => sourcePermission(source.url))),
+    ...new Set(
+      sources
+        .filter((source) => !source.url.startsWith('file:'))
+        .map((source) => hostPermission(source.url)),
+    ),
   ];
   if (origins.length && !(await chrome.permissions.contains({ origins }))) {
     throw new UserError(
       'Der Webseitenzugriff fehlt. Bitte klicke erneut auf „Alle PDF-Tabs hochladen“ und erlaube den Zugriff in Chrome.',
     );
   }
-  if (
-    sources.some((source) => source.url.startsWith('file:')) &&
-    !(await chrome.extension.isAllowedFileSchemeAccess())
-  ) {
-    throw new UserError(
-      'Aktiviere unter chrome://extensions → Paperless Upload → Details den „Zugriff auf Datei-URLs“, um lokale PDF-Tabs hochzuladen.',
-    );
-  }
   const pdfs = new Map<string, Source>();
   for (const source of sources) {
+    if (skippedLocalTabs && source.url.startsWith('file:')) continue;
     const cached = captured.find(
       (pdf) => pdf.tabId === source.tabId && pdf.url === source.url,
     );
@@ -63,5 +66,5 @@ export async function windowPdfs(
     }
     if (await isPdfTab(source)) pdfs.set(sourceKey(source), source);
   }
-  return [...pdfs.values()];
+  return { sources: [...pdfs.values()], skippedLocalTabs };
 }

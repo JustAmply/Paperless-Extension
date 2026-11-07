@@ -74,9 +74,10 @@ test('window PDFs use the rendered MIME type, deduplicate URLs, and ignore navig
       [5, new Error('No tab with id: 5')],
     ]),
   );
-  const sources = await windowPdfs(7);
+  const { sources, skippedLocalTabs } = await windowPdfs(7);
   assert.equal(sources.length, 1);
   assert.equal(sources[0].url, url);
+  assert.equal(skippedLocalTabs, false);
   assert.equal(calls.inspections.length, 5);
   assert.deepEqual(calls.permissions, [
     { origins: ['https://files.example/*'] },
@@ -94,14 +95,36 @@ test('window inspection stops before reading any document when origin access is 
   assert.deepEqual(calls.inspections, []);
 });
 
-test('local PDF tabs require the separate Chrome file URL switch', async (t) => {
+test('inaccessible local tabs do not block web PDFs in the same window', async (t) => {
+  const url = 'https://files.example/download';
+  const local = 'file:///C:/Invoice.pdf';
   const calls = browser(
     t,
-    [{ id: 1, url: 'file:///C:/Invoice.pdf' }],
-    new Map(),
+    [
+      { id: 1, url: local },
+      { id: 2, url },
+    ],
+    new Map([
+      [1, { type: 'application/pdf', url: local }],
+      [2, { type: 'application/pdf', url }],
+    ]),
   );
   globalThis.chrome.extension.isAllowedFileSchemeAccess = async () => false;
-  await assert.rejects(windowPdfs(7), /Zugriff auf Datei-URLs/);
-  assert.deepEqual(calls.inspections, []);
-  assert.deepEqual(calls.permissions, [{ origins: ['file:///*'] }]);
+  assert.deepEqual(await windowPdfs(7), {
+    sources: [{ tabId: 2, url }],
+    skippedLocalTabs: true,
+  });
+  assert.deepEqual(calls.inspections, [2]);
+  assert.deepEqual(calls.permissions, [
+    { origins: ['https://files.example/*'] },
+  ]);
+
+  globalThis.chrome.extension.isAllowedFileSchemeAccess = async () => true;
+  assert.deepEqual(await windowPdfs(7), {
+    sources: [
+      { tabId: 1, url: local },
+      { tabId: 2, url },
+    ],
+    skippedLocalTabs: false,
+  });
 });
