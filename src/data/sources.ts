@@ -1,8 +1,8 @@
 import type { Source, SourceInfo } from '../shared/model.js';
 import { openDatabase } from './database.js';
 
-const MAX_CACHE_BYTES = 100 * 1024 * 1024;
-const MAX_CACHE_FILES = 10;
+const MAX_CACHE_BYTES = 512 * 1024 * 1024;
+const MAX_CACHE_FILES = 25;
 
 export interface CapturedPdf extends Source {
   fingerprint: string;

@@ -8,7 +8,7 @@ export function hasPdfSignature(bytes: Uint8Array): boolean {
 export async function validatePdf(file: Blob): Promise<void> {
   if (file.size > MAX_PDF_BYTES) {
     throw new UserError(
-      'Die PDF ist zu groß. Pro Datei sind bis zu 50 MB möglich.',
+      'Die PDF ist zu groß. Pro Datei sind bis zu 50 MiB möglich.',
     );
   }
   if (

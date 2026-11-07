@@ -1,7 +1,7 @@
 import {
   isActive,
   sourceKey,
-  MAX_BATCH_FILES,
+  MAX_BATCH_BYTES,
   UserError,
   type Job,
   type Source,
@@ -103,9 +103,12 @@ export async function dismissFailures(): Promise<void> {
 
 export async function enqueue(input: File[] | Source): Promise<void> {
   if (Array.isArray(input)) {
-    if (!input.length || input.length > MAX_BATCH_FILES) {
-      throw new UserError('Bitte wähle 1 bis 10 PDF-Dateien aus.');
-    }
+    if (!input.length)
+      throw new UserError('Bitte wähle mindestens eine PDF aus.');
+    if (input.reduce((bytes, file) => bytes + file.size, 0) > MAX_BATCH_BYTES)
+      throw new UserError(
+        `Die ausgewählten PDFs dürfen zusammen höchstens ${MAX_BATCH_BYTES / 1024 ** 2} MiB groß sein.`,
+      );
     for (const file of input) await validatePdf(file);
   }
   await stage(Array.isArray(input) ? input : [input], false);

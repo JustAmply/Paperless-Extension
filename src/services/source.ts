@@ -42,7 +42,7 @@ export async function downloadPdf(
       size += value.length;
       if (size > MAX_PDF_BYTES)
         throw new UserError(
-          'Die PDF ist zu groß. Pro Datei sind bis zu 50 MB möglich.',
+          'Die PDF ist zu groß. Pro Datei sind bis zu 50 MiB möglich.',
         );
       chunks.push(value);
       if (!verified) {

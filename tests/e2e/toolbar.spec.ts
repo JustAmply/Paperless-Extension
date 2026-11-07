@@ -455,41 +455,48 @@ for (const sourceType of ['get', 'post', 'single-use'] as const) {
       }
       if (sourceType === 'get') {
         const original = (await sourceCache())[0]!;
-        const extra = [];
-        for (let index = 0; index < 10; index++) {
-          const tab = await context.newPage();
-          await tab.goto(sourceUrl);
-          await expect
-            .poll(async () => (await sourceCache()).length)
-            .toBe(index + 2);
-          extra.push(tab);
-        }
-        await expect
-          .poll(
-            async () =>
-              (await sourceCache()).filter((item) => item.size > 0).length,
-          )
-          .toBe(10);
-        await expect
-          .poll(async () =>
-            (await sourceCache()).find((item) => item.tabId === original.tabId),
-          )
-          .toMatchObject({
-            size: 0,
-            error: expect.stringContaining('nicht mehr verfügbar'),
-          });
-        for (const tab of extra) await tab.close();
-        await expect.poll(async () => (await sourceCache()).length).toBe(1);
         const replacement = await context.newPage();
         await replacement.goto(`chrome-extension://${id}/popup.html`);
-        await replacement.locator('#file-input').setInputFiles({
-          name: 'Local.pdf',
+        // Fill the real cache without running 25 PDF viewer processes.
+        const ready = await replacement.evaluate(async (url) => {
+          const { capturePdf, capturedSources, clearCapturedPdf } =
+            (await import(
+              chrome.runtime.getURL('data/sources.js')
+            )) as typeof import('../../src/data/sources.js');
+          const file = new Blob([new Uint8Array(5 * 1024 * 1024)]);
+          const createdAt = Date.now();
+          for (let index = 1; index <= 25; index++)
+            await capturePdf({
+              tabId: -index,
+              url,
+              name: 'Cache fixture.pdf',
+              fingerprint: `fixture-${index}`,
+              createdAt: createdAt + index,
+              file,
+            });
+          const sources = await capturedSources();
+          for (const source of sources)
+            if (source.tabId < 0) await clearCapturedPdf(source.tabId);
+          return sources.filter((source) => source.availability === 'ready')
+            .length;
+        }, sourceUrl);
+        expect(ready).toBe(25);
+        expect(await sourceCache()).toEqual([
+          {
+            tabId: original.tabId,
+            size: 0,
+            error: expect.stringContaining('nicht mehr verfügbar'),
+          },
+        ]);
+        const localFiles = Array.from({ length: 11 }, (_, index) => ({
+          name: `Local ${index + 1}.pdf`,
           mimeType: 'application/pdf',
           buffer: pdf,
-        });
-        await expect(
-          replacement.locator('[data-status=accepted]'),
-        ).toContainText('Local.pdf');
+        }));
+        await replacement.locator('#file-input').setInputFiles(localFiles);
+        await expect(replacement.locator('[data-status=accepted]')).toHaveCount(
+          localFiles.length,
+        );
         await replacement.close();
         await page.bringToFront();
         const evicted = await openAction();
@@ -510,8 +517,10 @@ for (const sourceType of ['get', 'post', 'single-use'] as const) {
             return (result['result'] as { value?: string }).value;
           })
           .toContain('nicht mehr verfügbar');
-        expect(sourceRequests).toHaveLength(11);
-        expect(uploads).toHaveLength(2);
+        expect(sourceRequests).toHaveLength(1);
+        expect(uploads.slice(1).map((upload) => upload.name)).toEqual(
+          localFiles.map((file) => file.name),
+        );
         await browserCdp.send('Target.closeTarget', {
           targetId: evicted.popupId,
         });

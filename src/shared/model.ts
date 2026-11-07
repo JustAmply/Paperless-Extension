@@ -1,5 +1,5 @@
 export const MAX_PDF_BYTES = 50 * 1024 * 1024;
-export const MAX_BATCH_FILES = 10;
+export const MAX_BATCH_BYTES = 512 * 1024 * 1024;
 
 export interface Settings {
   url: string;
