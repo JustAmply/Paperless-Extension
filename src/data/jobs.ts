@@ -79,7 +79,7 @@ export async function updateImportResult(
   });
 }
 
-export async function dismissFailures(): Promise<void> {
+export async function dismissResults(): Promise<void> {
   const db = await open();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(['jobs', 'files'], 'readwrite');

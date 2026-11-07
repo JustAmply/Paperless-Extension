@@ -16,11 +16,7 @@ import {
   isPdfTab,
   windowSources,
 } from './browser/pdf-tabs.js';
-import {
-  canDismissJob,
-  hasImportWork,
-  isJobVisible,
-} from './shared/job-state.js';
+import { canDismissJob, hasImportWork } from './shared/job-state.js';
 
 function element<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -48,7 +44,7 @@ const ui = {
   status: element('upload-status'),
   jobs: element('job-list'),
   summary: element('batch-summary'),
-  dismiss: element<HTMLButtonElement>('dismiss-failures'),
+  dismiss: element<HTMLButtonElement>('dismiss-results'),
   webAccess: element('web-access-note'),
   fatal: element('fatal-error'),
 };
@@ -142,14 +138,7 @@ function render(state: State): void {
         ? 'Übertragung unbestätigt'
         : 'Aktuelle PDF hochladen';
   const completed = state.jobs.filter((job) => !isActive(job)).length;
-  const engaged = new Set(
-    Array.from(ui.jobs.children)
-      .filter((row) => row.matches(':hover, :focus-within'))
-      .map((row) => (row as HTMLElement).dataset['jobId']),
-  );
-  const visibleJobs = state.jobs.filter(
-    (job) => isJobVisible(job) || engaged.has(job.id),
-  );
+  const visibleJobs = state.jobs.filter((job) => !job.dismissed);
   ui.summary.hidden = !visibleJobs.length;
   ui.summary.textContent = active
     ? `${completed} von ${state.jobs.length} abgeschlossen`
@@ -164,7 +153,6 @@ function render(state: State): void {
     for (const job of visibleJobs) {
       const row = document.createElement('li');
       row.dataset['status'] = job.status;
-      row.dataset['jobId'] = job.id;
       const indicator = document.createElement('span');
       indicator.className = 'job-indicator';
       indicator.textContent =
@@ -345,7 +333,7 @@ ui.dismiss.addEventListener('click', () => {
   void (async () => {
     const result = await request({
       target: 'background',
-      type: 'dismiss-failures',
+      type: 'dismiss-results',
     });
     uploadError = '';
     uploadNotice = '';

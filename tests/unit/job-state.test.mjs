@@ -3,7 +3,6 @@ import test from 'node:test';
 import {
   hasImportWork,
   importDeadline,
-  isJobVisible,
   nextImportCheck,
   canDismissJob,
 } from '../../dist/shared/job-state.js';
@@ -30,12 +29,11 @@ const withResult = (status, extra = {}) => ({
   },
 });
 
-test('terminal import warnings can be hidden while accepted records retain duplicate protection', () => {
-  for (const status of ['failure', 'unavailable']) {
+test('terminal import results can be dismissed while pending and uncertain outcomes remain visible', () => {
+  for (const status of ['success', 'duplicate', 'failure', 'unavailable']) {
     const accepted = withResult(status);
     assert.equal(canDismissJob(accepted), true);
     const dismissed = { ...accepted, dismissed: true };
-    assert.equal(isJobVisible(dismissed), false);
     assert.equal(dismissed.status, 'accepted');
     assert.equal(canDismissJob(dismissed), false);
   }
@@ -44,7 +42,6 @@ test('terminal import warnings can be hidden while accepted records retain dupli
     canDismissJob(withResult('unavailable', { retryable: true })),
     false,
   );
-  assert.equal(canDismissJob(withResult('success')), false);
   assert.equal(canDismissJob({ ...job, status: 'uncertain' }), false);
 });
 
@@ -77,19 +74,4 @@ test('import checks are bounded by acceptance time and distinguish retryable fai
   for (const status of ['success', 'duplicate', 'failure'])
     assert.equal(hasImportWork(withResult(status)), false);
   assert.equal(hasImportWork({ ...job, status: 'uncertain' }), false);
-});
-
-test('only successful terminal rows disappear after eight seconds without changing stored status', () => {
-  for (const status of ['success', 'duplicate']) {
-    const completed = withResult(status);
-    assert.equal(isJobVisible(completed, 10_999), true);
-    assert.equal(isJobVisible(completed, 11_000), false);
-    assert.equal(completed.status, 'accepted');
-  }
-  for (const status of ['pending', 'failure', 'unavailable'])
-    assert.equal(isJobVisible(withResult(status), 999_000), true);
-  assert.equal(isJobVisible({ ...job, status: 'uncertain' }, 999_000), true);
-  assert.equal(isJobVisible({ ...job, status: 'failed' }, 999_000), true);
-  const { importTask: _task, ...legacy } = job;
-  assert.equal(isJobVisible(legacy, 10_000), false);
 });

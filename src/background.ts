@@ -1,4 +1,4 @@
-import { dismissFailures, enqueueWindow, getJobs } from './data/jobs.js';
+import { dismissResults, enqueueWindow, getJobs } from './data/jobs.js';
 import { capturedSources, clearCapturedPdf } from './data/sources.js';
 import { windowPdfs } from './browser/pdf-tabs.js';
 import {
@@ -89,10 +89,10 @@ async function handle(
   switch (message.type) {
     case 'state':
       return { ok: true, state: await state() };
-    case 'dismiss-failures':
+    case 'dismiss-results':
       if (sender.url !== chrome.runtime.getURL('popup.html'))
         throw new UserError('Zugriff verweigert.');
-      await dismissFailures();
+      await dismissResults();
       await badge();
       return { ok: true, state: await state() };
     case 'settings': {

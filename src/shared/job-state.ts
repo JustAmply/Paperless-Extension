@@ -1,7 +1,6 @@
 import type { Job } from './model.js';
 
 export const IMPORT_CHECK_WINDOW_MS = 120_000;
-export const SUCCESS_DISPLAY_MS = 8_000;
 
 export function hasImportWork(job: Job): boolean {
   if (job.status !== 'accepted' || !job.importTask) return false;
@@ -25,26 +24,8 @@ export function nextImportCheck(job: Job): number {
   );
 }
 
-export function isJobVisible(job: Job, now = Date.now()): boolean {
-  if (job.dismissed) return false;
-  if (job.status !== 'accepted') return true;
-  if (!job.importTask)
-    return now < (job.completedAt ?? job.createdAt) + SUCCESS_DISPLAY_MS;
-  if (!['success', 'duplicate'].includes(job.importTask.result?.status ?? ''))
-    return true;
-  return (
-    now <
-    (job.importTask.checkedAt ?? job.completedAt ?? job.createdAt) +
-      SUCCESS_DISPLAY_MS
-  );
-}
-
 export function canDismissJob(job: Job): boolean {
   if (job.dismissed) return false;
   if (job.status === 'failed' || job.status === 'skipped') return true;
-  return (
-    job.status === 'accepted' &&
-    !hasImportWork(job) &&
-    ['failure', 'unavailable'].includes(job.importTask?.result?.status ?? '')
-  );
+  return job.status === 'accepted' && !hasImportWork(job);
 }

@@ -547,12 +547,10 @@ test('a source 404 can be dismissed permanently without retrying or uploading', 
   await popup.reload();
   await expect(popup.locator('#job-list')).toContainText('HTTP 404');
   await screenshot('source-error');
-  await popup
-    .getByRole('button', { name: 'Fehlermeldungen schließen' })
-    .click();
+  await popup.getByRole('button', { name: 'Meldungen schließen' }).click();
   await expect(popup.locator('#job-list li')).toHaveCount(0);
   await popup.reload();
-  await expect(popup.locator('#dismiss-failures')).toBeHidden();
+  await expect(popup.locator('#dismiss-results')).toBeHidden();
   await expect(popup.locator('#job-list li')).toHaveCount(0);
   const worker = context.serviceWorkers()[0]!;
   expect(await worker.evaluate(() => chrome.action.getBadgeText({}))).toBe('');
@@ -593,9 +591,7 @@ test('dismissing validation errors retains uncertain outcomes and duplicate prot
   ).toBeVisible();
   await chooseFile('invalid.pdf', Buffer.from('not a PDF'));
   await expect(popup.locator('#upload-status')).toContainText('keine PDF');
-  await popup
-    .getByRole('button', { name: 'Fehlermeldungen schließen' })
-    .click();
+  await popup.getByRole('button', { name: 'Meldungen schließen' }).click();
   await expect(popup.locator('#upload-status')).toBeEmpty();
   await expect(
     popup.locator('#job-list [data-status="uncertain"]'),
@@ -733,7 +729,7 @@ test('an interrupted POST becomes uncertain after recovery without being sent ag
   expect(uploads).toHaveLength(1);
 });
 
-test('closing failures preserves completed uploads and cannot alter an active batch', async () => {
+test('dismissing results cannot alter an active batch', async () => {
   await connect();
   slow = true;
   status = 401;
@@ -747,11 +743,11 @@ test('closing failures preserves completed uploads and cannot alter an active ba
   await expect(popup.locator('#job-list [data-status="failed"]')).toContainText(
     'Rejected.pdf',
   );
-  await expect(popup.locator('#dismiss-failures')).toBeDisabled();
+  await expect(popup.locator('#dismiss-results')).toBeDisabled();
   await popup.evaluate(() =>
     chrome.runtime.sendMessage({
       target: 'background',
-      type: 'dismiss-failures',
+      type: 'dismiss-results',
     }),
   );
   await expect(popup.locator('#job-list li')).toHaveCount(2);
@@ -760,17 +756,15 @@ test('closing failures preserves completed uploads and cannot alter an active ba
   await expect(
     popup.locator('#job-list [data-status="accepted"]'),
   ).toContainText('Accepted.pdf');
-  await popup.locator('#dismiss-failures').click();
-  await expect(popup.locator('#job-list li')).toHaveCount(1);
-  await expect(
-    popup.locator('#job-list [data-status="accepted"]'),
-  ).toBeVisible();
+  await expect(popup.locator('[data-import-status="success"]')).toBeVisible();
+  await popup.locator('#dismiss-results').click();
+  await expect(popup.locator('#job-list li')).toHaveCount(0);
   await popup.reload();
-  await expect(popup.locator('#job-list li')).toHaveCount(1);
+  await expect(popup.locator('#job-list li')).toHaveCount(0);
   expect(uploads).toHaveLength(2);
 });
 
-test('imports are checked automatically and successful rows disappear without allowing a duplicate upload', async () => {
+test('successful imports stay visible until dismissed and still prevent duplicate uploads', async () => {
   await useCurrentPdf();
   await connect();
   taskStatus = 'STARTED';
@@ -790,10 +784,10 @@ test('imports are checked automatically and successful rows disappear without al
     `${baseUrl}documents/42/details`,
   );
   await screenshot('import-success');
-  await popup.locator('.document-link').focus();
-  await popup.waitForTimeout(8_500);
+  await popup.clock.setSystemTime(Date.now() + 60_000);
+  await popup.reload();
   await expect(popup.locator('.document-link')).toBeVisible();
-  await popup.locator('#drop-zone').focus();
+  await popup.locator('#dismiss-results').click();
   await expect(popup.locator('#job-list li')).toHaveCount(0);
   await expect(popup.locator('#batch-summary')).toBeHidden();
   await popup.reload();
@@ -825,7 +819,7 @@ for (const duplicate of [false, true]) {
     );
     expect(uploads).toHaveLength(1);
     if (!duplicate) {
-      await popup.locator('#dismiss-failures').click();
+      await popup.locator('#dismiss-results').click();
       await expect(popup.locator('#job-list li')).toHaveCount(0);
       await popup.reload();
       await expect(popup.locator('#send-current')).toBeDisabled();
@@ -848,7 +842,7 @@ test('unavailable task permissions stay visible and can be dismissed without ano
     popup.locator('[data-import-status="unavailable"]'),
   ).toBeVisible();
   expect(taskRequests).toBe(1);
-  await popup.locator('#dismiss-failures').click();
+  await popup.locator('#dismiss-results').click();
   await expect(popup.locator('#job-list li')).toHaveCount(0);
   await expect(popup.locator('#send-current')).toBeDisabled();
   expect(uploads).toHaveLength(1);
