@@ -111,10 +111,7 @@ async function handle(
           'Bitte warte, bis die Übertragung abgeschlossen ist.',
         );
       const previous = await settings();
-      const next = validateSettings(
-        message.url,
-        message.token || previous?.token || '',
-      );
+      const next = validateSettings(message.url, message.token, previous);
       if (
         !(await chrome.permissions.contains({
           origins: [hostPermission(next.url)],

@@ -13,6 +13,7 @@ const pdf = Buffer.from(
   '%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n',
 );
 const token = 'fixture-token';
+const replacementToken = 'replacement-fixture-token';
 const taskId = '12345678-1234-4567-89ab-123456789abc';
 const screenshots = path.resolve('artifacts/screenshots');
 
@@ -37,6 +38,7 @@ let slowTask = false;
 let releaseTask: (() => void) | undefined;
 let status = 200;
 let profileRedirect = false;
+let replacementProfileRequests = 0;
 let redirectVisits = 0;
 let slow = false;
 let release: (() => void) | undefined;
@@ -147,6 +149,21 @@ test.beforeAll(async () => {
         response.end(JSON.stringify({ email: '', auth_token: token }));
         return;
       }
+      if (
+        request.method === 'GET' &&
+        request.url === '/other-paperless/api/profile/'
+      ) {
+        replacementProfileRequests++;
+        const valid =
+          request.headers.authorization === `Token ${replacementToken}`;
+        response.writeHead(valid ? 200 : 401, {
+          'content-type': 'application/json',
+        });
+        response.end(
+          JSON.stringify(valid ? { auth_token: replacementToken } : {}),
+        );
+        return;
+      }
       if (request.url === '/login/') {
         redirectVisits++;
         response.writeHead(200, { 'content-type': 'text/html' });
@@ -249,6 +266,7 @@ test.beforeEach(async () => {
   releaseTask = undefined;
   status = 200;
   profileRedirect = false;
+  replacementProfileRequests = 0;
   redirectVisits = 0;
   slow = false;
   release = undefined;
@@ -370,6 +388,48 @@ test('setup rejects invalid tokens and login redirects without saving settings o
 
   profileRedirect = false;
   await connect();
+});
+
+test('a saved token can only be reused at the same normalized Paperless address', async () => {
+  await connect();
+  const settings = popup.getByRole('button', { name: 'Einstellungen' });
+  const address = popup.getByLabel('Paperless-Adresse');
+  const tokenField = popup.getByLabel('API-Token', { exact: true });
+  const save = popup.getByRole('button', { name: 'Verbindung speichern' });
+  await settings.click();
+  await address.fill(baseUrl.slice(0, -1));
+  await expect(tokenField).not.toHaveAttribute('required', '');
+  await tokenField.fill('   ');
+  await save.click();
+  await expect(popup.locator('#upload-panel')).toBeVisible();
+
+  await settings.click();
+  const url = new URL('/other-paperless/', baseUrl).href;
+  await address.fill(url);
+  await expect(tokenField).toHaveAttribute('required', '');
+  await expect(tokenField).toHaveAccessibleDescription(
+    'Gib für die neue Paperless-Adresse einen API-Token ein.',
+  );
+  const response = await popup.evaluate(
+    (url) =>
+      chrome.runtime.sendMessage({
+        target: 'background',
+        type: 'save',
+        url,
+        token: '   ',
+      }),
+    url,
+  );
+  expect(response).toMatchObject({
+    ok: false,
+    error: 'Gib für die neue Paperless-Adresse einen API-Token ein.',
+  });
+  expect(replacementProfileRequests).toBe(0);
+
+  await tokenField.fill(replacementToken);
+  await save.click();
+  await expect(popup.locator('#upload-panel')).toBeVisible();
+  expect(replacementProfileRequests).toBe(1);
 });
 
 async function useCurrentPdf(): Promise<void> {

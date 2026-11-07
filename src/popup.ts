@@ -251,8 +251,30 @@ async function start(input: File[] | Source): Promise<void> {
   await refresh();
 }
 
+function updateTokenField(): void {
+  const savedUrl = currentState.settings.url;
+  let sameServer = false;
+  if (savedUrl) {
+    try {
+      sameServer = normalizeServer(ui.url.value) === savedUrl;
+    } catch {
+      // An incomplete address cannot reuse the saved token.
+    }
+  }
+  ui.token.required = !sameServer;
+  ui.token.placeholder = sameServer
+    ? 'Gespeicherten Token beibehalten'
+    : 'Dein API-Token';
+  ui.tokenHelp.textContent = sameServer
+    ? 'Leer lassen, um den gespeicherten Token zu behalten.'
+    : savedUrl
+      ? 'Gib für die neue Paperless-Adresse einen API-Token ein.'
+      : 'In Paperless unter „Mein Profil“ → „API-Token“.';
+}
+
 ui.form.addEventListener('submit', (event) => {
   event.preventDefault();
+  const token = ui.token.value;
   let url: string;
   let permission: Promise<boolean>;
   try {
@@ -279,17 +301,14 @@ ui.form.addEventListener('submit', (event) => {
         target: 'background',
         type: 'save',
         url,
-        token: ui.token.value,
+        token,
       });
       await updateWebAccess();
       ui.token.value = '';
       if (result.state) render(result.state);
       ui.settingsStatus.textContent = '';
       ui.save.textContent = 'Verbindung speichern';
-      ui.token.placeholder = 'Gespeicherten Token beibehalten';
-      ui.token.required = false;
-      ui.tokenHelp.textContent =
-        'Leer lassen, um den gespeicherten Token zu behalten.';
+      updateTokenField();
       showSettings(false);
     } catch (error) {
       ui.settingsStatus.textContent = errorMessage(error);
@@ -302,6 +321,7 @@ ui.form.addEventListener('submit', (event) => {
 
 ui.url.addEventListener('input', () => {
   ui.httpWarning.hidden = !ui.url.value.trim().startsWith('http://');
+  updateTokenField();
 });
 ui.toggle.addEventListener('click', () =>
   showSettings(ui.settings.hidden === true),
@@ -429,13 +449,9 @@ async function initialize(): Promise<void> {
   await updateCurrentPdf();
   ui.url.value = currentState.settings.url;
   ui.httpWarning.hidden = !ui.url.value.startsWith('http://');
-  ui.token.required = !currentState.settings.configured;
-  if (currentState.settings.configured) {
+  updateTokenField();
+  if (currentState.settings.configured)
     ui.save.textContent = 'Verbindung speichern';
-    ui.token.placeholder = 'Gespeicherten Token beibehalten';
-    ui.tokenHelp.textContent =
-      'Leer lassen, um den gespeicherten Token zu behalten.';
-  }
   showSettings(!currentState.settings.configured);
   if (currentState.jobs.some((job) => isActive(job) || hasImportWork(job)))
     await request({ target: 'background', type: 'process' });
