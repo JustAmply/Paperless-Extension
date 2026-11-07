@@ -66,13 +66,11 @@ export async function capturedSources(): Promise<SourceInfo[]> {
     request.onsuccess = () =>
       resolve(
         (request.result as CapturedPdf[]).map(
-          ({ tabId, url, fingerprint, name, file, error }) => ({
+          ({ tabId, url, fingerprint, file, error }) => ({
             tabId,
             url,
             fingerprint,
-            name,
             availability: file ? 'ready' : error ? 'unavailable' : 'loading',
-            ...(file ? { size: file.size } : {}),
             ...(error ? { error } : {}),
           }),
         ),

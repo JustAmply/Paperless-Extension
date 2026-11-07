@@ -81,28 +81,17 @@
         </p>
       </section>
       <section id="upload-panel" aria-label="PDFs hochladen" hidden>
-        <div
-          id="document-card"
-          class="document-card"
-          aria-label="Aktuelles Dokument"
-        >
-          <span class="eyebrow">Aktuelles Dokument</span>
-          <strong id="document-name"></strong>
-          <span id="document-origin" class="document-detail"></span>
-          <span
-            id="document-availability"
-            class="document-detail"
-            role="status"
-          ></span>
-        </div>
         <button
           id="send-current"
           class="primary current-button"
           type="button"
+          aria-describedby="current-status"
           disabled
+          hidden
         >
           Aktuelle PDF hochladen
         </button>
+        <p id="current-status" class="field-note" role="status" hidden></p>
         <button id="drop-zone" class="drop-zone" type="button">
           <span class="drop-icon"
             ><svg viewBox="0 0 32 32" aria-hidden="true">

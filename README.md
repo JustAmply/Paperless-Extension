@@ -4,7 +4,7 @@ A small, unofficial Chrome extension that sends PDFs directly to your own Paperl
 
 There are no document-management features, tracking services, accounts, or runtime dependencies.
 
-The document card shows the current filename, source host, and whether captured PDF bytes are ready, loading, or unavailable. Captured files also show their size. For uncaptured URLs, availability is explicitly unknown until upload; opening the popup does not fetch the source. Loading or unavailable captured documents cannot be sent through the current-tab button.
+The current-tab upload button appears only when the active tab is recognized as a PDF. Opening the popup does not fetch the source. If a captured PDF is still loading or is unavailable, the popup explains why the button is disabled.
 
 ## Install the local build
 

@@ -6,11 +6,12 @@ import {
   sourceKey,
   UserError,
   type Source,
+  type SourceInfo,
   type State,
 } from './shared/model.js';
-import { pdfName, readableSource } from './shared/pdf.js';
+import { readableSource } from './shared/pdf.js';
 import { normalizeServer } from './shared/settings.js';
-import { windowSources } from './browser/pdf-tabs.js';
+import { isPdfTab, windowSources } from './browser/pdf-tabs.js';
 import {
   canDismissJob,
   hasImportWork,
@@ -35,10 +36,7 @@ const ui = {
   httpWarning: element('http-warning'),
   tokenHelp: element('token-help'),
   send: element<HTMLButtonElement>('send-current'),
-  documentCard: element('document-card'),
-  documentName: element('document-name'),
-  documentOrigin: element('document-origin'),
-  documentAvailability: element('document-availability'),
+  currentStatus: element('current-status'),
   fileAccess: element<HTMLButtonElement>('file-access'),
   drop: element<HTMLButtonElement>('drop-zone'),
   sendWindow: element<HTMLButtonElement>('send-window'),
@@ -53,7 +51,8 @@ const ui = {
 
 let currentState: State;
 let currentTab: chrome.tabs.Tab | undefined;
-let currentUrl: string | undefined;
+let activeSource: Source | undefined;
+let inspectedPdf = false;
 let localFileAccess = false;
 let staged = false;
 let polling = false;
@@ -69,12 +68,13 @@ async function updateWebAccess(): Promise<void> {
   ui.webAccess.hidden = allWebAccess;
 }
 
-function selectedSource(state: State): Source | undefined {
-  if (!currentUrl || currentTab?.id === undefined) return undefined;
+function selectedSource(state: State): Source | SourceInfo | undefined {
+  const source = activeSource;
+  if (!source) return undefined;
   return (
     state.sources.find(
-      (source) => source.tabId === currentTab?.id && source.url === currentUrl,
-    ) ?? { url: currentUrl, tabId: currentTab.id }
+      (pdf) => pdf.tabId === source.tabId && pdf.url === source.url,
+    ) ?? (inspectedPdf ? source : undefined)
   );
 }
 
@@ -92,28 +92,19 @@ function render(state: State): void {
   ui.drop.disabled = active;
   ui.sendWindow.disabled = active || !windowTabs.length;
   ui.toggle.disabled = active;
-  ui.documentCard.hidden = !currentUrl;
-  ui.send.hidden = !currentUrl;
   const currentSource = selectedSource(state);
-  const captured = state.sources.find(
-    (source) => source.tabId === currentTab?.id && source.url === currentUrl,
-  );
-  ui.documentName.textContent =
-    captured?.name ??
-    (currentUrl ? pdfName(currentUrl) : 'Kein abrufbares Dokument');
-  ui.documentOrigin.textContent = currentUrl
-    ? currentUrl.startsWith('file:')
-      ? 'Lokale Datei'
-      : new URL(currentUrl).hostname
-    : 'Öffne eine PDF oder wähle eine Datei aus.';
-  ui.documentAvailability.textContent = captured
-    ? captured.availability === 'ready'
-      ? `Bereit zum Hochladen · ${new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 }).format((captured.size ?? 0) / 1024)} KB`
-      : (captured.error ?? 'PDF wird noch geladen …')
-    : currentUrl
-      ? 'Verfügbarkeit wird beim Hochladen geprüft.'
-      : '';
-  ui.documentAvailability.classList.toggle(
+  const captured =
+    currentSource && 'availability' in currentSource
+      ? currentSource
+      : undefined;
+  const isLocal = activeSource?.url.startsWith('file:');
+  ui.send.hidden = !currentSource;
+  ui.fileAccess.hidden = !isLocal || localFileAccess;
+  ui.currentStatus.textContent =
+    captured?.error ??
+    (captured?.availability === 'loading' ? 'PDF wird geladen …' : '');
+  ui.currentStatus.hidden = !ui.currentStatus.textContent;
+  ui.currentStatus.classList.toggle(
     'error',
     captured?.availability === 'unavailable',
   );
@@ -126,10 +117,9 @@ function render(state: State): void {
   ui.send.disabled =
     active ||
     !state.settings.configured ||
-    !currentUrl ||
-    currentTab?.id === undefined ||
+    !currentSource ||
     (captured !== undefined && captured.availability !== 'ready') ||
-    (currentUrl.startsWith('file:') && !localFileAccess) ||
+    (isLocal && !localFileAccess) ||
     (sourceJob !== undefined &&
       ['accepted', 'uncertain'].includes(sourceJob.status));
   ui.send.textContent =
@@ -406,28 +396,37 @@ ui.fileAccess.addEventListener('click', () => {
         );
       }
       localFileAccess = true;
-      ui.fileAccess.hidden = true;
-      render(currentState);
+      await updateCurrentPdf();
     })
     .catch(showUploadError);
 });
 
-async function updateCurrentAccess(): Promise<void> {
-  if (currentUrl?.startsWith('file:')) {
-    localFileAccess =
-      (await chrome.extension.isAllowedFileSchemeAccess()) &&
-      (await chrome.permissions.contains({ origins: ['file:///*'] }));
-    ui.fileAccess.hidden = localFileAccess;
+async function updateCurrentPdf(): Promise<void> {
+  if (
+    activeSource &&
+    (!activeSource.url.startsWith('file:') || localFileAccess) &&
+    !selectedSource(currentState)
+  ) {
+    inspectedPdf = await isPdfTab(activeSource);
   }
   render(currentState);
 }
 
 async function initialize(): Promise<void> {
   [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  currentUrl = readableSource(currentTab?.url);
+  const url = readableSource(currentTab?.url);
+  if (url && currentTab?.id !== undefined) {
+    activeSource = { url, tabId: currentTab.id };
+    if (url.startsWith('file:')) {
+      localFileAccess =
+        (await chrome.extension.isAllowedFileSchemeAccess()) &&
+        (await chrome.permissions.contains({ origins: ['file:///*'] }));
+    }
+  }
   if (currentTab) windowTabs = await windowSources(currentTab.windowId);
   await updateWebAccess();
   await refresh();
+  await updateCurrentPdf();
   ui.url.value = currentState.settings.url;
   ui.httpWarning.hidden = !ui.url.value.startsWith('http://');
   ui.token.required = !currentState.settings.configured;
@@ -440,7 +439,6 @@ async function initialize(): Promise<void> {
   showSettings(!currentState.settings.configured);
   if (currentState.jobs.some((job) => isActive(job) || hasImportWork(job)))
     await request({ target: 'background', type: 'process' });
-  await updateCurrentAccess();
   window.setInterval(() => {
     if (polling || staged) return;
     polling = true;

@@ -504,7 +504,7 @@ for (const sourceType of ['get', 'post', 'single-use'] as const) {
           .poll(async () => {
             const result = await evicted.command('Runtime.evaluate', {
               expression:
-                'document.querySelector("#document-availability")?.textContent',
+                'document.querySelector("#current-status")?.textContent',
               returnByValue: true,
             });
             return (result['result'] as { value?: string }).value;

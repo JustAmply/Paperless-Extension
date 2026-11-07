@@ -14,6 +14,23 @@ export async function windowSources(windowId: number): Promise<Source[]> {
   });
 }
 
+export async function isPdfTab(source: Source): Promise<boolean> {
+  try {
+    // Inspect the top-level document, not the viewer's protected frames.
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId: source.tabId },
+      func: () => ({ type: document.contentType, url: document.URL }),
+    });
+    return (
+      result?.result?.type === 'application/pdf' &&
+      readableSource(result.result.url) === source.url
+    );
+  } catch {
+    // The tab can be inaccessible, close, or navigate into a protected page.
+    return false;
+  }
+}
+
 export async function windowPdfs(
   windowId: number,
   captured: Source[] = [],
@@ -44,22 +61,7 @@ export async function windowPdfs(
       pdfs.set(sourceKey(cached), cached);
       continue;
     }
-    try {
-      // The top-level PDF embedder exposes its MIME type; the viewer's own
-      // protected extension frames are neither inspected nor modified.
-      const [result] = await chrome.scripting.executeScript({
-        target: { tabId: source.tabId },
-        func: () => ({ type: document.contentType, url: document.URL }),
-      });
-      if (
-        result?.result?.type === 'application/pdf' &&
-        readableSource(result.result.url) === source.url
-      ) {
-        pdfs.set(sourceKey(source), source);
-      }
-    } catch {
-      // Tabs can close or navigate into a protected page during the scan.
-    }
+    if (await isPdfTab(source)) pdfs.set(sourceKey(source), source);
   }
   return [...pdfs.values()];
 }

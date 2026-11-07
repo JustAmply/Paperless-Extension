@@ -17,9 +17,7 @@ export function sourceKey(source: Source): string {
 }
 
 export interface SourceInfo extends Source {
-  name: string;
-  availability: 'ready' | 'loading' | 'unavailable' | 'unchecked';
-  size?: number;
+  availability: 'ready' | 'loading' | 'unavailable';
   error?: string;
 }
 

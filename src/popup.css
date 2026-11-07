@@ -298,26 +298,10 @@ input::placeholder {
 .current-button {
   margin: 0 0 14px;
 }
-.document-card {
-  display: grid;
-  gap: 6px;
-  padding: 12px;
-  margin-bottom: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  overflow-wrap: anywhere;
+#current-status {
+  margin: -6px 0 14px;
 }
-.eyebrow {
-  font-size: 10px;
-  color: var(--muted);
-}
-.document-detail {
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--muted);
-}
-.document-detail.error {
+#current-status.error {
   color: var(--error);
 }
 .form-status {

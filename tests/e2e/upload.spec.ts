@@ -118,6 +118,12 @@ test.beforeAll(async () => {
         response.end(sourceBody);
         return;
       }
+      if (request.method === 'GET' && request.url === '/not-a-pdf.pdf') {
+        sourceRequests++;
+        response.writeHead(200, { 'content-type': 'text/html' });
+        response.end('<!doctype html><title>Not a PDF</title>');
+        return;
+      }
       if (request.method === 'GET' && request.url === '/paperless/api/') {
         response.writeHead(302, { location: 'schema/view/' });
         response.end();
@@ -367,27 +373,59 @@ test('setup rejects invalid tokens and login redirects without saving settings o
 });
 
 async function useCurrentPdf(): Promise<void> {
-  // These tests open the popup in a tab. Supply the active source URL while
-  // keeping real extension storage, requests, and upload processing intact.
+  // Simulate an uncaptured PDF viewer so the upload's GET is the first
+  // source request. Storage, requests, and upload processing stay real.
   await popup.addInitScript((url) => {
     const query = chrome.tabs.query.bind(chrome.tabs);
     chrome.tabs.query = async (queryInfo) => {
       const tabs = await query(queryInfo);
       return queryInfo.active ? tabs.map((tab) => ({ ...tab, url })) : tabs;
     };
+    chrome.scripting.executeScript = async () => [
+      { frameId: 0, result: { type: 'application/pdf', url } },
+    ];
   }, new URL('/current.pdf', baseUrl).href);
   await popup.reload();
 }
+
+test('an ordinary web page does not offer a current PDF upload, even with a PDF suffix', async () => {
+  await connect();
+  const page = await context.newPage();
+  const url = new URL('/not-a-pdf.pdf', baseUrl).href;
+  await page.goto(url);
+  await page.bringToFront();
+  const worker = context.serviceWorkers()[0]!;
+  const opened = context.waitForEvent('page');
+  await worker.evaluate(
+    (url) => chrome.tabs.create({ url, active: false }),
+    popupUrl,
+  );
+  popup = await opened;
+  await popup.waitForURL(popupUrl);
+  expect(
+    await popup.evaluate(
+      async () =>
+        (await chrome.tabs.query({ active: true, currentWindow: true }))[0]
+          ?.url,
+    ),
+  ).toBe(url);
+  await expect(popup.locator('#upload-panel')).toBeVisible();
+  await expect(popup.locator('#send-current')).toBeHidden();
+  await expect(popup.locator('#current-status')).toBeHidden();
+  await expect(popup.locator('#drop-zone')).toBeEnabled();
+  await expect(popup.locator('#send-window')).toBeEnabled();
+  expect(sourceRequests).toBe(1);
+  expect(uploads).toHaveLength(0);
+  await screenshot('ordinary-page');
+});
 
 test('opening the popup and saving settings require an explicit current PDF upload, including failed retries', async () => {
   await useCurrentPdf();
   await connect();
   const send = popup.locator('#send-current');
   await expect(send).toBeEnabled();
-  await expect(popup.locator('#document-name')).toHaveText('current.pdf');
-  await expect(popup.locator('#document-availability')).toContainText(
-    'beim Hochladen geprüft',
-  );
+  await expect(send).toBeVisible();
+  await expect(popup.locator('#current-status')).toBeHidden();
   expect(sourceRequests).toBe(0);
   expect(uploads).toHaveLength(0);
   await popup.reload();
