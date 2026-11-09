@@ -1,4 +1,4 @@
-import { capturePdf } from './data/sources.js';
+import { capturePdf, finishPdfCapture } from './data/sources.js';
 import { errorMessage, UserError } from './shared/model.js';
 import {
   documentSource,
@@ -51,9 +51,10 @@ async function capture(): Promise<void> {
     // JavaScript byte array. The viewer also supports PDFs above the upload cap.
     file = await response.blob();
   } catch (error) {
-    await capturePdf({ ...metadata, error: errorMessage(error) }).catch(
-      showError,
-    );
+    await finishPdfCapture(
+      { ...metadata, error: errorMessage(error) },
+      metadata.fingerprint,
+    ).catch(showError);
     throw error;
   }
   const status = document.getElementById('status');
@@ -62,11 +63,15 @@ async function capture(): Promise<void> {
     await validatePdf(file);
     const fingerprint = await pdfFingerprint(file);
     metadata.name = pdfName(url, disposition, fingerprint);
-    await capturePdf({ ...metadata, fingerprint, file });
-  } catch (error) {
-    await capturePdf({ ...metadata, error: errorMessage(error) }).catch(
-      showError,
+    await finishPdfCapture(
+      { ...metadata, fingerprint, file },
+      metadata.fingerprint,
     );
+  } catch (error) {
+    await finishPdfCapture(
+      { ...metadata, error: errorMessage(error) },
+      metadata.fingerprint,
+    ).catch(showError);
     showError(error);
   }
   const viewer = document.createElement('iframe');

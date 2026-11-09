@@ -494,6 +494,69 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
         const original = (await sourceCache())[0]!;
         const replacement = await context.newPage();
         await replacement.goto(`chrome-extension://${id}/popup.html`);
+        await test.step('Late captures cannot replace or resurrect a tab entry', async () => {
+          const result = await replacement.evaluate(async (url) => {
+            const {
+              capturePdf,
+              capturedSources,
+              clearCapturedPdf,
+              finishPdfCapture,
+            } = (await import(
+              chrome.runtime.getURL('data/sources.js')
+            )) as typeof import('../../src/data/sources.js');
+            const tabId = -1;
+            const current = async () =>
+              (await capturedSources()).find(
+                (source) => source.tabId === tabId,
+              );
+            const old = {
+              tabId,
+              url,
+              name: 'Old.pdf',
+              createdAt: Date.now(),
+              fingerprint: 'old-loading',
+            };
+            const next = {
+              ...old,
+              name: 'New.pdf',
+              fingerprint: 'new-loading',
+            };
+            const file = new Blob(['%PDF-1.7']);
+            await capturePdf(old);
+            await capturePdf(next);
+            await finishPdfCapture(
+              { ...old, fingerprint: 'old-content', file },
+              old.fingerprint,
+            );
+            await finishPdfCapture(
+              { ...old, error: 'late error' },
+              old.fingerprint,
+            );
+            const afterStale = await current();
+            await finishPdfCapture(
+              { ...next, fingerprint: 'new-content', file },
+              next.fingerprint,
+            );
+            const afterCurrent = await current();
+            await capturePdf(next);
+            await clearCapturedPdf(tabId);
+            await finishPdfCapture(
+              { ...next, fingerprint: 'new-content', file },
+              next.fingerprint,
+            );
+            const afterClear = await current();
+            return { afterStale, afterCurrent, afterClear };
+          }, sourceUrl);
+          expect(result.afterStale).toMatchObject({
+            fingerprint: 'new-loading',
+            availability: 'loading',
+          });
+          expect(result.afterCurrent).toMatchObject({
+            fingerprint: 'new-content',
+            availability: 'ready',
+          });
+          expect(result.afterClear).toBeUndefined();
+        });
         // Fill the real cache without running 25 PDF viewer processes.
         const ready = await replacement.evaluate(async (url) => {
           const { capturePdf, capturedSources, clearCapturedPdf } =

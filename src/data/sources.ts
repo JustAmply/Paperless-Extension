@@ -15,14 +15,39 @@ export interface CapturedPdf extends Source {
 const unavailable =
   'Die zwischengespeicherte PDF ist nicht mehr verfügbar. Speichere sie im PDF-Viewer und ziehe sie hier hinein.';
 
-export async function capturePdf(pdf: CapturedPdf): Promise<void> {
+export function capturePdf(pdf: CapturedPdf): Promise<void> {
+  return writeCapture(pdf);
+}
+
+export function finishPdfCapture(
+  pdf: CapturedPdf,
+  loadingFingerprint: string,
+): Promise<void> {
+  return writeCapture(pdf, loadingFingerprint);
+}
+
+async function writeCapture(
+  pdf: CapturedPdf,
+  loadingFingerprint?: string,
+): Promise<void> {
   const db = await openDatabase();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction('sources', 'readwrite');
     const store = tx.objectStore('sources');
     const request = store.getAll();
     request.onsuccess = () => {
-      const previous = (request.result as CapturedPdf[])
+      const records = request.result as CapturedPdf[];
+      if (loadingFingerprint !== undefined) {
+        const current = records.find((item) => item.tabId === pdf.tabId);
+        // Navigation or a newer capture may have invalidated the loading record.
+        if (
+          current?.fingerprint !== loadingFingerprint ||
+          current.file ||
+          current.error
+        )
+          return;
+      }
+      const previous = records
         .filter(
           (item): item is CapturedPdf & { file: Blob } =>
             item.tabId !== pdf.tabId && item.file !== undefined,
