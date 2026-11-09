@@ -10,7 +10,11 @@ import {
 import { pdfName, validatePdf } from '../shared/pdf.js';
 import { openDatabase as open } from './database.js';
 import type { CapturedPdf } from './sources.js';
-import { canDismissJob, isPreviousUpload } from '../shared/job-state.js';
+import {
+  canDismissJob,
+  hasImportWork,
+  isPreviousUpload,
+} from '../shared/job-state.js';
 
 async function transaction<T>(
   mode: IDBTransactionMode,
@@ -152,6 +156,7 @@ async function stage(
       );
       store.clear();
       tx.objectStore('files').clear();
+      for (const job of jobs.filter(hasImportWork)) store.put(job);
       if (preserveUploads) {
         for (const job of completed.values()) store.put(job);
       }

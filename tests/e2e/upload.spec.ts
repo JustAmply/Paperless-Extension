@@ -973,7 +973,7 @@ test('automatic import checks never query an old task on a new server', async ()
   expect(uploads).toHaveLength(1);
 });
 
-test('an in-flight import check cannot resurrect a replaced batch', async () => {
+test('an in-flight import remains tracked while another batch uploads', async () => {
   await connect();
   slowTask = true;
   await chooseFile('Old.pdf');
@@ -982,10 +982,12 @@ test('an in-flight import check cannot resurrect a replaced batch', async () => 
   await expect(popup.locator('#job-list')).toContainText('New.pdf');
   slowTask = false;
   releaseTask?.();
-  await expect(popup.locator('[data-import-status="success"]')).toBeVisible();
+  await expect(popup.locator('[data-import-status="success"]')).toHaveCount(2);
   await popup.reload();
-  await expect(popup.locator('#job-list li')).toHaveCount(1);
-  await expect(popup.locator('#job-list')).toContainText('New.pdf');
+  await expect(popup.locator('#job-list li')).toHaveText([
+    /Old\.pdf.*Importiert/,
+    /New\.pdf.*Importiert/,
+  ]);
   expect(uploads).toHaveLength(2);
 });
 
