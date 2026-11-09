@@ -99,8 +99,11 @@ svg {
 main {
   padding: 4px 24px 24px;
 }
+main:has(#settings-panel:not([hidden])) {
+  padding-bottom: 12px;
+}
 .section-heading {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 h1 {
   margin: 0 0 6px;
@@ -298,16 +301,32 @@ input::placeholder {
   color: var(--error);
 }
 .display-settings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44%;
+  gap: 6px 10px;
+  align-items: center;
   border-bottom: 1px solid var(--line);
-  padding-bottom: 14px;
-  margin-bottom: 14px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+.display-settings > :not(label, select) {
+  grid-column: 1 / -1;
 }
 #settings-panel h2 {
   margin: 0;
   font-size: 15px;
 }
-.display-settings label {
-  margin-top: 10px;
+#settings-panel label {
+  margin: 10px 0 5px;
+}
+#display-settings label {
+  margin: 0;
+}
+#settings-panel .field-note {
+  margin-top: 5px;
+}
+#settings-panel .form-status {
+  margin: 6px 0 0;
 }
 .form-status {
   font-size: 12px;
@@ -319,7 +338,7 @@ input::placeholder {
   display: flex;
   gap: 6px;
   align-items: center;
-  margin: 19px 0 20px;
+  margin: 9px 0 0;
 }
 .privacy-note svg {
   width: 13px;
@@ -328,7 +347,7 @@ input::placeholder {
 .notice {
   color: var(--error);
   font-size: 11px;
-  margin: 12px 0 0;
+  margin: 8px 0 0;
 }
 .text-button {
   padding: 8px 0 0;

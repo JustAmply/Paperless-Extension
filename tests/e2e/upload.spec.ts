@@ -802,6 +802,29 @@ test('successful imports disappear after a short delay and still prevent duplica
   expect(taskRequests).toBe(2);
 });
 
+test('settings fit without scrolling or shifting when connection feedback is visible', async () => {
+  await connect();
+  const settings = popup.getByRole('button', { name: 'Einstellungen' });
+  const layout = () =>
+    settings.evaluate((button) => ({
+      x: button.getBoundingClientRect().x,
+      width: document.body.clientWidth,
+      overflows: document.body.scrollHeight > document.body.clientHeight,
+    }));
+  const uploadLayout = await layout();
+  await settings.click();
+  await expect(popup.locator('#http-warning')).toBeVisible();
+  expect(await layout()).toEqual({ ...uploadLayout, overflows: false });
+  profileRedirect = true;
+  await popup.getByRole('button', { name: 'Verbindung speichern' }).click();
+  await expect(popup.locator('#settings-status')).toContainText(
+    'leitet die API-Anfrage weiter',
+  );
+  await expect(popup.locator('.privacy-note')).toBeInViewport();
+  expect(await layout()).toEqual({ ...uploadLayout, overflows: false });
+  await screenshot('settings-no-scroll');
+});
+
 test('success display preference persists and applies without resending the PDF', async () => {
   await connect();
   const settings = popup.getByRole('button', { name: 'Einstellungen' });
