@@ -1,5 +1,10 @@
 import { MAX_PDF_BYTES, UserError } from '../shared/model.js';
-import { hasPdfSignature, pdfName } from '../shared/pdf.js';
+import {
+  hasPdfSignature,
+  knownPdfName,
+  pdfFingerprint,
+  pdfName,
+} from '../shared/pdf.js';
 
 const manualUpload =
   'Lade die PDF aus dem geöffneten PDF-Viewer herunter und wähle sie hier aus oder ziehe sie hinein.';
@@ -63,9 +68,12 @@ export async function downloadPdf(
     const file = new Blob(chunks, { type: 'application/pdf' });
     if (!verified && !hasPdfSignature(new Uint8Array(await file.arrayBuffer())))
       return undefined;
+    const sourceUrl = response.url || url;
+    const disposition = response.headers.get('content-disposition') ?? '';
+    const name = knownPdfName(sourceUrl, disposition) ?? knownPdfName(url);
     return {
       file,
-      name: pdfName(url, response.headers.get('content-disposition') ?? ''),
+      name: name ?? pdfName(sourceUrl, '', await pdfFingerprint(file)),
     };
   } catch (error) {
     if (error instanceof UserError) throw error;

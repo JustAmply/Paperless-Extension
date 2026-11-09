@@ -86,6 +86,25 @@ test('long PDF filenames are truncated before the suffix', () => {
   );
 });
 
+test('names use explicit filename parameters or a distinct source-based fallback', () => {
+  assert.equal(
+    pdfName('https://files.example/download?filename=Rechnung%20April.pdf'),
+    'Rechnung April.pdf',
+  );
+  assert.equal(
+    pdfName('blob:https://files.example/id', '', 'abcdef0123456789'),
+    'PDF von files.example – abcdef01.pdf',
+  );
+  assert.equal(
+    pdfName(
+      'https://files.example/download?token=secret.pdf',
+      '',
+      '1234567890abcdef',
+    ),
+    'PDF von files.example – 12345678.pdf',
+  );
+});
+
 test('source URLs only allow directly retrievable schemes and omit PDF viewer fragments', () => {
   assert.equal(
     readableSource('https://files.example/invoice.pdf?download=1#page=2'),

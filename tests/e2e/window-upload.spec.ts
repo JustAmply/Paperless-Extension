@@ -176,6 +176,11 @@ test('window upload finds PDFs, skips inaccessible local tabs and other windows,
     await manager.close();
     const setup = await context.newPage();
     await setup.goto(popupUrl);
+    // Exercise the actual optional permission grant during setup.
+    await setup.evaluate(() =>
+      chrome.permissions.remove({ origins: ['http://*/*', 'https://*/*'] }),
+    );
+    await setup.reload();
     await setup.getByLabel('Paperless-Adresse').fill(baseUrl);
     await setup.getByLabel('API-Token', { exact: true }).fill(token);
     await setup.getByRole('button', { name: 'Verbinden', exact: true }).click();
@@ -254,7 +259,7 @@ test('window upload finds PDFs, skips inaccessible local tabs and other windows,
     await popup.locator('#send-current').click();
     await expect(
       popup.locator('#job-list [data-status="accepted"]'),
-    ).toContainText('Dokument.pdf');
+    ).toContainText('First.pdf');
     await expect.poll(() => uploads.length).toBe(1);
     await popup.bringToFront();
     const htmlRequests = sourceRequests.filter(
@@ -280,9 +285,9 @@ test('window upload finds PDFs, skips inaccessible local tabs and other windows,
     await expect(popup.locator('#file-access')).toBeVisible();
     await expect(
       popup.locator('#job-list [data-status="accepted"]'),
-    ).toContainText(['Dokument.pdf', 'Second.pdf']);
+    ).toContainText(['First.pdf', 'Second.pdf']);
     expect(uploads.map((upload) => upload.name)).toEqual([
-      'Dokument.pdf',
+      'First.pdf',
       'Second.pdf',
     ]);
     expect(
@@ -352,7 +357,7 @@ test('window upload finds PDFs, skips inaccessible local tabs and other windows,
       popup.locator('#job-list [data-status="uncertain"]'),
     ).toContainText('Unconfirmed.pdf');
     expect(uploads.map((upload) => upload.name)).toEqual([
-      'Dokument.pdf',
+      'First.pdf',
       'Second.pdf',
       'Unconfirmed.pdf',
     ]);

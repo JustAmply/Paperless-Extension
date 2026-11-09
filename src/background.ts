@@ -13,11 +13,53 @@ import {
 import { hostPermission, validateSettings } from './shared/settings.js';
 import { verifyConnection } from './services/paperless.js';
 import { hasImportWork } from './shared/job-state.js';
+import { readableSource } from './shared/pdf.js';
 
 const initialized = chrome.storage.local.setAccessLevel({
   accessLevel: 'TRUSTED_CONTEXTS',
 });
 let lifecycle: Promise<unknown> = Promise.resolve();
+const pdfDispositions = new Map<number, { url: string; disposition: string }>();
+
+// The MIME handler can receive the PDF body without its Content-Disposition.
+// Remember just that header from the matching top-level response.
+function rememberPdfDisposition({
+  tabId,
+  url,
+  statusCode,
+  responseHeaders,
+}: chrome.webRequest.OnHeadersReceivedDetails): undefined {
+  if (tabId < 0) return;
+  pdfDispositions.delete(tabId);
+  if (statusCode < 200 || statusCode >= 300) return;
+  const header = (name: string) =>
+    responseHeaders?.find((item) => item.name.toLowerCase() === name)?.value;
+  if (
+    header('content-type')?.split(';')[0]?.trim().toLowerCase() !==
+    'application/pdf'
+  )
+    return;
+  const disposition = header('content-disposition');
+  const source = readableSource(url);
+  if (source && disposition)
+    pdfDispositions.set(tabId, { url: source, disposition });
+}
+
+function listenForPdfNames(): void {
+  const event = chrome.webRequest.onHeadersReceived;
+  event.removeListener(rememberPdfDisposition);
+  event.addListener(
+    rememberPdfDisposition,
+    { urls: ['http://*/*', 'https://*/*'], types: ['main_frame'] },
+    ['responseHeaders'],
+  );
+}
+
+listenForPdfNames();
+// Chrome rejects webRequest registration until the first host grant.
+chrome.permissions.onAdded.addListener(({ origins }) => {
+  if (origins?.length) listenForPdfNames();
+});
 
 async function settings(): Promise<Settings | undefined> {
   await initialized;
@@ -89,6 +131,18 @@ async function handle(
   switch (message.type) {
     case 'state':
       return { ok: true, state: await state() };
+    case 'pdf-disposition': {
+      const tabId = sender.tab?.id;
+      if (
+        sender.url !== chrome.runtime.getURL('capture.html') ||
+        tabId === undefined
+      )
+        throw new UserError('Zugriff verweigert.');
+      const match = pdfDispositions.get(tabId);
+      if (match?.url !== message.url) return { ok: true };
+      pdfDispositions.delete(tabId);
+      return { ok: true, disposition: match.disposition };
+    }
     case 'dismiss-results':
       if (sender.url !== chrome.runtime.getURL('popup.html'))
         throw new UserError('Zugriff verweigert.');
@@ -202,6 +256,7 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
+  pdfDispositions.delete(tabId);
   void clearCapturedPdf(tabId);
 });
 

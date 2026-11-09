@@ -63,6 +63,7 @@ export interface State {
 
 export type BackgroundRequest =
   | { target: 'background'; type: 'state' }
+  | { target: 'background'; type: 'pdf-disposition'; url: string }
   | { target: 'background'; type: 'dismiss-results' }
   | { target: 'background'; type: 'save'; url: string; token: string }
   | { target: 'background'; type: 'process' }
@@ -81,6 +82,7 @@ export interface BackgroundResponse {
   state?: State;
   settings?: Settings;
   message?: string;
+  disposition?: string;
 }
 
 export function isActive(job: Job): boolean {
