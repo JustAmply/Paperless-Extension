@@ -5,6 +5,7 @@ import {
   isActive,
   sourceKey,
   UserError,
+  type Job,
   type Source,
   type SourceInfo,
   type State,
@@ -16,7 +17,11 @@ import {
   isPdfTab,
   windowSources,
 } from './browser/pdf-tabs.js';
-import { canDismissJob, hasImportWork } from './shared/job-state.js';
+import {
+  canDismissJob,
+  hasImportWork,
+  isJobVisible,
+} from './shared/job-state.js';
 
 function element<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -94,6 +99,105 @@ function showSettings(open: boolean): void {
   if (open) ui.url.focus();
 }
 
+const icons = {
+  check: 'm5 12 4 4L19 6',
+  clock: 'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
+  upload: 'M12 16V4m-5 5 5-5 5 5M5 16v4h14v-4',
+  warning:
+    'M12 8v5m0 3v.1M10.4 4.8 3 18a1 1 0 0 0 .9 1.5h16.2A1 1 0 0 0 21 18L13.6 4.8a1.8 1.8 0 0 0-3.2 0Z',
+  open: 'M13 5h6v6m0-6-8 8m6 1v5H5V7h5',
+} as const;
+
+function icon(name: keyof typeof icons): SVGSVGElement {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', icons[name]);
+  svg.append(path);
+  return svg;
+}
+
+function jobPresentation(
+  job: Job,
+  serverUrl: string,
+): {
+  symbol: keyof typeof icons;
+  tone: 'progress' | 'success' | 'warning';
+  label: string;
+} {
+  if (job.status === 'accepted') {
+    const result = job.importTask?.result;
+    if (result?.status === 'success')
+      return { symbol: 'check', tone: 'success', label: 'Importiert' };
+    if (result?.status === 'duplicate')
+      return { symbol: 'check', tone: 'success', label: 'Bereits vorhanden' };
+    if (job.importTask && job.importTask.serverUrl !== serverUrl)
+      return {
+        symbol: 'warning',
+        tone: 'warning',
+        label: 'Import gehört zu einem anderen Paperless-Server.',
+      };
+    if (result?.status === 'failure' || result?.status === 'unavailable')
+      return { symbol: 'warning', tone: 'warning', label: result.message };
+    if (job.importTask)
+      return { symbol: 'clock', tone: 'progress', label: 'Wird importiert …' };
+    return { symbol: 'check', tone: 'success', label: 'Übertragen' };
+  }
+  if (isActive(job)) {
+    const label =
+      job.status === 'queued'
+        ? 'Wartet'
+        : job.status === 'downloading'
+          ? 'Wird geladen …'
+          : 'Wird hochgeladen …';
+    return {
+      symbol: job.status === 'uploading' ? 'upload' : 'clock',
+      tone: 'progress',
+      label,
+    };
+  }
+  return { symbol: 'warning', tone: 'warning', label: job.message };
+}
+
+function renderJob(job: Job, serverUrl: string): HTMLLIElement {
+  const row = document.createElement('li');
+  row.dataset['status'] = job.status;
+  row.dataset['jobId'] = job.id;
+  const { symbol, tone, label } = jobPresentation(job, serverUrl);
+  row.dataset['tone'] = tone;
+  const indicator = document.createElement('span');
+  indicator.className = 'job-indicator';
+  indicator.append(icon(symbol));
+  const name = document.createElement('span');
+  name.className = 'job-name';
+  name.textContent = job.name;
+  name.title = job.name;
+  const message = document.createElement('span');
+  message.className = 'job-message';
+  message.textContent = label;
+  const task = job.importTask;
+  const result = task?.result;
+  if (result) message.dataset['importStatus'] = result.status;
+  row.append(indicator, name, message);
+  if (task && result?.documentId) {
+    const link = document.createElement('a');
+    link.className = 'document-link';
+    link.href = new URL(
+      `documents/${result.documentId}/details`,
+      task.serverUrl,
+    ).href;
+    link.title = 'In Paperless öffnen';
+    link.setAttribute('aria-label', `${job.name} in Paperless öffnen`);
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.append(icon('open'));
+    row.append(link);
+  }
+  return row;
+}
+
 function render(state: State): void {
   currentState = state;
   const active = state.jobs.some(isActive) || staged;
@@ -137,77 +241,32 @@ function render(state: State): void {
       : sourceJob?.status === 'uncertain'
         ? 'Übertragung unbestätigt'
         : 'Aktuelle PDF hochladen';
-  const completed = state.jobs.filter((job) => !isActive(job)).length;
-  const visibleJobs = state.jobs.filter((job) => !job.dismissed);
+  const engaged = new Set(
+    Array.from(
+      ui.jobs.querySelectorAll<HTMLLIElement>('li:hover, li:focus-within'),
+    ).map((row) => row.dataset['jobId']),
+  );
+  const now = Date.now();
+  const visibleJobs = state.jobs.filter((job) =>
+    isJobVisible(job, now, engaged.has(job.id)),
+  );
   ui.summary.hidden = !visibleJobs.length;
-  ui.summary.textContent = active
-    ? `${completed} von ${state.jobs.length} abgeschlossen`
-    : 'Letzte Übertragung';
   ui.dismiss.hidden =
-    !uploadError && !uploadNotice && !state.jobs.some(canDismissJob);
+    !uploadError && !uploadNotice && !visibleJobs.some(canDismissJob);
   ui.dismiss.disabled = active;
   const jobsKey = JSON.stringify([visibleJobs, state.settings.url]);
   if (jobsKey !== renderedJobs) {
+    const focusedId = ui.jobs.contains(document.activeElement)
+      ? document.activeElement?.closest('li')?.dataset['jobId']
+      : undefined;
     renderedJobs = jobsKey;
-    ui.jobs.replaceChildren();
-    for (const job of visibleJobs) {
-      const row = document.createElement('li');
-      row.dataset['status'] = job.status;
-      const indicator = document.createElement('span');
-      indicator.className = 'job-indicator';
-      indicator.textContent =
-        job.status === 'accepted'
-          ? hasImportWork(job)
-            ? '↥'
-            : job.importTask?.result?.status === 'failure'
-              ? '!'
-              : job.importTask?.result?.status === 'unavailable'
-                ? '?'
-                : '✓'
-          : isActive(job)
-            ? '↥'
-            : job.status === 'skipped'
-              ? '–'
-              : '!';
-      const name = document.createElement('span');
-      name.className = 'job-name';
-      name.textContent = job.name;
-      name.title = job.name;
-      const message = document.createElement('span');
-      message.className = 'job-message';
-      message.textContent = job.message;
-      row.append(indicator, name, message);
-      if (job.importTask?.result?.status === 'failure')
-        indicator.classList.add('error');
-      if (job.importTask) {
-        const result = job.importTask.result;
-        const detail = document.createElement('span');
-        detail.className = 'import-result';
-        detail.textContent =
-          result?.message ?? 'Import wird automatisch geprüft …';
-        if (result) detail.dataset['importStatus'] = result.status;
-        row.append(detail);
-        if (result?.documentId) {
-          const link = document.createElement('a');
-          link.className = 'document-link';
-          link.href = new URL(
-            `documents/${result.documentId}/details`,
-            job.importTask.serverUrl,
-          ).href;
-          link.textContent =
-            result.status === 'duplicate'
-              ? 'Vorhandenes Dokument öffnen ↗'
-              : 'Dokument öffnen ↗';
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
-          row.append(link);
-        } else if (job.importTask.serverUrl !== state.settings.url) {
-          detail.textContent =
-            'Importstatus gehört zu einem anderen Paperless-Server.';
-        }
-      }
-      ui.jobs.append(row);
-    }
+    const rows = visibleJobs.map((job) => renderJob(job, state.settings.url));
+    ui.jobs.replaceChildren(...rows);
+    if (focusedId)
+      rows
+        .find((row) => row.dataset['jobId'] === focusedId)
+        ?.querySelector('a')
+        ?.focus();
   }
   ui.status.classList.toggle('error', Boolean(uploadError));
   ui.status.textContent =

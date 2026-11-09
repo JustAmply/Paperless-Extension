@@ -117,7 +117,14 @@ async function badge(): Promise<void> {
         job.importTask?.result?.status === 'failure'),
   );
   await chrome.action.setBadgeText({
-    text: busy ? '…' : failed ? '!' : '',
+    text: busy ? '…' : failed ? '×' : '',
+  });
+  await chrome.action.setTitle({
+    title: busy
+      ? 'Paperless Upload: Übertragung läuft'
+      : failed
+        ? 'Paperless Upload: Übertragung prüfen'
+        : 'PDF an Paperless senden',
   });
   await chrome.action.setBadgeBackgroundColor({
     color: failed ? '#9c452d' : '#005616',

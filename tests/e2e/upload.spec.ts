@@ -764,30 +764,32 @@ test('dismissing results cannot alter an active batch', async () => {
   expect(uploads).toHaveLength(2);
 });
 
-test('successful imports stay visible until dismissed and still prevent duplicate uploads', async () => {
+test('successful imports disappear after a short delay and still prevent duplicate uploads', async () => {
   await useCurrentPdf();
   await connect();
   taskStatus = 'STARTED';
   relatedDocument = null;
   await popup.locator('#send-current').click();
-  await expect(popup.locator('[data-import-status="pending"]')).toContainText(
-    'verarbeitet',
+  await expect(popup.locator('[data-import-status="pending"]')).toHaveText(
+    'Wird importiert …',
   );
   expect(taskRequests).toBe(1);
   taskStatus = 'SUCCESS';
   relatedDocument = '42';
-  await expect(popup.locator('[data-import-status="success"]')).toContainText(
-    'importiert',
+  await expect(popup.locator('[data-import-status="success"]')).toHaveText(
+    'Importiert',
   );
   await expect(popup.locator('.document-link')).toHaveAttribute(
     'href',
     `${baseUrl}documents/42/details`,
   );
   await screenshot('import-success');
+  await popup.locator('.document-link').focus();
   await popup.clock.setSystemTime(Date.now() + 60_000);
-  await popup.reload();
-  await expect(popup.locator('.document-link')).toBeVisible();
-  await popup.locator('#dismiss-results').click();
+  // Wait past the next state refresh to verify focus prevents the row from vanishing.
+  await popup.waitForTimeout(750);
+  await expect(popup.locator('.document-link')).toBeFocused();
+  await popup.keyboard.press('Shift+Tab');
   await expect(popup.locator('#job-list li')).toHaveCount(0);
   await expect(popup.locator('#batch-summary')).toBeHidden();
   await popup.reload();
@@ -871,7 +873,7 @@ test('automatic import checks never query an old task on a new server', async ()
       settings: { url, token: 'new-fixture-token' },
     });
   }, new URL('/other-server/', baseUrl).href);
-  await expect(popup.locator('.import-result')).toContainText(
+  await expect(popup.locator('.job-message')).toContainText(
     'anderen Paperless-Server',
   );
   await popup.waitForTimeout(5_500);

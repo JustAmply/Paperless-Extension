@@ -383,12 +383,12 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
         .poll(async () => {
           const result = await first.command('Runtime.evaluate', {
             expression:
-              'document.querySelector("#job-list [data-status=accepted] .job-message")?.textContent',
+              'Boolean(document.querySelector("#job-list [data-status=accepted]"))',
             returnByValue: true,
           });
-          return (result['result'] as { value?: string })?.value;
+          return (result['result'] as { value?: boolean })?.value;
         })
-        .toBe('An Paperless übertragen');
+        .toBe(true);
       await expect.poll(() => uploads.length).toBe(1);
       expect(uploads[0]).toEqual({
         authorization: `Token ${token}`,
