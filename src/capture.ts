@@ -1,6 +1,6 @@
 import { capturePdf } from './data/sources.js';
 import { errorMessage, UserError } from './shared/model.js';
-import { pdfName, readableSource, validatePdf } from './shared/pdf.js';
+import { documentSource, pdfName, validatePdf } from './shared/pdf.js';
 
 function showError(error: unknown): void {
   const status = document.getElementById('status');
@@ -12,7 +12,7 @@ function showError(error: unknown): void {
 
 async function capture(): Promise<void> {
   const stream = await chrome.mimeHandler.getStreamInfo();
-  const url = readableSource(stream.originalUrl);
+  const url = documentSource(stream.originalUrl);
   if (!url) throw new UserError('Diese PDF-Adresse wird nicht unterstützt.');
   const disposition = Object.entries(stream.responseHeaders).find(
     ([name]) => name.toLowerCase() === 'content-disposition',

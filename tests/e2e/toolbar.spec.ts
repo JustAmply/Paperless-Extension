@@ -67,7 +67,7 @@ function samplePdf(padding = 0): Buffer {
   return Buffer.from(document);
 }
 
-for (const sourceType of ['get', 'post', 'single-use'] as const) {
+for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
   test(`the toolbar confirms upload of a ${sourceType} PDF without fetching it again or duplicating POSTs`, async ({}, testInfo) => {
     test.setTimeout(60_000);
     const pdf = samplePdf();
@@ -174,8 +174,8 @@ for (const sourceType of ['get', 'post', 'single-use'] as const) {
         throw new Error('Missing fixture port');
       const baseUrl = `http://127.0.0.1:${address.port}/paperless/`;
       // Distinct hostnames still verify source requests never carry the API token.
-      const sourceUrl = `http://localhost:${address.port}/download?id=42`;
-      const navigationUrl =
+      let sourceUrl = `http://localhost:${address.port}/download?id=42`;
+      let navigationUrl =
         sourceType === 'get' ? `${sourceUrl}#page=1&zoom=150` : sourceUrl;
       const extensionPath = path.resolve('dist');
       context = await chromium.launchPersistentContext(
@@ -278,6 +278,19 @@ for (const sourceType of ['get', 'post', 'single-use'] as const) {
         await page.goto(`http://localhost:${address.port}/form`);
         await page.getByRole('button', { name: 'Open PDF' }).click();
         await page.waitForURL(sourceUrl);
+      } else if (sourceType === 'blob') {
+        await page.goto(`http://localhost:${address.port}/form`);
+        sourceUrl = await page.evaluate(
+          (bytes) => {
+            const blob = new Blob([new Uint8Array(bytes)], {
+              type: 'application/pdf',
+            });
+            return URL.createObjectURL(blob);
+          },
+          [...pdf],
+        );
+        navigationUrl = `${sourceUrl}#page=1&zoom=150`;
+        await page.goto(navigationUrl);
       } else await page.goto(navigationUrl);
       await expect
         .poll(() =>
@@ -292,7 +305,7 @@ for (const sourceType of ['get', 'post', 'single-use'] as const) {
             ),
         )
         .toBe(true);
-      if (sourceType === 'get') {
+      if (sourceType === 'get' || sourceType === 'blob') {
         const handler = page
           .frames()
           .find(
@@ -347,7 +360,9 @@ for (const sourceType of ['get', 'post', 'single-use'] as const) {
       };
       const first = await openAction();
       expect(uploads).toHaveLength(0);
-      expect(sourceMethods).toEqual([sourceType === 'post' ? 'POST' : 'GET']);
+      expect(sourceMethods).toEqual(
+        sourceType === 'blob' ? [] : [sourceType === 'post' ? 'POST' : 'GET'],
+      );
       await first.command('Runtime.evaluate', {
         expression: 'document.querySelector("#send-current").click()',
       });
@@ -367,7 +382,7 @@ for (const sourceType of ['get', 'post', 'single-use'] as const) {
         name: 'Dokument.pdf',
         content: pdf,
       });
-      expect(sourceRequests).toHaveLength(1);
+      expect(sourceRequests).toHaveLength(sourceType === 'blob' ? 0 : 1);
       expect(
         sourceRequests.every((authorization) => authorization === undefined),
       ).toBe(true);
@@ -410,7 +425,15 @@ for (const sourceType of ['get', 'post', 'single-use'] as const) {
         },
       });
       expect(uploads).toHaveLength(1);
-      expect(sourceRequests).toHaveLength(1);
+      expect(sourceRequests).toHaveLength(sourceType === 'blob' ? 0 : 1);
+      if (sourceType === 'blob') {
+        const button = await second.command('Runtime.evaluate', {
+          expression:
+            'document.querySelector("#send-current").matches(":not([hidden]):disabled")',
+          returnByValue: true,
+        });
+        expect(button['result']).toMatchObject({ value: true });
+      }
       expect(
         (await worker.evaluate(() => chrome.permissions.getAll())).origins,
       ).toEqual(permissions.origins);

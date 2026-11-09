@@ -9,7 +9,7 @@ import {
   type SourceInfo,
   type State,
 } from './shared/model.js';
-import { readableSource } from './shared/pdf.js';
+import { documentSource } from './shared/pdf.js';
 import { normalizeServer } from './shared/settings.js';
 import {
   canAccessFileTabs,
@@ -429,7 +429,7 @@ async function updateCurrentPdf(): Promise<void> {
 
 async function initialize(): Promise<void> {
   [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const url = readableSource(currentTab?.url);
+  const url = documentSource(currentTab?.url);
   if (url && currentTab?.id !== undefined)
     activeSource = { url, tabId: currentTab.id };
   if (currentTab) await updateWindowTabs(currentTab.windowId);

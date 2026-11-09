@@ -1,5 +1,5 @@
 import { sourceKey, UserError, type Source } from '../shared/model.js';
-import { readableSource } from '../shared/pdf.js';
+import { documentSource, readableSource } from '../shared/pdf.js';
 import { hostPermission } from '../shared/settings.js';
 
 export async function canAccessFileTabs(): Promise<boolean> {
@@ -12,12 +12,13 @@ export async function canAccessFileTabs(): Promise<boolean> {
 export async function windowSources(windowId: number): Promise<Source[]> {
   const tabs = await chrome.tabs.query({ windowId });
   return tabs.flatMap((tab) => {
-    const url = readableSource(tab.url);
+    const url = documentSource(tab.url);
     return tab.id !== undefined && url ? [{ url, tabId: tab.id }] : [];
   });
 }
 
 export async function isPdfTab(source: Source): Promise<boolean> {
+  if (!readableSource(source.url)) return false;
   try {
     // Inspect the top-level document, not the viewer's protected frames.
     const [result] = await chrome.scripting.executeScript({
@@ -45,7 +46,7 @@ export async function windowPdfs(
   const origins = [
     ...new Set(
       sources
-        .filter((source) => !source.url.startsWith('file:'))
+        .filter((source) => /^https?:/.test(source.url))
         .map((source) => hostPermission(source.url)),
     ),
   ];

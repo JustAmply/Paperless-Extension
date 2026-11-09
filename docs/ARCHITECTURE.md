@@ -31,7 +31,7 @@ The handler uses `can_embed: false`. It creates a local Blob URL and embeds it i
 
 PDF display does not depend on upload eligibility or successful cache storage. PDFs above 50 MiB can still be viewed, and cache errors are displayed alongside the viewer. Only valid PDFs within the upload limit receive a cached body and a SHA-256 content fingerprint. The capture API may filter `Content-Disposition`, even with host access, so names use an available response filename, the URL basename, or `Dokument.pdf`.
 
-Chrome 116 remains the minimum supported version. On older versions, or for a source without a capture record, the existing HTTP(S) GET/file retrieval path remains available. Capture cannot recover a response retroactively from a previously opened native viewer. Such a PDF must be saved from its current viewer and selected locally, or safely reopened when its source allows another request. Arbitrary `blob:` tabs and embedded PDF frames are not captured.
+Chrome 116 remains the minimum supported version. On older versions, or for a source without a capture record, the existing HTTP(S) GET/file retrieval path remains available. Capture cannot recover a response retroactively from a previously opened native viewer. Such a PDF must be saved from its current viewer and selected locally, or safely reopened when its source allows another request. Top-level `blob:` PDFs use the same captured stream as HTTP PDFs. Their original URL identifies the capture for the matching tab only. The popup and window scan require a matching capture for Blob URLs; they never probe those URLs, request host permissions for them, or use them as download targets. Embedded PDF frames are not captured.
 
 ## Data and lifecycle
 

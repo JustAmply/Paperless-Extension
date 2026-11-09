@@ -36,7 +36,7 @@ function browser(t, tabs, results) {
   return { queries, inspections, permissions };
 }
 
-test('window enumeration excludes protected and blob URLs and scopes the query to one window', async (t) => {
+test('window enumeration excludes protected URLs and scopes the query to one window', async (t) => {
   const calls = browser(
     t,
     [
@@ -51,8 +51,29 @@ test('window enumeration excludes protected and blob URLs and scopes the query t
   assert.deepEqual(await windowSources(7), [
     { tabId: 1, url: 'https://files.example/download?id=1' },
     { tabId: 2, url: 'file:///C:/Invoice.pdf' },
+    { tabId: 4, url: 'blob:https://files.example/123' },
   ]);
   assert.deepEqual(calls.queries, [{ windowId: 7 }]);
+});
+
+test('window upload only uses blob tabs with matching captured data', async (t) => {
+  const url = 'blob:https://files.example/123';
+  const cached = { tabId: 1, url, fingerprint: 'captured' };
+  const calls = browser(
+    t,
+    [
+      { id: 1, url: `${url}#page=2` },
+      { id: 2, url: 'blob:https://files.example/uncaptured' },
+      { id: 3, url: 'blob:https://files.example/navigated' },
+    ],
+    new Map(),
+  );
+  assert.deepEqual(await windowPdfs(7, [cached, { ...cached, tabId: 3 }]), {
+    sources: [cached],
+    skippedLocalTabs: false,
+  });
+  assert.deepEqual(calls.inspections, []);
+  assert.deepEqual(calls.permissions, []);
 });
 
 test('window PDFs use the rendered MIME type, deduplicate URLs, and ignore navigation races', async (t) => {

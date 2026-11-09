@@ -48,10 +48,16 @@ export function pdfName(url: string, disposition = ''): string {
 }
 
 export function readableSource(url: string | undefined): string | undefined {
+  const source = documentSource(url);
+  return source?.startsWith('blob:') ? undefined : source;
+}
+
+// Blob URLs identify captured documents, but are not download targets.
+export function documentSource(url: string | undefined): string | undefined {
   if (!url) return undefined;
   try {
     const parsed = new URL(url);
-    if (!['https:', 'http:', 'file:'].includes(parsed.protocol))
+    if (!['https:', 'http:', 'file:', 'blob:'].includes(parsed.protocol))
       return undefined;
     parsed.hash = '';
     return parsed.href;
