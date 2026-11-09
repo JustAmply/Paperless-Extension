@@ -203,7 +203,7 @@ async function handle(
     }
     case 'process':
       await offscreen(true);
-      await badge();
+      await badge().catch(() => undefined);
       return { ok: true };
     case 'upload-window': {
       if (sender.url !== chrome.runtime.getURL('popup.html'))
@@ -234,15 +234,25 @@ async function handle(
         };
       await enqueueWindow(sources, config.url);
       await offscreen(true);
-      await badge();
+      await badge().catch(() => undefined);
       return { ok: true, message: localNotice, state: await state() };
     }
     case 'changed':
       await badge();
       return { ok: true };
     case 'idle':
-      await badge();
       await offscreen(false);
+      await badge();
+      return { ok: true };
+    case 'runner-stopped':
+      if (sender.url !== chrome.runtime.getURL('offscreen.html'))
+        throw new UserError('Zugriff verweigert.');
+      await chrome.action.setBadgeText({ text: '×' });
+      await chrome.action.setBadgeBackgroundColor({ color: '#9c452d' });
+      await chrome.action.setTitle({
+        title:
+          'Paperless Upload: Warteschlange angehalten. Popup erneut öffnen.',
+      });
       return { ok: true };
   }
 }

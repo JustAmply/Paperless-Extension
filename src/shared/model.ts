@@ -76,6 +76,7 @@ export type BackgroundRequest =
     }
   | { target: 'background'; type: 'changed' }
   | { target: 'background'; type: 'idle' }
+  | { target: 'background'; type: 'runner-stopped' }
   | { target: 'background'; type: 'settings' };
 
 export interface BackgroundResponse {

@@ -40,11 +40,12 @@ export async function getFile(id: string): Promise<Blob | undefined> {
   });
 }
 
-export async function deleteFile(id: string): Promise<void> {
+export async function finishJob(job: Job): Promise<void> {
   const db = await open();
   await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction('files', 'readwrite');
-    tx.objectStore('files').delete(id);
+    const tx = db.transaction(['jobs', 'files'], 'readwrite');
+    tx.objectStore('jobs').put(job);
+    tx.objectStore('files').delete(job.id);
     tx.oncomplete = () => resolve();
     tx.onabort = () => reject(tx.error);
   });
