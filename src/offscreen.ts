@@ -48,6 +48,10 @@ async function transfer(job: Job): Promise<Job> {
   const response = await request({ target: 'background', type: 'settings' });
   if (!response.settings)
     throw new UserError('Bitte richte deinen Paperless-Server ein.');
+  if (job.serverUrl !== response.settings.url)
+    throw new UserError(
+      'Das Upload-Ziel hat sich geändert oder fehlt. Wähle die PDF erneut aus.',
+    );
   let file = await getFile(job.id);
   if (!file && job.source) {
     await update({

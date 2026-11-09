@@ -10,7 +10,7 @@ import {
 import { pdfName, validatePdf } from '../shared/pdf.js';
 import { openDatabase as open } from './database.js';
 import type { CapturedPdf } from './sources.js';
-import { canDismissJob } from '../shared/job-state.js';
+import { canDismissJob, isPreviousUpload } from '../shared/job-state.js';
 
 async function transaction<T>(
   mode: IDBTransactionMode,
@@ -101,7 +101,10 @@ export async function dismissResults(): Promise<void> {
   });
 }
 
-export async function enqueue(input: File[] | Source): Promise<void> {
+export async function enqueue(
+  input: File[] | Source,
+  serverUrl: string,
+): Promise<void> {
   if (Array.isArray(input)) {
     if (!input.length)
       throw new UserError('Bitte wähle mindestens eine PDF aus.');
@@ -111,15 +114,19 @@ export async function enqueue(input: File[] | Source): Promise<void> {
       );
     for (const file of input) await validatePdf(file);
   }
-  await stage(Array.isArray(input) ? input : [input], false);
+  await stage(Array.isArray(input) ? input : [input], serverUrl, false);
 }
 
-export async function enqueueWindow(sources: Source[]): Promise<void> {
-  await stage(sources, true);
+export async function enqueueWindow(
+  sources: Source[],
+  serverUrl: string,
+): Promise<void> {
+  await stage(sources, serverUrl, true);
 }
 
 async function stage(
   entries: (File | Source)[],
+  serverUrl: string,
   preserveUploads: boolean,
 ): Promise<void> {
   const db = await open();
@@ -137,7 +144,7 @@ async function stage(
       }
       const completed = new Map(
         jobs.flatMap((job) =>
-          job.source && ['accepted', 'uncertain'].includes(job.status)
+          job.source && isPreviousUpload(job, serverUrl)
             ? [[sourceKey(job.source), job] as const]
             : [],
         ),
@@ -162,6 +169,7 @@ async function stage(
                 status: 'queued',
                 message: 'Wartet auf Übertragung',
                 createdAt: Date.now() + index,
+                serverUrl,
                 ...(!isFile ? { source: item } : {}),
               };
         store.put(job);

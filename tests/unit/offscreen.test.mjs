@@ -23,6 +23,7 @@ async function runner({
     status: 'queued',
     message: '',
     createdAt: 0,
+    serverUrl: 'https://fixture.invalid/',
   };
   let deleted = false;
   let uploads = 0;
@@ -122,6 +123,15 @@ test('an explicit API rejection remains a failed upload with its explanation', a
   assert.equal(job.state().stored.message, 'Keine Berechtigung.');
   assert.equal(job.state().uploads, 1);
   assert.equal(job.state().deleted, true);
+});
+
+test('queued files cannot be sent to a different Paperless server', async () => {
+  const job = await runner();
+  job.setServer('https://other-fixture.invalid/');
+  await job.run();
+  assert.equal(job.state().uploads, 0);
+  assert.equal(job.state().stored.status, 'failed');
+  assert.match(job.state().stored.message, /Upload-Ziel/);
 });
 
 test('the runner automatically confirms an accepted upload without a popup command', async () => {

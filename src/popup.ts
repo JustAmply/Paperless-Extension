@@ -21,6 +21,7 @@ import {
   canDismissJob,
   DEFAULT_SUCCESS_DISPLAY_SECONDS,
   hasImportWork,
+  isPreviousUpload,
   isJobVisible,
   successDisplaySeconds,
 } from './shared/job-state.js';
@@ -248,6 +249,7 @@ function render(state: State): void {
     (job) =>
       currentSource &&
       job.source &&
+      isPreviousUpload(job, state.settings.url) &&
       sourceKey(job.source) === sourceKey(currentSource),
   );
   ui.send.disabled =
@@ -256,8 +258,7 @@ function render(state: State): void {
     !currentSource ||
     (captured !== undefined && captured.availability !== 'ready') ||
     (isLocal && !localFileAccess) ||
-    (sourceJob !== undefined &&
-      ['accepted', 'uncertain'].includes(sourceJob.status));
+    sourceJob !== undefined;
   ui.sendLabel.textContent =
     sourceJob?.status === 'accepted'
       ? 'Bereits an Paperless übertragen'
@@ -322,7 +323,7 @@ async function start(input: File[] | Source): Promise<void> {
   staged = true;
   render(currentState);
   try {
-    await enqueue(input);
+    await enqueue(input, currentState.settings.url);
     await request({ target: 'background', type: 'process' });
   } catch (error) {
     staged = false;
@@ -444,6 +445,7 @@ ui.dismiss.addEventListener('click', () => {
 ui.sendWindow.addEventListener('click', () => {
   if (staged || currentState.jobs.some(isActive) || !currentTab) return;
   const windowId = currentTab.windowId;
+  const serverUrl = currentState.settings.url;
   // Request broad web access once, directly inside the click gesture.
   const permission = allWebAccess
     ? Promise.resolve(true)
@@ -462,6 +464,7 @@ ui.sendWindow.addEventListener('click', () => {
         target: 'background',
         type: 'upload-window',
         windowId,
+        serverUrl,
       });
       await updateWebAccess();
       uploadNotice = response.message ?? '';

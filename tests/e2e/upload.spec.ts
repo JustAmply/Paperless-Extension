@@ -39,6 +39,8 @@ let releaseTask: (() => void) | undefined;
 let status = 200;
 let profileRedirect = false;
 let replacementProfileRequests = 0;
+let pauseReplacementProfile = false;
+let releaseReplacementProfile: (() => void) | undefined;
 let redirectVisits = 0;
 let slow = false;
 let release: (() => void) | undefined;
@@ -154,6 +156,10 @@ test.beforeAll(async () => {
         request.url === '/other-paperless/api/profile/'
       ) {
         replacementProfileRequests++;
+        if (pauseReplacementProfile)
+          await new Promise<void>((resolve) => {
+            releaseReplacementProfile = resolve;
+          });
         const valid =
           request.headers.authorization === `Token ${replacementToken}`;
         response.writeHead(valid ? 200 : 401, {
@@ -267,6 +273,8 @@ test.beforeEach(async () => {
   status = 200;
   profileRedirect = false;
   replacementProfileRequests = 0;
+  pauseReplacementProfile = false;
+  releaseReplacementProfile = undefined;
   redirectVisits = 0;
   slow = false;
   release = undefined;
@@ -294,6 +302,7 @@ test.beforeEach(async () => {
 });
 
 test.afterEach(async () => {
+  releaseReplacementProfile?.();
   release?.();
   releaseTask?.();
   await context?.close();
@@ -706,6 +715,39 @@ test('a multi-file batch waits for each upload before starting the next', async 
     'First.pdf',
     'Second.pdf',
   ]);
+});
+
+test('saving a new server cannot take over a batch that starts during verification', async () => {
+  await connect();
+  const settings = await openPopup();
+  await settings.getByRole('button', { name: 'Einstellungen' }).click();
+  await settings
+    .getByLabel('Paperless-Adresse')
+    .fill(new URL('/other-paperless/', baseUrl).href);
+  await settings
+    .getByLabel('API-Token', { exact: true })
+    .fill(replacementToken);
+  pauseReplacementProfile = true;
+  await settings.getByRole('button', { name: 'Verbindung speichern' }).click();
+  await expect.poll(() => replacementProfileRequests).toBe(1);
+
+  slow = true;
+  await chooseFile('Existing destination.pdf');
+  await expect.poll(() => uploads.length).toBe(1);
+  releaseReplacementProfile?.();
+  await expect(settings.locator('#settings-status')).toContainText(
+    'Übertragung abgeschlossen',
+  );
+  expect(
+    await settings.evaluate(async () => {
+      const { settings } = await chrome.storage.local.get('settings');
+      return settings?.url;
+    }),
+  ).toBe(baseUrl);
+  release?.();
+  await expect(popup.locator('[data-status="accepted"]')).toContainText(
+    'Existing destination.pdf',
+  );
 });
 
 test('an interrupted POST becomes uncertain after recovery without being sent again', async () => {

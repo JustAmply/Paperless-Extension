@@ -39,6 +39,13 @@ export function canDismissJob(job: Job): boolean {
   return job.status === 'accepted' && !hasImportWork(job);
 }
 
+export function isPreviousUpload(job: Job, serverUrl: string): boolean {
+  if (job.status !== 'accepted' && job.status !== 'uncertain') return false;
+  const previousServer = job.serverUrl ?? job.importTask?.serverUrl;
+  // Keep duplicate protection for older records whose destination is unknown.
+  return previousServer === undefined || previousServer === serverUrl;
+}
+
 export function isJobVisible(
   job: Job,
   now: number,

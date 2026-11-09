@@ -183,6 +183,10 @@ async function handle(
         );
       }
       await verifyConnection(next);
+      if ((await getJobs()).some(isActive))
+        throw new UserError(
+          'Bitte warte, bis die Übertragung abgeschlossen ist.',
+        );
       await chrome.storage.local.set({ settings: next });
       if (
         previous &&
@@ -204,8 +208,13 @@ async function handle(
     case 'upload-window': {
       if (sender.url !== chrome.runtime.getURL('popup.html'))
         throw new UserError('Zugriff verweigert.');
-      if (!(await settings()))
+      const config = await settings();
+      if (!config)
         throw new UserError('Bitte richte zuerst deinen Paperless-Server ein.');
+      if (message.serverUrl !== config.url)
+        throw new UserError(
+          'Das Upload-Ziel hat sich geändert. Starte den Upload erneut.',
+        );
       if ((await getJobs()).some(isActive))
         throw new UserError(
           'Bitte warte, bis die laufende Übertragung abgeschlossen ist.',
@@ -223,7 +232,7 @@ async function handle(
           message: localNotice || 'Keine PDF-Tabs in diesem Fenster gefunden.',
           state: await state(),
         };
-      await enqueueWindow(sources);
+      await enqueueWindow(sources, config.url);
       await offscreen(true);
       await badge();
       return { ok: true, message: localNotice, state: await state() };

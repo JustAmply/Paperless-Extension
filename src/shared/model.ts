@@ -38,6 +38,7 @@ export interface Job {
   createdAt: number;
   completedAt?: number;
   dismissed?: boolean;
+  serverUrl?: string;
   source?: Source;
   importTask?: {
     taskId: string;
@@ -71,6 +72,7 @@ export type BackgroundRequest =
       target: 'background';
       type: 'upload-window';
       windowId: number;
+      serverUrl: string;
     }
   | { target: 'background'; type: 'changed' }
   | { target: 'background'; type: 'idle' }
