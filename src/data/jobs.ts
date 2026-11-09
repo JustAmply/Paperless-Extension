@@ -146,7 +146,14 @@ export async function enqueue(
       throw new UserError(
         `Die ausgewählten PDFs dürfen zusammen höchstens ${MAX_BATCH_BYTES / 1024 ** 2} MiB groß sein.`,
       );
-    for (const file of input) await validatePdf(file);
+    for (const file of input) {
+      try {
+        await validatePdf(file);
+      } catch (error) {
+        if (!(error instanceof UserError)) throw error;
+        throw new UserError(`„${file.name}“: ${error.message}`);
+      }
+    }
   }
   await stage(Array.isArray(input) ? input : [input], serverUrl, false);
 }

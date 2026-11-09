@@ -611,8 +611,22 @@ test('dismissing validation errors retains uncertain outcomes and duplicate prot
 
 test('invalid files stay local and a dropped PDF uploads', async () => {
   await connect();
-  await chooseFile('fake.pdf', Buffer.from('<html>This is not a PDF</html>'));
-  await expect(popup.locator('#upload-status')).toContainText('keine PDF');
+  const chooser = popup.waitForEvent('filechooser');
+  await popup.getByRole('button', { name: 'Dateien wählen' }).click();
+  await (
+    await chooser
+  ).setFiles([
+    { name: 'valid.pdf', mimeType: 'application/pdf', buffer: pdf },
+    {
+      name: 'fake.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('<html>This is not a PDF</html>'),
+    },
+  ]);
+  await expect(popup.locator('#upload-status')).toContainText(
+    /fake\.pdf.*keine PDF/,
+  );
+  await expect(popup.locator('#job-list li')).toHaveCount(0);
   expect(uploads).toHaveLength(0);
   const transfer = await popup.evaluateHandle(
     (content) => {
