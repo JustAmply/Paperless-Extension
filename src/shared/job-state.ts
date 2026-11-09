@@ -1,7 +1,15 @@
 import type { Job } from './model.js';
 
 export const IMPORT_CHECK_WINDOW_MS = 120_000;
-const SUCCESS_DISPLAY_MS = 8_000;
+export const SUCCESS_DISPLAY_SECONDS = [0, 8, 15, 30] as const;
+export const DEFAULT_SUCCESS_DISPLAY_SECONDS = 8;
+
+export function successDisplaySeconds(value: unknown): number {
+  return (
+    SUCCESS_DISPLAY_SECONDS.find((seconds) => seconds === value) ??
+    DEFAULT_SUCCESS_DISPLAY_SECONDS
+  );
+}
 
 export function hasImportWork(job: Job): boolean {
   if (job.status !== 'accepted' || !job.importTask) return false;
@@ -31,7 +39,12 @@ export function canDismissJob(job: Job): boolean {
   return job.status === 'accepted' && !hasImportWork(job);
 }
 
-export function isJobVisible(job: Job, now: number, engaged = false): boolean {
+export function isJobVisible(
+  job: Job,
+  now: number,
+  displaySeconds: number,
+  engaged = false,
+): boolean {
   if (job.dismissed) return false;
   if (job.status !== 'accepted') return true;
   const task = job.importTask;
@@ -42,5 +55,7 @@ export function isJobVisible(job: Job, now: number, engaged = false): boolean {
   )
     return true;
   const finishedAt = task?.checkedAt ?? job.completedAt ?? job.createdAt;
-  return engaged || now < finishedAt + SUCCESS_DISPLAY_MS;
+  return (
+    displaySeconds === 0 || engaged || now < finishedAt + displaySeconds * 1000
+  );
 }

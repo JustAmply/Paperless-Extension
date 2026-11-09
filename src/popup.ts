@@ -19,8 +19,10 @@ import {
 } from './browser/pdf-tabs.js';
 import {
   canDismissJob,
+  DEFAULT_SUCCESS_DISPLAY_SECONDS,
   hasImportWork,
   isJobVisible,
+  successDisplaySeconds,
 } from './shared/job-state.js';
 
 function element<T extends HTMLElement>(id: string): T {
@@ -31,6 +33,9 @@ function element<T extends HTMLElement>(id: string): T {
 
 const ui = {
   settings: element('settings-panel'),
+  settingsTitle: element('settings-title'),
+  setupHint: element('setup-hint'),
+  connectionTitle: element('connection-title'),
   upload: element('upload-panel'),
   toggle: element<HTMLButtonElement>('settings-toggle'),
   form: element<HTMLFormElement>('settings-form'),
@@ -38,9 +43,13 @@ const ui = {
   token: element<HTMLInputElement>('api-token'),
   save: element<HTMLButtonElement>('save-settings'),
   settingsStatus: element('settings-status'),
+  displaySettings: element('display-settings'),
+  displayDuration: element<HTMLSelectElement>('success-display'),
+  displayStatus: element('display-status'),
   httpWarning: element('http-warning'),
   tokenHelp: element('token-help'),
   send: element<HTMLButtonElement>('send-current'),
+  sendLabel: element('send-current-label'),
   currentStatus: element('current-status'),
   fileAccess: element<HTMLButtonElement>('file-access'),
   drop: element<HTMLButtonElement>('drop-zone'),
@@ -51,6 +60,7 @@ const ui = {
   summary: element('batch-summary'),
   dismiss: element<HTMLButtonElement>('dismiss-results'),
   webAccess: element('web-access-note'),
+  connectionAccess: element('connection-access-note'),
   fatal: element('fatal-error'),
 };
 
@@ -65,6 +75,7 @@ let uploadError = '';
 let uploadNotice = '';
 let windowTabs: Source[] = [];
 let renderedJobs = '';
+let displaySeconds: number = DEFAULT_SUCCESS_DISPLAY_SECONDS;
 const webOrigins = ['https://*/*', 'http://*/*'];
 let allWebAccess = false;
 
@@ -80,6 +91,7 @@ async function updateWindowTabs(windowId: number): Promise<void> {
 async function updateWebAccess(): Promise<void> {
   allWebAccess = await chrome.permissions.contains({ origins: webOrigins });
   ui.webAccess.hidden = allWebAccess;
+  ui.connectionAccess.hidden = allWebAccess;
 }
 
 function selectedSource(state: State): Source | SourceInfo | undefined {
@@ -96,7 +108,12 @@ function showSettings(open: boolean): void {
   ui.settings.hidden = !open;
   ui.upload.hidden = open;
   ui.toggle.setAttribute('aria-expanded', String(open));
-  if (open) ui.url.focus();
+  if (open) {
+    const firstField = currentState.settings.configured
+      ? ui.displayDuration
+      : ui.url;
+    firstField.focus();
+  }
 }
 
 const icons = {
@@ -202,6 +219,12 @@ function render(state: State): void {
   currentState = state;
   const active = state.jobs.some(isActive) || staged;
   ui.toggle.hidden = !state.settings.configured;
+  ui.displaySettings.hidden = !state.settings.configured;
+  ui.settingsTitle.textContent = state.settings.configured
+    ? 'Einstellungen'
+    : 'Mit Paperless verbinden';
+  ui.setupHint.hidden = state.settings.configured;
+  ui.connectionTitle.hidden = !state.settings.configured;
   ui.drop.disabled = active;
   ui.sendWindow.disabled = active || !windowTabs.length;
   ui.toggle.disabled = active;
@@ -235,7 +258,7 @@ function render(state: State): void {
     (isLocal && !localFileAccess) ||
     (sourceJob !== undefined &&
       ['accepted', 'uncertain'].includes(sourceJob.status));
-  ui.send.textContent =
+  ui.sendLabel.textContent =
     sourceJob?.status === 'accepted'
       ? 'Bereits an Paperless übertragen'
       : sourceJob?.status === 'uncertain'
@@ -248,7 +271,7 @@ function render(state: State): void {
   );
   const now = Date.now();
   const visibleJobs = state.jobs.filter((job) =>
-    isJobVisible(job, now, engaged.has(job.id)),
+    isJobVisible(job, now, displaySeconds, engaged.has(job.id)),
   );
   ui.summary.hidden = !visibleJobs.length;
   ui.dismiss.hidden =
@@ -387,6 +410,25 @@ ui.toggle.addEventListener('click', () =>
   showSettings(ui.settings.hidden === true),
 );
 ui.drop.addEventListener('click', () => ui.input.click());
+ui.displayDuration.addEventListener('change', () => {
+  const seconds = successDisplaySeconds(Number(ui.displayDuration.value));
+  ui.displayDuration.disabled = true;
+  ui.displayStatus.textContent = '';
+  void chrome.storage.local
+    .set({ successDisplaySeconds: seconds })
+    .then(() => {
+      displaySeconds = seconds;
+      render(currentState);
+    })
+    .catch(() => {
+      ui.displayDuration.value = String(displaySeconds);
+      ui.displayStatus.textContent =
+        'Die Auswahl konnte nicht gespeichert werden.';
+    })
+    .finally(() => {
+      ui.displayDuration.disabled = false;
+    });
+});
 ui.dismiss.addEventListener('click', () => {
   if (staged || currentState.jobs.some(isActive)) return;
   void (async () => {
@@ -437,20 +479,22 @@ ui.input.addEventListener('change', () => {
   ui.input.value = '';
   if (files.length) void start(files).catch(showUploadError);
 });
-for (const type of ['dragenter', 'dragover']) {
-  ui.drop.addEventListener(type, (event) => {
-    event.preventDefault();
-    if (!ui.drop.disabled) ui.drop.classList.add('dragging');
-  });
-}
-ui.drop.addEventListener('dragleave', () =>
-  ui.drop.classList.remove('dragging'),
-);
+ui.upload.addEventListener('dragover', (event) => {
+  if (!ui.drop.disabled && event.dataTransfer?.types.includes('Files'))
+    ui.upload.classList.add('dragging');
+});
+ui.upload.addEventListener('dragleave', (event) => {
+  if (
+    !(event.relatedTarget instanceof Node) ||
+    !ui.upload.contains(event.relatedTarget)
+  )
+    ui.upload.classList.remove('dragging');
+});
 document.addEventListener('dragover', (event) => event.preventDefault());
 document.addEventListener('drop', (event) => event.preventDefault());
-ui.drop.addEventListener('drop', (event) => {
+ui.upload.addEventListener('drop', (event) => {
   event.preventDefault();
-  ui.drop.classList.remove('dragging');
+  ui.upload.classList.remove('dragging');
   const files = Array.from(event.dataTransfer?.files ?? []);
   if (files.length) void start(files).catch(showUploadError);
 });
@@ -493,6 +537,9 @@ async function initialize(): Promise<void> {
     activeSource = { url, tabId: currentTab.id };
   if (currentTab) await updateWindowTabs(currentTab.windowId);
   await updateWebAccess();
+  const preferences = await chrome.storage.local.get('successDisplaySeconds');
+  displaySeconds = successDisplaySeconds(preferences['successDisplaySeconds']);
+  ui.displayDuration.value = String(displaySeconds);
   await refresh();
   await updateCurrentPdf();
   ui.url.value = currentState.settings.url;

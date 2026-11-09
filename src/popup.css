@@ -3,6 +3,9 @@
   --green: #005616;
   --green-hover: #06451a;
   --green-soft: #edf5ee;
+  --on-green: #fff;
+  --progress: #875811;
+  --progress-soft: #f9f0da;
   --page: #fff;
   --surface: #f5f7f5;
   --ink: #25322a;
@@ -24,7 +27,8 @@ body {
   overflow-y: auto;
 }
 button,
-input {
+input,
+select {
   font: inherit;
 }
 button {
@@ -55,7 +59,6 @@ svg {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--line);
 }
 .brand {
   display: flex;
@@ -72,10 +75,6 @@ svg {
   font-weight: 650;
   letter-spacing: -0.65px;
   line-height: 1.2;
-}
-.ngx {
-  color: var(--green);
-  font-weight: 400;
 }
 .icon-button {
   display: grid;
@@ -98,7 +97,7 @@ svg {
   color: var(--green);
 }
 main {
-  padding: 18px 24px 24px;
+  padding: 4px 24px 24px;
 }
 .section-heading {
   margin-bottom: 16px;
@@ -116,70 +115,43 @@ p {
   margin: 0;
   color: var(--muted);
 }
-.drop-zone {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 14px 16px;
-  border: 1px dashed #92ae99;
-  border-radius: 10px;
-  color: var(--ink);
-  background: var(--surface);
-  transition:
-    background 0.15s,
-    border-color 0.15s;
-}
-.drop-zone:hover,
-.drop-zone.dragging {
-  background: var(--green-soft);
-  border-color: var(--green);
-}
-.drop-icon {
+.secondary-actions {
   display: grid;
-  place-items: center;
-  height: 32px;
-  width: 32px;
-  background: var(--green-soft);
-  color: var(--green);
-  border-radius: 50%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
-.drop-icon svg {
-  width: 24px;
-  height: 24px;
-}
-.drop-zone strong {
-  font-size: 14px;
-  font-weight: 600;
-}
-.file-select {
-  font-size: 12px;
-  color: var(--green);
-}
-.file-select span {
-  margin-left: 4px;
-}
-.window-button {
+.secondary-button,
+.current-button {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  width: 100%;
-  margin-top: 12px;
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--page);
-  color: var(--green);
-  font-size: 12px;
 }
-.window-button svg {
+.secondary-button {
+  min-height: 40px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--page);
+  color: var(--ink);
+  font-weight: 550;
+}
+.secondary-button svg,
+.current-button svg {
   width: 18px;
   height: 18px;
+  flex: 0 0 auto;
 }
-.window-button:hover {
+.secondary-button:enabled:hover,
+.dragging #drop-zone {
   background: var(--green-soft);
+  border-color: var(--green);
+}
+.drop-hint {
+  text-align: center;
+}
+.dragging .drop-hint {
+  color: var(--green);
 }
 .upload-status:empty,
 .form-status:empty {
@@ -204,10 +176,12 @@ p {
   overflow-y: auto;
 }
 .batch-summary {
-  margin: 16px 0 0;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 600;
+  margin: 18px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 650;
 }
 .job-list:empty {
   display: none;
@@ -226,9 +200,9 @@ p {
   place-items: center;
   width: 28px;
   height: 28px;
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--muted);
+  border-radius: 50%;
+  background: var(--progress-soft);
+  color: var(--progress);
 }
 .job-indicator svg,
 .document-link svg {
@@ -236,10 +210,11 @@ p {
   height: 16px;
 }
 .job-list li[data-tone='success'] .job-indicator {
-  background: var(--green-soft);
-  color: var(--green);
+  background: var(--green);
+  color: var(--on-green);
 }
 .job-list li[data-tone='warning'] .job-indicator {
+  background: var(--surface);
   color: var(--error);
 }
 .job-name {
@@ -275,7 +250,8 @@ label {
   font-weight: 600;
   margin: 18px 0 7px;
 }
-input:not([type='file']):not([type='checkbox']) {
+input:not([type='file']):not([type='checkbox']),
+select {
   display: block;
   width: 100%;
   min-height: 39px;
@@ -299,7 +275,7 @@ input::placeholder {
   border: 0;
   border-radius: 6px;
   background: var(--green);
-  color: white;
+  color: var(--on-green);
   padding: 11px;
   font-weight: 600;
   margin-top: 23px;
@@ -307,14 +283,31 @@ input::placeholder {
 .primary:hover {
   background: var(--green-hover);
 }
+#save-settings {
+  margin-top: 16px;
+}
 .current-button {
-  margin: 0 0 14px;
+  margin: 0 0 10px;
+  min-height: 44px;
+  border-radius: 8px;
 }
 #current-status {
-  margin: -6px 0 14px;
+  margin: 0 0 10px;
 }
 #current-status.error {
   color: var(--error);
+}
+.display-settings {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+}
+#settings-panel h2 {
+  margin: 0;
+  font-size: 15px;
+}
+.display-settings label {
+  margin-top: 10px;
 }
 .form-status {
   font-size: 12px;
@@ -354,17 +347,14 @@ input::placeholder {
     --green: #93c99b;
     --green-hover: #acd6b2;
     --green-soft: #2c3d30;
+    --on-green: #16271b;
+    --progress: #f0c879;
+    --progress-soft: #3c3222;
     --error: #f0a18d;
-  }
-  .primary {
-    color: #16271b;
   }
   .brand img {
     filter: brightness(0) saturate(100%) invert(80%) sepia(15%) saturate(600%)
       hue-rotate(76deg);
-  }
-  .drop-zone {
-    border-color: #6a816f;
   }
 }
 @media (prefers-reduced-motion: reduce) {

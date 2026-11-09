@@ -10,7 +10,7 @@
     <header class="header">
       <div class="brand">
         <img src="assets/paperless.svg" width="32" height="32" alt="" />
-        <span class="brand-name">paperless<span class="ngx">-ngx</span></span>
+        <span class="brand-name">Paperless Upload</span>
       </div>
       <button
         id="settings-toggle"
@@ -33,9 +33,29 @@
       <section id="settings-panel" aria-labelledby="settings-title" hidden>
         <div class="section-heading">
           <h1 id="settings-title">Mit Paperless verbinden</h1>
-          <p>Einmal einrichten. PDFs direkt ablegen.</p>
+          <p id="setup-hint">Einmal einrichten. PDFs direkt ablegen.</p>
         </div>
+        <section
+          id="display-settings"
+          class="display-settings"
+          aria-labelledby="display-title"
+          hidden
+        >
+          <h2 id="display-title">Anzeige</h2>
+          <label for="success-display">Erfolgsmeldungen ausblenden</label>
+          <select id="success-display" aria-describedby="display-help">
+            <option value="8">Nach 8 Sekunden</option>
+            <option value="15">Nach 15 Sekunden</option>
+            <option value="30">Nach 30 Sekunden</option>
+            <option value="0">Nicht automatisch</option>
+          </select>
+          <p id="display-help" class="field-note">
+            Die Auswahl wird sofort gespeichert.
+          </p>
+          <p id="display-status" class="form-status error" role="status"></p>
+        </section>
         <form id="settings-form">
+          <h2 id="connection-title" hidden>Paperless-Verbindung</h2>
           <label for="server-url">Paperless-Adresse</label>
           <input
             id="server-url"
@@ -65,7 +85,7 @@
             Bei HTTP werden Token und PDFs unverschlüsselt übertragen. Verwende
             HTTPS, wenn dein Server es unterstützt.
           </p>
-          <p class="field-note">
+          <p id="connection-access-note" class="field-note">
             Chrome fragt einmalig nach Zugriff auf alle Webseiten, damit du PDFs
             ohne weitere Freigaben hochladen kannst.
           </p>
@@ -90,18 +110,38 @@
           disabled
           hidden
         >
-          Aktuelle PDF hochladen
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 16V4m-5 5 5-5 5 5M5 16v4h14v-4" />
+          </svg>
+          <span id="send-current-label">Aktuelle PDF hochladen</span>
         </button>
         <p id="current-status" class="field-note" role="status" hidden></p>
-        <button id="drop-zone" class="drop-zone" type="button">
-          <span class="drop-icon"
-            ><svg viewBox="0 0 32 32" aria-hidden="true">
-              <path d="M16 21V7m-5 5 5-5 5 5M7 21v5h18v-5" /></svg></span
-          ><strong>PDFs hier hineinziehen</strong
-          ><span class="file-select"
-            >Dateien auswählen <span aria-hidden="true">↗</span></span
+        <div class="secondary-actions">
+          <button id="drop-zone" class="secondary-button" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"
+              />
+            </svg>
+            Dateien wählen
+          </button>
+          <button
+            id="send-window"
+            class="secondary-button"
+            type="button"
+            aria-label="Alle PDF-Tabs hochladen"
+            title="PDFs im aktuellen Fenster hochladen"
           >
-        </button>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="7" width="14" height="14" rx="2" />
+              <path d="M7 3h12a2 2 0 0 1 2 2v12" />
+            </svg>
+            Alle PDF-Tabs
+          </button>
+        </div>
+        <p id="drop-hint" class="field-note drop-hint">
+          Oder PDFs hierher ziehen
+        </p>
         <input
           id="file-input"
           type="file"
@@ -109,13 +149,6 @@
           multiple
           hidden
         />
-        <button id="send-window" class="window-button" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="3" y="7" width="14" height="14" rx="2" />
-            <path d="M7 3h12a2 2 0 0 1 2 2v12M7 14h6m-3-3 3 3-3 3" />
-          </svg>
-          Alle PDF-Tabs hochladen
-        </button>
         <p id="web-access-note" class="field-note" hidden>
           Chrome fragt einmalig nach Zugriff auf alle Webseiten.
         </p>

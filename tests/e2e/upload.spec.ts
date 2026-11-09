@@ -66,7 +66,7 @@ async function chooseFile(
   content = pdf,
 ): Promise<void> {
   const chooser = popup.waitForEvent('filechooser');
-  await popup.getByRole('button', { name: /PDFs hier hineinziehen/ }).click();
+  await popup.getByRole('button', { name: 'Dateien wählen' }).click();
   await (
     await chooser
   ).setFiles({ name, mimeType: 'application/pdf', buffer: content });
@@ -618,7 +618,7 @@ test('invalid files stay local and a dropped PDF uploads', async () => {
     [...pdf],
   );
   await popup
-    .locator('#drop-zone')
+    .locator('#drop-hint')
     .dispatchEvent('drop', { dataTransfer: transfer });
   await transfer.dispose();
   await expect(
@@ -676,7 +676,7 @@ test('a multi-file batch waits for each upload before starting the next', async 
   await connect();
   slow = true;
   const chooser = popup.waitForEvent('filechooser');
-  await popup.getByRole('button', { name: /PDFs hier hineinziehen/ }).click();
+  await popup.getByRole('button', { name: 'Dateien wählen' }).click();
   await (
     await chooser
   ).setFiles([
@@ -800,6 +800,33 @@ test('successful imports disappear after a short delay and still prevent duplica
   );
   expect(uploads).toHaveLength(1);
   expect(taskRequests).toBe(2);
+});
+
+test('success display preference persists and applies without resending the PDF', async () => {
+  await connect();
+  const settings = popup.getByRole('button', { name: 'Einstellungen' });
+  const duration = popup.getByLabel('Erfolgsmeldungen ausblenden');
+  await settings.click();
+  await expect(duration).toBeFocused();
+  await expect(duration).toHaveValue('8');
+  await duration.selectOption('0');
+  await expect(duration).toBeEnabled();
+  await settings.click();
+  await chooseFile();
+  const result = popup.locator('[data-import-status="success"]');
+  await expect(result).toBeVisible();
+  await popup.clock.setSystemTime(Date.now() + 60_000);
+  await popup.reload();
+  await expect(result).toBeVisible();
+  await settings.click();
+  await expect(duration).toHaveValue('0');
+  await screenshot('display-settings');
+  await duration.selectOption('30');
+  await expect(duration).toBeEnabled();
+  await settings.click();
+  await expect(result).toHaveCount(0);
+  expect(uploads).toHaveLength(1);
+  expect(taskRequests).toBe(1);
 });
 
 for (const duplicate of [false, true]) {
