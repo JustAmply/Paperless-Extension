@@ -34,6 +34,7 @@ function element<T extends HTMLElement>(id: string): T {
 }
 
 const ui = {
+  paperlessLink: element<HTMLAnchorElement>('paperless-link'),
   settings: element('settings-panel'),
   settingsTitle: element('settings-title'),
   setupHint: element('setup-hint'),
@@ -243,6 +244,18 @@ function renderJob(job: Job, serverUrl: string): HTMLLIElement {
 
 function render(state: State): void {
   currentState = state;
+  const paperlessUrl = state.settings.configured ? state.settings.url : null;
+  if (ui.paperlessLink.getAttribute('href') !== paperlessUrl) {
+    if (paperlessUrl) {
+      ui.paperlessLink.href = paperlessUrl;
+      ui.paperlessLink.target = '_blank';
+      ui.paperlessLink.rel = 'noopener noreferrer';
+      ui.paperlessLink.title = 'Paperless im neuen Tab öffnen';
+    } else {
+      for (const attribute of ['href', 'target', 'rel', 'title'])
+        ui.paperlessLink.removeAttribute(attribute);
+    }
+  }
   const active = state.jobs.some(isActive) || staged;
   ui.toggle.hidden = !state.settings.configured;
   ui.displaySettings.hidden = !state.settings.configured;

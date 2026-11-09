@@ -1076,6 +1076,19 @@ test('web access is requested once, denial does not upload, and granted access i
   await ordinary.close();
 });
 
+test('the popup brand opens the configured Paperless base address in a new tab', async () => {
+  const brand = popup.getByRole('link', { name: 'Paperless Upload' });
+  await expect(brand).toHaveCount(0);
+  await connect();
+  await expect(brand).toHaveAttribute('href', baseUrl);
+  const opened = context.waitForEvent('page');
+  await brand.locator('img').click();
+  const paperless = await opened;
+  await expect(paperless).toHaveURL(baseUrl);
+  await expect(paperless).toHaveTitle('Fixture');
+  await expect(popup).toHaveURL(popupUrl);
+});
+
 test('settings artwork is centered and the ready screen has no secondary workflow buttons', async () => {
   await connect();
   const centers = await popup.locator('#settings-toggle').evaluate((button) => {
