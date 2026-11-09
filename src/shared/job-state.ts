@@ -39,6 +39,16 @@ export function canDismissJob(job: Job): boolean {
   return job.status === 'accepted' && !hasImportWork(job);
 }
 
+export function canRetryImport(job: Job, serverUrl: string): boolean {
+  return (
+    job.status === 'accepted' &&
+    !job.dismissed &&
+    job.importTask?.serverUrl === serverUrl &&
+    job.importTask.result?.status === 'unavailable' &&
+    !hasImportWork(job)
+  );
+}
+
 export function isPreviousUpload(job: Job, serverUrl: string): boolean {
   if (job.status !== 'accepted' && job.status !== 'uncertain') return false;
   const previousServer = job.serverUrl ?? job.importTask?.serverUrl;

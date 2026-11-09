@@ -12,6 +12,7 @@ import { openDatabase as open } from './database.js';
 import type { CapturedPdf } from './sources.js';
 import {
   canDismissJob,
+  canRetryImport,
   hasImportWork,
   isPreviousUpload,
 } from '../shared/job-state.js';
@@ -82,6 +83,34 @@ export async function updateImportResult(
     };
     return request;
   });
+}
+
+export async function retryImport(
+  id: string,
+  serverUrl: string,
+): Promise<void> {
+  let scheduled = false;
+  await transaction('readwrite', (store) => {
+    const request = store.get(id);
+    request.onsuccess = () => {
+      const job = request.result as Job | undefined;
+      if (!job?.importTask || !canRetryImport(job, serverUrl)) return;
+      store.put({
+        ...job,
+        importTask: {
+          taskId: job.importTask.taskId,
+          serverUrl,
+          startedAt: Date.now(),
+        },
+      });
+      scheduled = true;
+    };
+    return request;
+  });
+  if (!scheduled)
+    throw new UserError(
+      'Dieser Importstatus kann nicht erneut geprüft werden.',
+    );
 }
 
 export async function dismissResults(): Promise<void> {

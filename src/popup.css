@@ -208,7 +208,8 @@ p {
   color: var(--progress);
 }
 .job-indicator svg,
-.document-link svg {
+.document-link svg,
+.job-retry svg {
   width: 16px;
   height: 16px;
 }
@@ -234,7 +235,8 @@ p {
   margin-top: 2px;
   line-height: 1.4;
 }
-.document-link {
+.document-link,
+.job-retry {
   grid-column: 3;
   grid-row: 1 / span 2;
   display: grid;
@@ -244,7 +246,13 @@ p {
   border-radius: 6px;
   color: var(--green);
 }
-.document-link:hover {
+.job-retry {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+.document-link:hover,
+.job-retry:hover {
   background: var(--green-soft);
 }
 label {

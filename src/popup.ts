@@ -19,6 +19,7 @@ import {
 } from './browser/pdf-tabs.js';
 import {
   canDismissJob,
+  canRetryImport,
   DEFAULT_SUCCESS_DISPLAY_SECONDS,
   hasImportWork,
   isPreviousUpload,
@@ -124,6 +125,7 @@ const icons = {
   warning:
     'M12 8v5m0 3v.1M10.4 4.8 3 18a1 1 0 0 0 .9 1.5h16.2A1 1 0 0 0 21 18L13.6 4.8a1.8 1.8 0 0 0-3.2 0Z',
   open: 'M13 5h6v6m0-6-8 8m6 1v5H5V7h5',
+  retry: 'M20 4v6h-6m6 0a8 8 0 1 0 0 5',
 } as const;
 
 function icon(name: keyof typeof icons): SVGSVGElement {
@@ -212,6 +214,29 @@ function renderJob(job: Job, serverUrl: string): HTMLLIElement {
     link.rel = 'noopener noreferrer';
     link.append(icon('open'));
     row.append(link);
+  } else if (canRetryImport(job, serverUrl)) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'job-retry';
+    button.title = 'Importstatus erneut prüfen';
+    button.setAttribute('aria-label', `${job.name}: ${button.title}`);
+    button.append(icon('retry'));
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      try {
+        await request({
+          target: 'background',
+          type: 'retry-import',
+          jobId: job.id,
+        });
+        await refresh();
+      } catch (error) {
+        showUploadError(error);
+      } finally {
+        button.disabled = false;
+      }
+    });
+    row.append(button);
   }
   return row;
 }
@@ -289,7 +314,7 @@ function render(state: State): void {
     if (focusedId)
       rows
         .find((row) => row.dataset['jobId'] === focusedId)
-        ?.querySelector('a')
+        ?.querySelector<HTMLElement>('a, button')
         ?.focus();
   }
   ui.status.classList.toggle('error', Boolean(uploadError));

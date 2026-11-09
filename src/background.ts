@@ -1,4 +1,9 @@
-import { dismissResults, enqueueWindow, getJobs } from './data/jobs.js';
+import {
+  dismissResults,
+  enqueueWindow,
+  getJobs,
+  retryImport,
+} from './data/jobs.js';
 import { capturedSources, clearCapturedPdf } from './data/sources.js';
 import { windowPdfs } from './browser/pdf-tabs.js';
 import {
@@ -156,6 +161,16 @@ async function handle(
       await dismissResults();
       await badge();
       return { ok: true, state: await state() };
+    case 'retry-import': {
+      if (sender.url !== chrome.runtime.getURL('popup.html'))
+        throw new UserError('Zugriff verweigert.');
+      const config = await settings();
+      if (!config)
+        throw new UserError('Bitte richte zuerst deinen Paperless-Server ein.');
+      await retryImport(message.jobId, config.url);
+      await offscreen(true);
+      return { ok: true };
+    }
     case 'settings': {
       if (sender.url !== chrome.runtime.getURL('offscreen.html'))
         throw new UserError('Zugriff verweigert.');

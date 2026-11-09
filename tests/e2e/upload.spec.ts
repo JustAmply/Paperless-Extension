@@ -942,6 +942,23 @@ test('unavailable task permissions stay visible and can be dismissed without ano
   expect(uploads).toHaveLength(1);
 });
 
+test('retrying an unavailable import status only sends another GET', async () => {
+  await connect();
+  taskHttpStatus = 403;
+  await chooseFile();
+  const retry = popup.getByRole('button', {
+    name: /Importstatus erneut prüfen/,
+  });
+  await expect(retry).toBeVisible();
+  expect(taskRequests).toBe(1);
+  taskHttpStatus = 200;
+  await retry.click();
+  await expect(popup.locator('[data-import-status="success"]')).toBeVisible();
+  await expect(retry).toHaveCount(0);
+  expect(taskRequests).toBe(2);
+  expect(uploads).toHaveLength(1);
+});
+
 test('automatic import checks continue after closing the popup', async () => {
   await connect();
   taskStatus = 'PENDING';
