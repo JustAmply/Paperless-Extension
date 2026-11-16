@@ -19,9 +19,9 @@
     "package": "npm run build && node scripts/package.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "1.64.1",
-    "@types/chrome": "0.3.5",
-    "prettier": "3.9.10",
+    "@playwright/test": "1.65.0",
+    "@types/chrome": "0.3.7",
+    "prettier": "3.10.1",
     "typescript": "7.0.2"
   }
 }
