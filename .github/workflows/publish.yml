@@ -1,0 +1,90 @@
+name: Publish to Chrome Web Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Manifest version to release (for example 0.3.0)
+        required: true
+        type: string
+      operation:
+        description: Upload a draft or submit for review and automatic publication
+        required: true
+        default: upload
+        type: choice
+        options:
+          - upload
+          - publish
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chrome-web-store-release
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Validate requested version
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: node --input-type=module -e "import { readFileSync } from 'node:fs'; import { validateVersion } from './scripts/publish.mjs'; validateVersion(process.env.RELEASE_VERSION, JSON.parse(readFileSync('manifest.json')).version);"
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run check
+      - run: npm run package
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: chrome-web-store-package
+          path: artifacts/paperless-upload-${{ inputs.version }}.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: chrome-web-store
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: chrome-web-store-package
+          path: artifacts
+      - name: Authenticate as the Chrome Web Store service account
+        id: auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/chromewebstore
+          create_credentials_file: false
+          export_environment_variables: false
+      - name: Upload and optionally submit for review
+        env:
+          CWS_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          CWS_PUBLISHER_ID: ${{ vars.CWS_PUBLISHER_ID }}
+          CWS_EXTENSION_ID: ${{ vars.CWS_EXTENSION_ID }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_OPERATION: ${{ inputs.operation }}
+        run: node scripts/publish.mjs
