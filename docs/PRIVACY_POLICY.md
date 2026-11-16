@@ -2,7 +2,7 @@
 
 Last updated: 2026-11-16
 
-Publisher: JustAmply. This policy must be hosted at a publicly accessible URL before store submission.
+Publisher: JustAmply.
 
 ## Data handled by the extension
 
