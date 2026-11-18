@@ -2,6 +2,8 @@ import { sourceKey, UserError, type Source } from '../shared/model.js';
 import { documentSource, readableSource } from '../shared/pdf.js';
 import { hostPermission } from '../shared/settings.js';
 
+const TAB_INSPECTION_BATCH_SIZE = 8;
+
 export async function canAccessFileTabs(): Promise<boolean> {
   return (
     (await chrome.extension.isAllowedFileSchemeAccess()) &&
@@ -56,16 +58,26 @@ export async function windowPdfs(
     );
   }
   const pdfs = new Map<string, Source>();
-  for (const source of sources) {
-    if (skippedLocalTabs && source.url.startsWith('file:')) continue;
-    const cached = captured.find(
-      (pdf) => pdf.tabId === source.tabId && pdf.url === source.url,
+  const capturesByTab = new Map(captured.map((pdf) => [pdf.tabId, pdf]));
+  const candidates = sources.filter(
+    (source) => !skippedLocalTabs || !source.url.startsWith('file:'),
+  );
+  for (
+    let offset = 0;
+    offset < candidates.length;
+    offset += TAB_INSPECTION_BATCH_SIZE
+  ) {
+    const batch = candidates.slice(offset, offset + TAB_INSPECTION_BATCH_SIZE);
+    const results = await Promise.all(
+      batch.map(async (source) => {
+        const cached = capturesByTab.get(source.tabId);
+        if (cached?.url === source.url) return cached;
+        return (await isPdfTab(source)) ? source : undefined;
+      }),
     );
-    if (cached) {
-      pdfs.set(sourceKey(cached), cached);
-      continue;
+    for (const pdf of results) {
+      if (pdf) pdfs.set(sourceKey(pdf), pdf);
     }
-    if (await isPdfTab(source)) pdfs.set(sourceKey(source), source);
   }
   return { sources: [...pdfs.values()], skippedLocalTabs };
 }
