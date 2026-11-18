@@ -149,3 +149,39 @@ test('inaccessible local tabs do not block web PDFs in the same window', async (
     skippedLocalTabs: false,
   });
 });
+
+test('window scans inspect bounded batches concurrently and retain tab order', async (t) => {
+  const tabs = Array.from({ length: 10 }, (_, index) => ({
+    id: index + 1,
+    url: `https://files.example/document/${index + 1}`,
+  }));
+  browser(t, tabs, new Map());
+  const pending = [];
+  globalThis.chrome.scripting.executeScript = ({ target }) =>
+    new Promise((resolve) => {
+      pending.push(() =>
+        resolve([
+          {
+            result: {
+              type: 'application/pdf',
+              url: tabs[target.tabId - 1].url,
+            },
+          },
+        ]),
+      );
+    });
+
+  const scan = windowPdfs(7);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(pending.length, 8);
+  for (const finish of pending.splice(0).reverse()) finish();
+
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(pending.length, 2);
+  for (const finish of pending.splice(0).reverse()) finish();
+
+  assert.deepEqual(
+    (await scan).sources,
+    tabs.map(({ id, url }) => ({ tabId: id, url })),
+  );
+});
