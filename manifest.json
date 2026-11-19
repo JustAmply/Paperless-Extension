@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Paperless Upload",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Geöffnete PDFs oder lokale PDF-Dateien direkt an deinen Paperless-ngx-Server übertragen.",
   "minimum_chrome_version": "116",
   "permissions": [
@@ -15,7 +15,7 @@
   "optional_host_permissions": ["https://*/*", "http://*/*", "file:///*"],
   "background": { "service_worker": "background.js", "type": "module" },
   "mime_types_handler": {
-    "application/pdf": { "handler_url": "capture.html" }
+    "application/pdf": { "handler_url": "capture.html", "can_embed": true }
   },
   "action": {
     "default_title": "PDF an Paperless senden",

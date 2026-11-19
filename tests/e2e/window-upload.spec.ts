@@ -60,6 +60,16 @@ test('window upload finds PDFs, skips inaccessible local tabs and other windows,
           request.url,
           'http://fixture.invalid',
         ).searchParams.get('id');
+        if (
+          name === 'Second' &&
+          (request.headers.cookie !== 'invoice-session=fixture' ||
+            sourceRequests.filter((entry) => entry.url === request.url).length >
+              1)
+        ) {
+          response.writeHead(410);
+          response.end();
+          return;
+        }
         response.writeHead(200, {
           'content-type': 'application/pdf',
           'content-length': pdf.length,
@@ -74,9 +84,12 @@ test('window upload finds PDFs, skips inaccessible local tabs and other windows,
           url: request.url,
           authorization: request.headers.authorization,
         });
-        response.writeHead(200, { 'content-type': 'text/html' });
+        response.writeHead(200, {
+          'content-type': 'text/html',
+          'set-cookie': 'invoice-session=fixture; HttpOnly; SameSite=Strict',
+        });
         response.end(
-          '<!doctype html><title>Ordinary page</title><p>No PDF</p>',
+          '<!doctype html><title>Invoices</title><a href="/download?id=Second" target="_blank">View invoice</a>',
         );
         return;
       }
@@ -123,7 +136,7 @@ test('window upload finds PDFs, skips inaccessible local tabs and other windows,
     const baseUrl = `http://127.0.0.1:${address.port}/paperless/`;
     const sourceOrigin = `http://localhost:${address.port}`;
     const firstUrl = `${new URL(baseUrl).origin}/download?id=First`;
-    const secondUrl = `${sourceOrigin}/download/Second.pdf?id=Second`;
+    const secondUrl = `${sourceOrigin}/download?id=Second`;
     const otherUrl = `${sourceOrigin}/download?id=OtherWindow`;
     const extensionPath = path.resolve('dist');
     context = await chromium.launchPersistentContext('', {
@@ -188,12 +201,14 @@ test('window upload finds PDFs, skips inaccessible local tabs and other windows,
     await setup.close();
     const first = await context.newPage();
     await first.goto(firstUrl);
-    const second = await context.newPage();
-    await second.goto(secondUrl);
-    const duplicate = await context.newPage();
-    await duplicate.goto(firstUrl);
     const ordinary = await context.newPage();
     await ordinary.goto(`${sourceOrigin}/ordinary`);
+    const opened = ordinary.waitForEvent('popup');
+    await ordinary.getByRole('link', { name: 'View invoice' }).click();
+    const second = await opened;
+    await second.waitForURL(secondUrl);
+    const duplicate = await context.newPage();
+    await duplicate.goto(firstUrl);
     const localPath = testInfo.outputPath('local.html');
     await writeFile(localPath, '<!doctype html><title>Local HTML tab</title>');
     const local = await context.newPage();
@@ -213,6 +228,9 @@ test('window upload finds PDFs, skips inaccessible local tabs and other windows,
         )
         .toBe(true);
     }
+    await second.evaluate(() => {
+      location.hash = 'page=1';
+    });
     const firstTab = await worker.evaluate(
       async (url) =>
         (await chrome.tabs.query({})).find((tab) => tab.url === url),
@@ -306,6 +324,9 @@ test('window upload finds PDFs, skips inaccessible local tabs and other windows,
     expect(
       sourceRequests.filter((request) => request.url === '/download?id=First'),
     ).toHaveLength(firstRequests);
+    expect(
+      sourceRequests.filter((request) => request.url === '/download?id=Second'),
+    ).toHaveLength(1);
     expect(
       sourceRequests.filter(
         (request) => request.url === '/download?id=OtherWindow',

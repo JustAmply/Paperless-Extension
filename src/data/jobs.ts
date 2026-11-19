@@ -9,7 +9,7 @@ import {
 } from '../shared/model.js';
 import { pdfName, validatePdf } from '../shared/pdf.js';
 import { openDatabase as open } from './database.js';
-import type { CapturedPdf } from './sources.js';
+import { captureKey, type CapturedPdf } from './sources.js';
 import {
   canDismissJob,
   canRetryImport,
@@ -217,7 +217,7 @@ async function stage(
         store.put(job);
         if (isFile) tx.objectStore('files').put(item, job.id);
         else if (!kept) {
-          const captured = tx.objectStore('sources').get(item.tabId);
+          const captured = tx.objectStore('sources').get(captureKey(item));
           captured.onsuccess = () => {
             const pdf = captured.result as CapturedPdf | undefined;
             if (

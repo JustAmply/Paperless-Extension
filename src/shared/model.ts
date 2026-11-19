@@ -9,6 +9,7 @@ export interface Settings {
 export interface Source {
   url: string;
   tabId: number;
+  documentId?: string;
   fingerprint?: string;
 }
 
@@ -17,6 +18,7 @@ export function sourceKey(source: Source): string {
 }
 
 export interface SourceInfo extends Source {
+  embedded?: boolean;
   availability: 'ready' | 'loading' | 'unavailable';
   error?: string;
 }
@@ -64,7 +66,7 @@ export interface State {
 
 export type BackgroundRequest =
   | { target: 'background'; type: 'state' }
-  | { target: 'background'; type: 'pdf-disposition'; url: string }
+  | { target: 'background'; type: 'capture-context'; url: string }
   | { target: 'background'; type: 'dismiss-results' }
   | { target: 'background'; type: 'retry-import'; jobId: string }
   | { target: 'background'; type: 'save'; url: string; token: string }
@@ -82,6 +84,7 @@ export type BackgroundRequest =
 
 export interface BackgroundResponse {
   ok: boolean;
+  documentId?: string;
   error?: string;
   state?: State;
   settings?: Settings;

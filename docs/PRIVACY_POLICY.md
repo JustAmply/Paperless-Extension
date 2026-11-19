@@ -1,6 +1,6 @@
 # Privacy policy for Paperless Upload
 
-Last updated: 2026-11-16
+Last updated: 2026-11-19
 
 Publisher: JustAmply.
 
@@ -8,7 +8,7 @@ Publisher: JustAmply.
 
 Paperless Upload sends PDF documents you select to the Paperless-ngx server you configure. It processes your server address, API token, display preferences, PDF contents and filenames, PDF source addresses, and transfer and import status. A PDF may contain personal or sensitive information; you control which documents you upload and which server receives them.
 
-The extension reads tab information to identify PDFs in the current browser window. On supported Chrome versions, it temporarily captures newly opened top-level PDFs locally so that an explicit upload can use the already received document. Opening a PDF, opening the extension, or saving settings does not itself send a document to Paperless.
+The extension reads tab information to identify PDFs in the current browser window. On supported Chrome versions, it temporarily captures newly opened PDFs locally, including PDFs embedded in portal pages, so that an explicit upload can use the already received document. Opening a PDF, opening the extension, or saving settings does not itself send a document to Paperless.
 
 ## Storage and transmission
 
@@ -26,7 +26,7 @@ The extension has no developer-operated document backend, advertising, analytics
 
 ## Retention and your controls
 
-The local capture cache is limited to 25 PDFs and 512 MiB. Older captures are evicted when these limits are reached. Navigation, tab closure, and browser startup also clear captured data. Files staged for upload are separate from this cache; queued files can remain available across browser restarts. Staged file bytes are removed when a transfer reaches a terminal state or its eligible queue record is removed.
+The local capture cache is limited to 25 PDFs and 512 MiB. Older captures are evicted when these limits are reached. Closing a tab removes its captures. When a viewer is replaced or Chrome restarts, the extension removes captures whose viewer is no longer open. Files staged for upload are separate from this cache; queued files can remain available across browser restarts. Staged file bytes are removed when a transfer reaches a terminal state or its eligible queue record is removed.
 
 Transfer results and document identifiers may remain locally to prevent repeated uploads. Hiding a successful result does not necessarily delete that duplicate-prevention record. You can revoke website and file access through Chrome's extension settings. Uninstalling the extension removes its browser-managed local storage. Removing the extension does not delete documents already sent to Paperless.
 

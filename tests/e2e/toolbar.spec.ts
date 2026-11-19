@@ -110,9 +110,12 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
           return;
         }
         if (request.method === 'GET' && request.url === '/form') {
-          response.writeHead(200, { 'content-type': 'text/html' });
+          response.writeHead(200, {
+            'content-type': 'text/html',
+            'set-cookie': 'invoice-session=fixture; HttpOnly; SameSite=Strict',
+          });
           response.end(
-            '<form method="post" action="/download?id=42"><input name="document" value="42"><button>Open PDF</button></form>',
+            '<form method="post" action="/download?id=42"><input name="document" value="42"><button>Open PDF</button></form><a href="/download?id=42" target="_blank">Open invoice</a>',
           );
           return;
         }
@@ -121,10 +124,12 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
           sourceMethods.push(request.method ?? '');
           if (
             (sourceType === 'post' && request.method !== 'POST') ||
-            (sourceType === 'single-use' && sourceRequests.length > 1)
+            (sourceType === 'single-use' &&
+              (request.headers.cookie !== 'invoice-session=fixture' ||
+                sourceRequests.length > 1))
           ) {
-            response.writeHead(410);
-            response.end();
+            response.writeHead(410, { 'content-type': 'text/html' });
+            response.end('<title>Invoice link expired</title>');
             return;
           }
           if (sourceType === 'post') {
@@ -286,10 +291,16 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
         ),
       ).toBe(true);
       await setup.close();
-      const page = await context.newPage();
+      let page = await context.newPage();
       if (sourceType === 'post') {
         await page.goto(`http://localhost:${address.port}/form`);
         await page.getByRole('button', { name: 'Open PDF' }).click();
+        await page.waitForURL(sourceUrl);
+      } else if (sourceType === 'single-use') {
+        await page.goto(`http://localhost:${address.port}/form`);
+        const opened = page.waitForEvent('popup');
+        await page.getByRole('link', { name: 'Open invoice' }).click();
+        page = await opened;
         await page.waitForURL(sourceUrl);
       } else if (sourceType === 'blob') {
         await page.goto(`http://localhost:${address.port}/form`);
@@ -318,6 +329,14 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
             ),
         )
         .toBe(true);
+      if (sourceType === 'single-use') {
+        // Chrome reports a loading tab even though this keeps the same document.
+        await page.evaluate(() => {
+          location.hash = 'page=1';
+        });
+        navigationUrl = `${sourceUrl}#page=1`;
+        await page.waitForURL(navigationUrl);
+      }
       if (sourceType === 'get' || sourceType === 'blob') {
         const handler = page
           .frames()
@@ -492,10 +511,13 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
       }
       if (sourceType === 'get') {
         const original = (await sourceCache())[0]!;
-        const replacement = await context.newPage();
-        await replacement.goto(`chrome-extension://${id}/popup.html`);
+        const viewer = page
+          .frames()
+          .find(
+            (frame) => frame.url() === `chrome-extension://${id}/capture.html`,
+          )!;
         await test.step('Late captures cannot replace or resurrect a tab entry', async () => {
-          const result = await replacement.evaluate(async (url) => {
+          const result = await viewer.evaluate(async (url) => {
             const {
               capturePdf,
               capturedSources,
@@ -558,7 +580,7 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
           expect(result.afterClear).toBeUndefined();
         });
         // Fill the real cache without running 25 PDF viewer processes.
-        const ready = await replacement.evaluate(async (url) => {
+        const ready = await viewer.evaluate(async (url) => {
           const { capturePdf, capturedSources, clearCapturedPdf } =
             (await import(
               chrome.runtime.getURL('data/sources.js')
@@ -593,6 +615,8 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
           mimeType: 'application/pdf',
           buffer: pdf,
         }));
+        const replacement = await context.newPage();
+        await replacement.goto(`chrome-extension://${id}/popup.html`);
         await replacement.locator('#file-input').setInputFiles(localFiles);
         await expect(replacement.locator('[data-status=accepted]')).toHaveCount(
           localFiles.length,
@@ -645,6 +669,23 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
             error: expect.stringContaining('zu groß'),
           },
         ]);
+      }
+      if (sourceType === 'single-use') {
+        // Reloading the very same URL now returns HTML. Its old PDF is stale.
+        await page.reload();
+        await expect(page).toHaveTitle('Invoice link expired');
+        await expect.poll(async () => (await sourceCache()).length).toBe(0);
+        const expired = await openAction();
+        const button = await expired.command('Runtime.evaluate', {
+          expression: 'document.querySelector("#send-current").hidden',
+          returnByValue: true,
+        });
+        expect(button['result']).toMatchObject({ value: true });
+        await browserCdp.send('Target.closeTarget', {
+          targetId: expired.popupId,
+        });
+        expect(sourceRequests).toHaveLength(2);
+        expect(uploads).toHaveLength(1);
       }
       await page.goto(`http://localhost:${address.port}/form`);
       await expect.poll(async () => (await sourceCache()).length).toBe(0);

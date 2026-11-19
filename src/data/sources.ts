@@ -5,11 +5,16 @@ const MAX_CACHE_BYTES = 512 * 1024 * 1024;
 const MAX_CACHE_FILES = 25;
 
 export interface CapturedPdf extends Source {
+  embedded?: boolean;
   fingerprint: string;
   name: string;
   createdAt: number;
   file?: Blob;
   error?: string;
+}
+
+export function captureKey(source: Source): string | number {
+  return source.documentId ?? source.tabId;
 }
 
 const unavailable =
@@ -34,11 +39,15 @@ async function writeCapture(
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction('sources', 'readwrite');
     const store = tx.objectStore('sources');
+    // The first write from a new viewer supersedes its version 2 tab entry.
+    if (pdf.documentId && loadingFingerprint === undefined)
+      store.delete(pdf.tabId);
     const request = store.getAll();
     request.onsuccess = () => {
       const records = request.result as CapturedPdf[];
+      const key = captureKey(pdf);
       if (loadingFingerprint !== undefined) {
-        const current = records.find((item) => item.tabId === pdf.tabId);
+        const current = records.find((item) => captureKey(item) === key);
         // Navigation or a newer capture may have invalidated the loading record.
         if (
           current?.fingerprint !== loadingFingerprint ||
@@ -50,7 +59,7 @@ async function writeCapture(
       const previous = records
         .filter(
           (item): item is CapturedPdf & { file: Blob } =>
-            item.tabId !== pdf.tabId && item.file !== undefined,
+            captureKey(item) !== key && item.file !== undefined,
         )
         .sort((a, b) => a.createdAt - b.createdAt);
       let bytes = previous.reduce(
@@ -63,9 +72,9 @@ async function writeCapture(
         bytes -= item.file.size;
         files--;
         const { file: _file, ...metadata } = item;
-        store.put({ ...metadata, error: unavailable });
+        store.put({ ...metadata, error: unavailable }, captureKey(item));
       }
-      store.put(pdf);
+      store.put(pdf, key);
     };
     tx.oncomplete = () => resolve();
     tx.onabort = () => reject(tx.error);
@@ -78,28 +87,49 @@ export async function clearCapturedPdf(tabId?: number): Promise<void> {
     const tx = db.transaction('sources', 'readwrite');
     const store = tx.objectStore('sources');
     if (tabId === undefined) store.clear();
-    else store.delete(tabId);
+    else {
+      const keys = store.index('tabId').getAllKeys(tabId);
+      keys.onsuccess = () => {
+        for (const key of keys.result) store.delete(key);
+      };
+    }
     tx.oncomplete = () => resolve();
     tx.onabort = () => reject(tx.error);
   });
 }
 
-export async function capturedSources(): Promise<SourceInfo[]> {
+export async function capturedSources(tabId?: number): Promise<SourceInfo[]> {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
-    const request = db.transaction('sources').objectStore('sources').getAll();
+    const store = db.transaction('sources').objectStore('sources');
+    const request =
+      tabId === undefined ? store.getAll() : store.index('tabId').getAll(tabId);
     request.onsuccess = () =>
       resolve(
         (request.result as CapturedPdf[]).map(
-          ({ tabId, url, fingerprint, file, error }) => ({
+          ({ tabId, url, fingerprint, file, error, embedded, documentId }) => ({
             tabId,
             url,
             fingerprint,
+            ...(documentId ? { documentId } : {}),
+            ...(embedded ? { embedded } : {}),
             availability: file ? 'ready' : error ? 'unavailable' : 'loading',
             ...(error ? { error } : {}),
           }),
         ),
       );
     request.onerror = () => reject(request.error);
+  });
+}
+
+export async function deleteCaptures(sources: Source[]): Promise<void> {
+  if (!sources.length) return;
+  const db = await openDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction('sources', 'readwrite');
+    const store = tx.objectStore('sources');
+    for (const source of sources) store.delete(captureKey(source));
+    tx.oncomplete = () => resolve();
+    tx.onabort = () => reject(tx.error);
   });
 }

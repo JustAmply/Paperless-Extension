@@ -10,11 +10,11 @@ import {
   type SourceInfo,
   type State,
 } from './shared/model.js';
-import { documentSource } from './shared/pdf.js';
 import { normalizeServer } from './shared/settings.js';
 import {
   canAccessFileTabs,
-  isPdfTab,
+  detectTabPdf,
+  tabSource,
   windowSources,
 } from './browser/pdf-tabs.js';
 import {
@@ -70,7 +70,8 @@ const ui = {
 let currentState: State;
 let currentTab: chrome.tabs.Tab | undefined;
 let activeSource: Source | undefined;
-let inspectedPdf = false;
+let currentPdf: Source | SourceInfo | undefined;
+let nativePdf: Promise<Source | undefined> | undefined;
 let localFileAccess = false;
 let staged = false;
 let polling = false;
@@ -95,16 +96,6 @@ async function updateWebAccess(): Promise<void> {
   allWebAccess = await chrome.permissions.contains({ origins: webOrigins });
   ui.webAccess.hidden = allWebAccess;
   ui.connectionAccess.hidden = allWebAccess;
-}
-
-function selectedSource(state: State): Source | SourceInfo | undefined {
-  const source = activeSource;
-  if (!source) return undefined;
-  return (
-    state.sources.find(
-      (pdf) => pdf.tabId === source.tabId && pdf.url === source.url,
-    ) ?? (inspectedPdf ? source : undefined)
-  );
 }
 
 function showSettings(open: boolean): void {
@@ -267,7 +258,7 @@ function render(state: State): void {
   ui.drop.disabled = active;
   ui.sendWindow.disabled = active || !windowTabs.length;
   ui.toggle.disabled = active;
-  const currentSource = selectedSource(state);
+  const currentSource = currentPdf;
   const captured =
     currentSource && 'availability' in currentSource
       ? currentSource
@@ -351,7 +342,10 @@ function showUploadError(error: unknown): void {
 
 async function refresh(): Promise<void> {
   const result = await request({ target: 'background', type: 'state' });
-  if (result.state) render(result.state);
+  if (result.state) {
+    currentPdf = await resolveCurrentPdf(result.state);
+    render(result.state);
+  }
 }
 
 async function start(input: File[] | Source): Promise<void> {
@@ -540,7 +534,7 @@ ui.upload.addEventListener('drop', (event) => {
   if (files.length) void start(files).catch(showUploadError);
 });
 ui.send.addEventListener('click', () => {
-  const source = selectedSource(currentState);
+  const source = currentPdf;
   if (!ui.send.disabled && source) void start(source).catch(showUploadError);
 });
 ui.fileAccess.addEventListener('click', () => {
@@ -555,34 +549,38 @@ ui.fileAccess.addEventListener('click', () => {
         );
       }
       localFileAccess = true;
-      await updateCurrentPdf();
+      await refresh();
     })
     .catch(showUploadError);
 });
 
-async function updateCurrentPdf(): Promise<void> {
-  if (
-    activeSource &&
-    (!activeSource.url.startsWith('file:') || localFileAccess) &&
-    !selectedSource(currentState)
-  ) {
-    inspectedPdf = await isPdfTab(activeSource);
+async function resolveCurrentPdf(
+  state: State,
+): Promise<Source | SourceInfo | undefined> {
+  if (!activeSource) return undefined;
+  const capture = state.sources.find(
+    (source) => source.tabId === activeSource?.tabId,
+  );
+  if (capture) {
+    nativePdf = undefined;
+    return detectTabPdf(activeSource, capture);
   }
-  render(currentState);
+  if (activeSource.url.startsWith('file:') && !localFileAccess)
+    return undefined;
+  // Ordinary tabs and older native viewers only need one probe per popup.
+  nativePdf ??= detectTabPdf(activeSource);
+  return nativePdf;
 }
 
 async function initialize(): Promise<void> {
   [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const url = documentSource(currentTab?.url);
-  if (url && currentTab?.id !== undefined)
-    activeSource = { url, tabId: currentTab.id };
+  activeSource = tabSource(currentTab);
   if (currentTab) await updateWindowTabs(currentTab.windowId);
   await updateWebAccess();
   const preferences = await chrome.storage.local.get('successDisplaySeconds');
   displaySeconds = successDisplaySeconds(preferences['successDisplaySeconds']);
   ui.displayDuration.value = String(displaySeconds);
   await refresh();
-  await updateCurrentPdf();
   ui.url.value = currentState.settings.url;
   ui.httpWarning.hidden = !ui.url.value.startsWith('http://');
   updateTokenField();
@@ -603,9 +601,11 @@ async function initialize(): Promise<void> {
 }
 
 chrome.permissions.onAdded.addListener(() => {
+  nativePdf = undefined;
   void updateWebAccess().catch(showUploadError);
 });
 chrome.permissions.onRemoved.addListener(() => {
+  nativePdf = undefined;
   void updateWebAccess().catch(showUploadError);
 });
 

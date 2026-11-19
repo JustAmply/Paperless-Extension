@@ -8,6 +8,10 @@ function browser(t, tabs, results) {
   const permissions = [];
   const previous = globalThis.chrome;
   globalThis.chrome = {
+    runtime: {
+      getContexts: async () => [],
+      getURL: (path) => `chrome-extension://fixture/${path}`,
+    },
     tabs: {
       query: async (query) => {
         queries.push(query);
@@ -76,6 +80,46 @@ test('window upload only uses blob tabs with matching captured data', async (t) 
   assert.deepEqual(calls.permissions, []);
 });
 
+test('embedded PDFs require a matching visible viewer, including in a portal-created blank tab', async (t) => {
+  const url = 'blob:https://files.example/receipt';
+  const wrapper = 'https://files.example/invoices';
+  const capture = {
+    tabId: 1,
+    url,
+    embedded: true,
+    availability: 'ready',
+    fingerprint: 'receipt',
+  };
+  const captures = [
+    capture,
+    { ...capture, tabId: 3 },
+    { ...capture, tabId: 4 },
+  ];
+  const calls = browser(
+    t,
+    [
+      { id: 1, url: 'about:blank' },
+      { id: 2, url: 'about:blank' },
+      { id: 3, url: wrapper },
+      { id: 4, url: wrapper },
+    ],
+    new Map([
+      [1, { url: 'about:blank', type: 'text/html', embedded: true }],
+      [3, { url: wrapper, type: 'text/html', embedded: false }],
+      [
+        4,
+        {
+          url: 'https://files.example/replaced',
+          type: 'text/html',
+          embedded: true,
+        },
+      ],
+    ]),
+  );
+  assert.deepEqual((await windowPdfs(7, captures)).sources, [capture]);
+  assert.deepEqual(calls.inspections, [1, 3, 4]);
+});
+
 test('window PDFs use the rendered MIME type, deduplicate URLs, and ignore navigation races', async (t) => {
   const url = 'https://files.example/download?id=1';
   const calls = browser(
@@ -103,6 +147,17 @@ test('window PDFs use the rendered MIME type, deduplicate URLs, and ignore navig
   assert.deepEqual(calls.permissions, [
     { origins: ['https://files.example/*'] },
   ]);
+});
+
+test('an open handler waiting to register its capture never becomes a GET job', async (t) => {
+  const url = 'https://files.example/one-use-invoice';
+  browser(
+    t,
+    [{ id: 1, url }],
+    new Map([[1, { type: 'application/pdf', url }]]),
+  );
+  globalThis.chrome.runtime.getContexts = async () => [{ tabId: 1 }];
+  assert.deepEqual((await windowPdfs(7)).sources, []);
 });
 
 test('window inspection stops before reading any document when origin access is missing', async (t) => {

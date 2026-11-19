@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — Paperless Upload
 
-Last updated: 2026-11-16
+Last updated: 2026-11-19
 
 ## Store listing
 
@@ -14,7 +14,7 @@ Last updated: 2026-11-16
 
 Paperless Upload überträgt PDFs direkt an deinen eigenen Paperless-ngx-Server.
 
-Lade die aktuell geöffnete PDF hoch, wähle lokale PDF-Dateien aus oder ziehe sie in das Erweiterungsfenster. Mit „Alle PDF-Tabs hochladen“ kannst du die erkannten PDFs des aktuellen Browserfensters gemeinsam übertragen.
+Lade die aktuell geöffnete PDF hoch, wähle lokale PDF-Dateien aus oder ziehe sie in das Erweiterungsfenster. Mit „Alle PDF-Tabs hochladen“ kannst du die erkannten PDFs des aktuellen Browserfensters gemeinsam übertragen. Das funktioniert auch bei Rechnungsportalen, die im Tab eine einzelne PDF einbetten.
 
 Trage einmal deine Serveradresse und deinen Paperless-API-Token ein. Eine Übertragung startet erst, wenn du sie ausdrücklich auslöst. Du kannst das Erweiterungsfenster danach schließen; die Übertragung läuft weiter, solange Chrome geöffnet bleibt.
 
@@ -42,7 +42,7 @@ Use synthetic documents and a fixture server for screenshots. Never show real AP
 | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `activeTab`                             | Identifies the PDF in the active tab after the user opens the extension.                                                                                                                                                                       |
 | `tabs`                                  | Reads tab URLs and titles to identify PDFs in the current window for the explicit window-upload action.                                                                                                                                        |
-| `scripting`                             | Checks the top-level document type and URL to distinguish PDFs from ordinary web pages; it does not extract unrelated page content.                                                                                                            |
+| `scripting`                             | Identifies PDFs by document type or by the URL and visibility of an embedded viewer. Handles the save shortcut in a full-page PDF embed.                                                                                                       |
 | `storage`                               | Saves the user-configured Paperless server, API token, and display preferences locally.                                                                                                                                                        |
 | `offscreen`                             | Keeps the document-transfer queue and bounded import-status checks running when the popup is closed.                                                                                                                                           |
 | `webRequest`                            | Observes PDF response metadata to preserve original filenames.                                                                                                                                                                                 |
@@ -75,9 +75,10 @@ Policy source: [docs/PRIVACY_POLICY.md](docs/PRIVACY_POLICY.md). Public policy U
 
 ## Version history
 
-| Version | Date       | Changes                                                                           | Status                    |
-| ------- | ---------- | --------------------------------------------------------------------------------- | ------------------------- |
-| 0.3.0   | 2026-11-16 | Initial store publication preparation for PDF uploads and import-status feedback. | Submitted; review pending |
+| Version | Date       | Changes                                                                                         | Status                    |
+| ------- | ---------- | ----------------------------------------------------------------------------------------------- | ------------------------- |
+| 0.3.1   | 2026-11-19 | Save displayed PDFs by keyboard and recognize protected invoices in direct or embedded viewers. | Local build               |
+| 0.3.0   | 2026-11-16 | Initial store publication preparation for PDF uploads and import-status feedback.               | Submitted; review pending |
 
 ## Submission requirements still to verify
 

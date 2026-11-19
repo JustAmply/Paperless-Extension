@@ -4,7 +4,11 @@ import {
   getJobs,
   retryImport,
 } from './data/jobs.js';
-import { capturedSources, clearCapturedPdf } from './data/sources.js';
+import {
+  capturedSources,
+  clearCapturedPdf,
+  deleteCaptures,
+} from './data/sources.js';
 import { windowPdfs } from './browser/pdf-tabs.js';
 import {
   errorMessage,
@@ -13,6 +17,7 @@ import {
   type BackgroundRequest,
   type BackgroundResponse,
   type Settings,
+  type SourceInfo,
   type State,
 } from './shared/model.js';
 import { hostPermission, validateSettings } from './shared/settings.js';
@@ -27,15 +32,16 @@ let lifecycle: Promise<unknown> = Promise.resolve();
 const pdfDispositions = new Map<number, { url: string; disposition: string }>();
 
 // The MIME handler can receive the PDF body without its Content-Disposition.
-// Remember just that header from the matching top-level response.
+// Remember just that header from the matching document response.
 function rememberPdfDisposition({
   tabId,
   url,
+  type,
   statusCode,
   responseHeaders,
 }: chrome.webRequest.OnHeadersReceivedDetails): undefined {
   if (tabId < 0) return;
-  pdfDispositions.delete(tabId);
+  if (type === 'main_frame') pdfDispositions.delete(tabId);
   if (statusCode < 200 || statusCode >= 300) return;
   const header = (name: string) =>
     responseHeaders?.find((item) => item.name.toLowerCase() === name)?.value;
@@ -55,7 +61,10 @@ function listenForPdfNames(): void {
   event.removeListener(rememberPdfDisposition);
   event.addListener(
     rememberPdfDisposition,
-    { urls: ['http://*/*', 'https://*/*'], types: ['main_frame'] },
+    {
+      urls: ['http://*/*', 'https://*/*'],
+      types: ['main_frame', 'sub_frame', 'object'],
+    },
     ['responseHeaders'],
   );
 }
@@ -77,8 +86,37 @@ async function state(): Promise<State> {
   return {
     settings: { url: config?.url ?? '', configured: Boolean(config) },
     jobs: await getJobs(),
-    sources: await capturedSources(),
+    sources: await liveCaptures(),
   };
+}
+
+async function liveCaptures(tabId?: number): Promise<SourceInfo[]> {
+  // Snapshot keys before checking Chrome. A new viewer can register while
+  // this is in flight, including when reloading the exact same invoice URL.
+  const captures = await capturedSources(tabId);
+  if (!captures.length) return [];
+  const contexts = await chrome.runtime.getContexts({
+    documentUrls: [chrome.runtime.getURL('capture.html')],
+    ...(tabId === undefined ? {} : { tabIds: [tabId] }),
+  });
+  const liveIds = new Set(contexts.map((context) => context.documentId));
+  const liveTabs = new Set(contexts.map((context) => context.tabId));
+  const byTab = new Map<number, SourceInfo | undefined>();
+  const closed = [];
+  for (const source of captures) {
+    if (
+      source.documentId
+        ? liveIds.has(source.documentId)
+        : liveTabs.has(source.tabId)
+    ) {
+      // Multiple invoices in one page have no single current PDF.
+      byTab.set(source.tabId, byTab.has(source.tabId) ? undefined : source);
+    } else {
+      closed.push(source);
+    }
+  }
+  await deleteCaptures(closed);
+  return [...byTab.values()].filter((source): source is SourceInfo => !!source);
 }
 
 async function offscreen(start: boolean): Promise<void> {
@@ -143,17 +181,23 @@ async function handle(
   switch (message.type) {
     case 'state':
       return { ok: true, state: await state() };
-    case 'pdf-disposition': {
+    case 'capture-context': {
       const tabId = sender.tab?.id;
       if (
         sender.url !== chrome.runtime.getURL('capture.html') ||
-        tabId === undefined
+        tabId === undefined ||
+        !sender.documentId
       )
         throw new UserError('Zugriff verweigert.');
       const match = pdfDispositions.get(tabId);
-      if (match?.url !== message.url) return { ok: true };
+      if (match?.url !== message.url)
+        return { ok: true, documentId: sender.documentId };
       pdfDispositions.delete(tabId);
-      return { ok: true, disposition: match.disposition };
+      return {
+        ok: true,
+        documentId: sender.documentId,
+        disposition: match.disposition,
+      };
     }
     case 'dismiss-results':
       if (sender.url !== chrome.runtime.getURL('popup.html'))
@@ -236,7 +280,7 @@ async function handle(
         );
       const { sources, skippedLocalTabs } = await windowPdfs(
         message.windowId,
-        await capturedSources(),
+        await liveCaptures(),
       );
       const localNotice = skippedLocalTabs
         ? 'Lokale Tabs wurden übersprungen. Erlaube den Zugriff auf lokale PDFs, um sie einzubeziehen.'
@@ -288,7 +332,7 @@ chrome.runtime.onMessage.addListener(
 );
 
 chrome.runtime.onStartup.addListener(() => {
-  void clearCapturedPdf();
+  void liveCaptures();
   void getJobs().then(async (jobs) => {
     if (jobs.some((job) => isActive(job) || hasImportWork(job)))
       await offscreen(true);
@@ -302,5 +346,6 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 });
 
 chrome.tabs.onUpdated.addListener((tabId, change) => {
-  if (change.status === 'loading') void clearCapturedPdf(tabId);
+  // Chrome also reports a load for a #page or #zoom change.
+  if (change.status === 'complete') void liveCaptures(tabId);
 });

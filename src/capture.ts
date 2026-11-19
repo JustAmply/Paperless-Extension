@@ -1,5 +1,10 @@
-import { capturePdf, finishPdfCapture } from './data/sources.js';
-import { errorMessage, UserError } from './shared/model.js';
+import {
+  capturePdf,
+  finishPdfCapture,
+  type CapturedPdf,
+} from './data/sources.js';
+import { errorMessage } from './shared/model.js';
+import { inspectPdfTab } from './browser/pdf-tabs.js';
 import {
   documentSource,
   pdfFingerprint,
@@ -19,28 +24,44 @@ function showError(error: unknown): void {
 async function capture(): Promise<void> {
   const stream = await chrome.mimeHandler.getStreamInfo();
   const url = documentSource(stream.originalUrl);
-  if (!url) throw new UserError('Diese PDF-Adresse wird nicht unterstützt.');
+  // Delegate unsupported schemes and the preview's own Blob to Chrome.
+  // The portal's HTTP response must never enter the fallback reload path.
+  if (
+    !url ||
+    (stream.embedded &&
+      stream.originalUrl.startsWith(`blob:${location.origin}/`))
+  ) {
+    await chrome.mimeHandler.abortAndFallbackToNativeHandler();
+    return;
+  }
   const streamDisposition = Object.entries(stream.responseHeaders).find(
     ([name]) => name.toLowerCase() === 'content-disposition',
   )?.[1];
   let disposition =
     typeof streamDisposition === 'string' ? streamDisposition : '';
-  if (!disposition && /^https?:/.test(url)) {
-    const response = await request({
-      target: 'background',
-      type: 'pdf-disposition',
-      url,
-    }).catch(() => undefined);
-    disposition = response?.disposition ?? '';
-  }
-  const metadata = {
+  const metadata: CapturedPdf = {
     tabId: stream.tabId,
+    embedded: stream.embedded,
     url,
     name: pdfName(url, disposition),
     createdAt: Date.now(),
     fingerprint: crypto.randomUUID(),
   };
-  await capturePdf(metadata).catch(showError);
+  let registered = false;
+  try {
+    const context = await request({
+      target: 'background',
+      type: 'capture-context',
+      url,
+    });
+    if (!context.documentId) throw new Error('Missing viewer document ID');
+    metadata.documentId = context.documentId;
+    disposition ||= context.disposition ?? '';
+    await capturePdf(metadata);
+    registered = true;
+  } catch (error) {
+    showError(error);
+  }
   let file: Blob;
   try {
     const response = await fetch(stream.streamUrl);
@@ -51,38 +72,77 @@ async function capture(): Promise<void> {
     // JavaScript byte array. The viewer also supports PDFs above the upload cap.
     file = await response.blob();
   } catch (error) {
-    await finishPdfCapture(
-      { ...metadata, error: errorMessage(error) },
-      metadata.fingerprint,
-    ).catch(showError);
+    if (registered) {
+      await finishPdfCapture(
+        { ...metadata, error: errorMessage(error) },
+        metadata.fingerprint,
+      ).catch(showError);
+    }
     throw error;
   }
-  const status = document.getElementById('status');
-  if (status) status.hidden = true;
-  try {
-    await validatePdf(file);
-    const fingerprint = await pdfFingerprint(file);
-    metadata.name = pdfName(url, disposition, fingerprint);
-    await finishPdfCapture(
-      { ...metadata, fingerprint, file },
-      metadata.fingerprint,
-    );
-  } catch (error) {
-    await finishPdfCapture(
-      { ...metadata, error: errorMessage(error) },
-      metadata.fingerprint,
-    ).catch(showError);
-    showError(error);
+  if (registered) {
+    try {
+      await validatePdf(file);
+      const fingerprint = await pdfFingerprint(file);
+      metadata.name = pdfName(url, disposition, fingerprint);
+      await finishPdfCapture(
+        { ...metadata, fingerprint, file },
+        metadata.fingerprint,
+      );
+      const status = document.getElementById('status');
+      if (status) status.hidden = true;
+    } catch (error) {
+      await finishPdfCapture(
+        { ...metadata, error: errorMessage(error) },
+        metadata.fingerprint,
+      ).catch(showError);
+      showError(error);
+    }
   }
   const viewer = document.createElement('iframe');
   viewer.title = metadata.name;
-  // Embedded PDFs use Chrome's native viewer because our MIME handler only
-  // claims top-level documents. A blob URL never replays the source request.
+  // The preview and download share a local Blob URL. Neither needs to repeat
+  // the portal request that generated this document.
   const tab = await chrome.tabs.get(stream.tabId);
-  const fragment = new URL(tab.url ?? stream.originalUrl).hash;
-  viewer.src = URL.createObjectURL(file) + fragment;
+  const fragment = new URL(
+    stream.embedded ? stream.originalUrl : (tab.url ?? stream.originalUrl),
+  ).hash;
+  const objectUrl = URL.createObjectURL(file);
+  viewer.src = objectUrl + fragment;
   document.title = metadata.name;
+  const download = document.createElement('a');
+  download.download = metadata.name;
+  download.href = objectUrl;
+  window.addEventListener('keydown', (event) => {
+    if (
+      event.isTrusted &&
+      !event.defaultPrevented &&
+      event.key.toLowerCase() === 's' &&
+      event.ctrlKey !== event.metaKey &&
+      !event.altKey &&
+      !event.shiftKey
+    ) {
+      event.preventDefault();
+      if (!event.repeat) download.click();
+    }
+  });
   document.body.append(viewer);
+  if (!stream.embedded) {
+    // A new PDF tab initially focuses Chrome's generated HTML document.
+    window.focus();
+  } else if (metadata.documentId) {
+    const channel = `save-pdf:${metadata.documentId}`;
+    const host = await inspectPdfTab(stream.tabId, url, channel);
+    if (host?.acceptsSaveShortcut) {
+      const port = chrome.tabs.connect(stream.tabId, {
+        documentId: host.documentId,
+        name: channel,
+      });
+      port.onMessage.addListener((message: unknown) => {
+        if (message === 'save') download.click();
+      });
+    }
+  }
 }
 
 void capture().catch(showError);
