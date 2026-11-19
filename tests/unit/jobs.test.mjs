@@ -8,6 +8,9 @@ test('manual selection rejects the total byte limit before reading any PDF', asy
   const read = t.mock.method(file, 'slice');
 
   // Eleven files are allowed by count and each is below 50 MiB.
-  await assert.rejects(enqueue(Array(11).fill(file)), /512 MiB/);
+  await assert.rejects(
+    enqueue(Array(11).fill(file), 'https://fixture.invalid/'),
+    /512 MiB/,
+  );
   assert.equal(read.mock.callCount(), 0);
 });

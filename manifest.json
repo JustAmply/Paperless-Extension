@@ -4,7 +4,14 @@
   "version": "0.3.0",
   "description": "Geöffnete PDFs oder lokale PDF-Dateien direkt an deinen Paperless-ngx-Server übertragen.",
   "minimum_chrome_version": "116",
-  "permissions": ["activeTab", "tabs", "scripting", "storage", "offscreen"],
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "scripting",
+    "storage",
+    "offscreen",
+    "webRequest"
+  ],
   "optional_host_permissions": ["https://*/*", "http://*/*", "file:///*"],
   "background": { "service_worker": "background.js", "type": "module" },
   "mime_types_handler": {

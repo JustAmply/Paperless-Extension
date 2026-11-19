@@ -1,156 +1,217 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { errorMessage, UserError } from '../../dist/shared/model.js';
-import {
-  hasImportWork,
-  importDeadline,
-  nextImportCheck,
-} from '../../dist/shared/job-state.js';
+import { UserError } from '../../dist/shared/model.js';
+import { hasImportWork } from '../../dist/shared/job-state.js';
+import { createUploadRunner } from '../../dist/upload-runner.js';
 
-const source = (
-  await readFile(new URL('../../dist/offscreen.js', import.meta.url), 'utf8')
-).replace(/^import .*;\r?\n/gm, '');
+const destination = 'https://fixture.invalid/';
 
-async function runner({
-  outcome = 'accepted',
-  failNotification,
-  failWrite,
-} = {}) {
-  let stored = {
-    id: 'fixture',
-    name: 'fixture.pdf',
-    status: 'queued',
-    message: '',
-    createdAt: 0,
-  };
-  let deleted = false;
-  let uploads = 0;
+function fixture({ outcome = 'accepted', failNotification = false } = {}) {
+  const jobs = new Map();
+  const files = new Set();
+  const uploads = [];
   let importRequests = 0;
-  let serverUrl = 'https://fixture.invalid/';
-  const effects = {
-    getJobs: async () => [stored],
-    getFile: async () => new Blob(['%PDF-1.7']),
-    deleteFile: async () => {
-      deleted = true;
+  let serverUrl = destination;
+  let failedWrites = 0;
+  let holdRead;
+  function queue(id) {
+    jobs.set(id, {
+      id,
+      name: id + '.pdf',
+      status: 'queued',
+      message: '',
+      createdAt: 0,
+      serverUrl: destination,
+    });
+    files.add(id);
+  }
+  queue('first');
+  const runner = createUploadRunner({
+    getJobs: async () => {
+      const snapshot = [...jobs.values()].map((job) => structuredClone(job));
+      if (holdRead && snapshot.length === 0) {
+        const { wait, entered } = holdRead;
+        holdRead = undefined;
+        entered();
+        await wait;
+      }
+      return snapshot;
     },
+    getFile: async (id) => (files.has(id) ? new Blob(['%PDF-1.7']) : undefined),
     putJob: async (job) => {
-      if (failWrite && job.status === outcome) throw new Error('Write failed');
-      stored = job;
+      jobs.set(job.id, job);
     },
-    request: async (message) => {
-      if (message.type === 'settings')
-        return {
-          settings: { url: serverUrl, token: 'fixture' },
-        };
-      if (failNotification && stored.status === outcome)
-        throw new Error('Notification failed');
-      return { ok: true };
+    finishJob: async (job) => {
+      if (failedWrites > 0) {
+        failedWrites--;
+        throw new Error('Write failed');
+      }
+      jobs.set(job.id, job);
+      files.delete(job.id);
     },
-    errorMessage,
-    UserError,
+    getSettings: async () => ({ url: serverUrl, token: 'fixture' }),
     validatePdf: async () => {},
-    uploadPdf: async () => {
-      uploads++;
+    uploadPdf: async (settings, _file, name) => {
+      uploads.push({ url: settings.url, name });
       if (outcome instanceof Error) throw outcome;
       return outcome === 'accepted'
         ? { status: outcome, taskId: 'fixture-task' }
         : { status: outcome };
     },
     downloadPdf: async () => {},
-    hasImportWork,
-    importDeadline,
-    nextImportCheck,
+    changed: async () => {
+      if (
+        failNotification &&
+        [...jobs.values()].some((job) => job.status === outcome)
+      )
+        throw new Error('Notification failed');
+    },
     checkImport: async () => {
       importRequests++;
       return { status: 'success', message: 'Imported', documentId: 42 };
     },
     updateImportResult: async (job, result) => {
-      if (stored.id === job.id)
-        stored = {
-          ...stored,
-          importTask: { ...stored.importTask, result, checkedAt: Date.now() },
-        };
+      jobs.set(job.id, {
+        ...jobs.get(job.id),
+        importTask: { ...job.importTask, result, checkedAt: Date.now() },
+      });
     },
-    chrome: { runtime: { onMessage: { addListener() {} } } },
-  };
-  // Exercise the built runner with deterministic storage/network failures,
-  // without creating an extension context or making a real upload request.
-  const { processJob, processImport, drain, recovered } = new Function(
-    ...Object.keys(effects),
-    `${source}\nreturn { processJob, processImport, drain, recovered };`,
-  )(...Object.values(effects));
-  await recovered;
+  });
   return {
-    run: () => processJob(stored),
-    drain,
-    check: () => processImport(stored),
-    expire: () => {
-      stored.importTask.startedAt = 0;
-      stored.importTask.checkedAt = 1;
-      stored.importTask.result = { status: 'pending', message: 'Processing' };
-    },
-    setServer: (url) => {
+    run: runner.run,
+    jobs,
+    files,
+    uploads,
+    queue,
+    setServer(url) {
       serverUrl = url;
     },
-    state: () => ({ stored, deleted, uploads, importRequests }),
+    failWrites(count) {
+      failedWrites = count;
+    },
+    importRequests: () => importRequests,
+    holdEmptyRead() {
+      const { promise: wait, resolve: release } = Promise.withResolvers();
+      const { promise: reached, resolve: entered } = Promise.withResolvers();
+      holdRead = { wait, entered };
+      return { reached, release };
+    },
   };
 }
 
 for (const outcome of ['accepted', 'uncertain']) {
-  test(`${outcome} survives a failed badge notification without becoming retryable`, async () => {
-    const job = await runner({ outcome, failNotification: true });
-    await assert.rejects(job.run(), /Notification failed/);
-    assert.equal(job.state().stored.status, outcome);
-    assert.equal(job.state().uploads, 1);
-    assert.equal(job.state().deleted, true);
+  test(`a badge failure after ${outcome} cannot stop the remaining batch`, async () => {
+    const f = fixture({ outcome, failNotification: true });
+    f.queue('second');
+    await f.run();
+    assert.deepEqual(
+      [...f.jobs.values()].map((job) => job.status),
+      [outcome, outcome],
+    );
+    assert.deepEqual(
+      f.uploads.map((upload) => upload.name),
+      ['first.pdf', 'second.pdf'],
+    );
+    assert.equal(f.files.size, 0);
   });
 }
 
-test('a failed terminal write leaves an interrupted upload for uncertain recovery', async () => {
-  const job = await runner({ failWrite: true });
-  await assert.rejects(job.run(), /Write failed/);
-  assert.equal(job.state().stored.status, 'uploading');
-  assert.equal(job.state().uploads, 1);
-  assert.equal(job.state().deleted, true);
+test('a failed terminal write is retried without repeating the POST', async () => {
+  const f = fixture();
+  f.failWrites(1);
+  await f.run();
+  assert.equal(f.jobs.get('first').status, 'accepted');
+  assert.equal(f.uploads.length, 1);
+  assert.equal(f.files.size, 0);
+});
+
+test('the same runner recovers a failed terminal transaction on its next run', async () => {
+  const f = fixture();
+  f.failWrites(2);
+  await assert.rejects(f.run(), /Write failed/);
+  assert.equal(f.jobs.get('first').status, 'uploading');
+  assert.equal(f.files.has('first'), true);
+  await f.run();
+  assert.equal(f.jobs.get('first').status, 'uncertain');
+  assert.equal(f.files.size, 0);
+  assert.equal(f.uploads.length, 1);
+});
+
+test('a start signal arriving during an empty queue read is not lost', async () => {
+  const f = fixture();
+  f.jobs.clear();
+  const { reached, release } = f.holdEmptyRead();
+  const running = f.run();
+  await reached;
+  f.queue('second');
+  const next = f.run();
+  release();
+  await Promise.all([running, next]);
+  assert.deepEqual(
+    f.uploads.map((upload) => upload.name),
+    ['second.pdf'],
+  );
+  assert.equal(f.jobs.get('second').status, 'accepted');
 });
 
 test('an explicit API rejection remains a failed upload with its explanation', async () => {
-  const job = await runner({ outcome: new UserError('Keine Berechtigung.') });
-  await job.run();
-  assert.equal(job.state().stored.status, 'failed');
-  assert.equal(job.state().stored.message, 'Keine Berechtigung.');
-  assert.equal(job.state().uploads, 1);
-  assert.equal(job.state().deleted, true);
+  const f = fixture({ outcome: new UserError('Keine Berechtigung.') });
+  await f.run();
+  assert.equal(f.jobs.get('first').status, 'failed');
+  assert.equal(f.jobs.get('first').message, 'Keine Berechtigung.');
+  assert.equal(f.uploads.length, 1);
+  assert.equal(f.files.size, 0);
 });
 
-test('the runner automatically confirms an accepted upload without a popup command', async () => {
-  const job = await runner();
-  await job.drain();
-  assert.equal(job.state().uploads, 1);
-  assert.equal(job.state().importRequests, 1);
-  assert.equal(job.state().stored.importTask.result.status, 'success');
-  assert.equal(job.state().stored.status, 'accepted');
+test('queued files cannot be sent to a different Paperless server', async () => {
+  const f = fixture();
+  f.setServer('https://other-fixture.invalid/');
+  await f.run();
+  assert.equal(f.uploads.length, 0);
+  assert.equal(f.jobs.get('first').status, 'failed');
+  assert.match(f.jobs.get('first').message, /Upload-Ziel/);
+});
+
+test('the runner automatically confirms an accepted upload', async () => {
+  const f = fixture();
+  await f.run();
+  assert.equal(f.uploads.length, 1);
+  assert.equal(f.importRequests(), 1);
+  assert.equal(f.jobs.get('first').importTask.result.status, 'success');
+  assert.equal(f.jobs.get('first').status, 'accepted');
 });
 
 test('expired automatic checks terminate without a GET or duplicate POST', async () => {
-  const job = await runner();
-  await job.run();
-  job.expire();
-  await job.drain();
-  assert.equal(job.state().uploads, 1);
-  assert.equal(job.state().importRequests, 0);
-  assert.equal(job.state().stored.importTask.result.status, 'unavailable');
-  assert.equal(hasImportWork(job.state().stored), false);
+  const f = fixture();
+  const job = f.jobs.get('first');
+  job.status = 'accepted';
+  job.importTask = {
+    serverUrl: destination,
+    taskId: 'old',
+    startedAt: 0,
+    checkedAt: 1,
+    result: { status: 'pending', message: 'Processing' },
+  };
+  await f.run();
+  assert.equal(f.uploads.length, 0);
+  assert.equal(f.importRequests(), 0);
+  assert.equal(f.jobs.get('first').importTask.result.status, 'unavailable');
+  assert.equal(hasImportWork(f.jobs.get('first')), false);
 });
 
 test('automatic checks never use a changed server to look up an older upload', async () => {
-  const job = await runner();
-  await job.run();
-  job.setServer('https://other-fixture.invalid/');
-  await job.drain();
-  assert.equal(job.state().uploads, 1);
-  assert.equal(job.state().importRequests, 0);
-  assert.equal(job.state().stored.importTask.result.status, 'unavailable');
-  assert.equal(hasImportWork(job.state().stored), false);
+  const f = fixture();
+  const job = f.jobs.get('first');
+  job.status = 'accepted';
+  job.importTask = {
+    serverUrl: destination,
+    taskId: 'old',
+    startedAt: Date.now(),
+  };
+  f.setServer('https://other-fixture.invalid/');
+  await f.run();
+  assert.equal(f.uploads.length, 0);
+  assert.equal(f.importRequests(), 0);
+  assert.equal(f.jobs.get('first').importTask.result.status, 'unavailable');
+  assert.equal(hasImportWork(f.jobs.get('first')), false);
 });

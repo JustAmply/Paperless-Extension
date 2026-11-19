@@ -1,4 +1,9 @@
-import { dismissResults, enqueueWindow, getJobs } from './data/jobs.js';
+import {
+  dismissResults,
+  enqueueWindow,
+  getJobs,
+  retryImport,
+} from './data/jobs.js';
 import { capturedSources, clearCapturedPdf } from './data/sources.js';
 import { windowPdfs } from './browser/pdf-tabs.js';
 import {
@@ -13,11 +18,53 @@ import {
 import { hostPermission, validateSettings } from './shared/settings.js';
 import { verifyConnection } from './services/paperless.js';
 import { hasImportWork } from './shared/job-state.js';
+import { readableSource } from './shared/pdf.js';
 
 const initialized = chrome.storage.local.setAccessLevel({
   accessLevel: 'TRUSTED_CONTEXTS',
 });
 let lifecycle: Promise<unknown> = Promise.resolve();
+const pdfDispositions = new Map<number, { url: string; disposition: string }>();
+
+// The MIME handler can receive the PDF body without its Content-Disposition.
+// Remember just that header from the matching top-level response.
+function rememberPdfDisposition({
+  tabId,
+  url,
+  statusCode,
+  responseHeaders,
+}: chrome.webRequest.OnHeadersReceivedDetails): undefined {
+  if (tabId < 0) return;
+  pdfDispositions.delete(tabId);
+  if (statusCode < 200 || statusCode >= 300) return;
+  const header = (name: string) =>
+    responseHeaders?.find((item) => item.name.toLowerCase() === name)?.value;
+  if (
+    header('content-type')?.split(';')[0]?.trim().toLowerCase() !==
+    'application/pdf'
+  )
+    return;
+  const disposition = header('content-disposition');
+  const source = readableSource(url);
+  if (source && disposition)
+    pdfDispositions.set(tabId, { url: source, disposition });
+}
+
+function listenForPdfNames(): void {
+  const event = chrome.webRequest.onHeadersReceived;
+  event.removeListener(rememberPdfDisposition);
+  event.addListener(
+    rememberPdfDisposition,
+    { urls: ['http://*/*', 'https://*/*'], types: ['main_frame'] },
+    ['responseHeaders'],
+  );
+}
+
+listenForPdfNames();
+// Chrome rejects webRequest registration until the first host grant.
+chrome.permissions.onAdded.addListener(({ origins }) => {
+  if (origins?.length) listenForPdfNames();
+});
 
 async function settings(): Promise<Settings | undefined> {
   await initialized;
@@ -75,7 +122,14 @@ async function badge(): Promise<void> {
         job.importTask?.result?.status === 'failure'),
   );
   await chrome.action.setBadgeText({
-    text: busy ? '…' : failed ? '!' : '',
+    text: busy ? '…' : failed ? '×' : '',
+  });
+  await chrome.action.setTitle({
+    title: busy
+      ? 'Paperless Upload: Übertragung läuft'
+      : failed
+        ? 'Paperless Upload: Übertragung prüfen'
+        : 'PDF an Paperless senden',
   });
   await chrome.action.setBadgeBackgroundColor({
     color: failed ? '#9c452d' : '#005616',
@@ -89,12 +143,34 @@ async function handle(
   switch (message.type) {
     case 'state':
       return { ok: true, state: await state() };
+    case 'pdf-disposition': {
+      const tabId = sender.tab?.id;
+      if (
+        sender.url !== chrome.runtime.getURL('capture.html') ||
+        tabId === undefined
+      )
+        throw new UserError('Zugriff verweigert.');
+      const match = pdfDispositions.get(tabId);
+      if (match?.url !== message.url) return { ok: true };
+      pdfDispositions.delete(tabId);
+      return { ok: true, disposition: match.disposition };
+    }
     case 'dismiss-results':
       if (sender.url !== chrome.runtime.getURL('popup.html'))
         throw new UserError('Zugriff verweigert.');
       await dismissResults();
       await badge();
       return { ok: true, state: await state() };
+    case 'retry-import': {
+      if (sender.url !== chrome.runtime.getURL('popup.html'))
+        throw new UserError('Zugriff verweigert.');
+      const config = await settings();
+      if (!config)
+        throw new UserError('Bitte richte zuerst deinen Paperless-Server ein.');
+      await retryImport(message.jobId, config.url);
+      await offscreen(true);
+      return { ok: true };
+    }
     case 'settings': {
       if (sender.url !== chrome.runtime.getURL('offscreen.html'))
         throw new UserError('Zugriff verweigert.');
@@ -122,6 +198,10 @@ async function handle(
         );
       }
       await verifyConnection(next);
+      if ((await getJobs()).some(isActive))
+        throw new UserError(
+          'Bitte warte, bis die Übertragung abgeschlossen ist.',
+        );
       await chrome.storage.local.set({ settings: next });
       if (
         previous &&
@@ -138,13 +218,18 @@ async function handle(
     }
     case 'process':
       await offscreen(true);
-      await badge();
+      await badge().catch(() => undefined);
       return { ok: true };
     case 'upload-window': {
       if (sender.url !== chrome.runtime.getURL('popup.html'))
         throw new UserError('Zugriff verweigert.');
-      if (!(await settings()))
+      const config = await settings();
+      if (!config)
         throw new UserError('Bitte richte zuerst deinen Paperless-Server ein.');
+      if (message.serverUrl !== config.url)
+        throw new UserError(
+          'Das Upload-Ziel hat sich geändert. Starte den Upload erneut.',
+        );
       if ((await getJobs()).some(isActive))
         throw new UserError(
           'Bitte warte, bis die laufende Übertragung abgeschlossen ist.',
@@ -162,17 +247,27 @@ async function handle(
           message: localNotice || 'Keine PDF-Tabs in diesem Fenster gefunden.',
           state: await state(),
         };
-      await enqueueWindow(sources);
+      await enqueueWindow(sources, config.url);
       await offscreen(true);
-      await badge();
+      await badge().catch(() => undefined);
       return { ok: true, message: localNotice, state: await state() };
     }
     case 'changed':
       await badge();
       return { ok: true };
     case 'idle':
-      await badge();
       await offscreen(false);
+      await badge();
+      return { ok: true };
+    case 'runner-stopped':
+      if (sender.url !== chrome.runtime.getURL('offscreen.html'))
+        throw new UserError('Zugriff verweigert.');
+      await chrome.action.setBadgeText({ text: '×' });
+      await chrome.action.setBadgeBackgroundColor({ color: '#9c452d' });
+      await chrome.action.setTitle({
+        title:
+          'Paperless Upload: Warteschlange angehalten. Popup erneut öffnen.',
+      });
       return { ok: true };
   }
 }
@@ -202,6 +297,7 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
+  pdfDispositions.delete(tabId);
   void clearCapturedPdf(tabId);
 });
 

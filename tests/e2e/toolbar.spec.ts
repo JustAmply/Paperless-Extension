@@ -6,6 +6,7 @@ import {
   type CDPSession,
 } from '@playwright/test';
 import { createServer, type Server } from 'node:http';
+import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -71,6 +72,10 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
   test(`the toolbar confirms upload of a ${sourceType} PDF without fetching it again or duplicating POSTs`, async ({}, testInfo) => {
     test.setTimeout(60_000);
     const pdf = samplePdf();
+    const expectedName =
+      sourceType === 'blob'
+        ? `PDF von localhost – ${createHash('sha256').update(pdf).digest('hex').slice(0, 8)}.pdf`
+        : 'Rechnung März.pdf';
     const uploads: {
       authorization: string | undefined;
       name: string;
@@ -134,7 +139,10 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
           response.writeHead(200, {
             'content-type': 'application/pdf',
             'content-length': content.length,
-            'content-disposition': 'inline; filename="Toolbar.pdf"',
+            'content-disposition':
+              sourceType === 'post' && sourceMethods.length > 1
+                ? 'inline; filename="Neue Rechnung.pdf"'
+                : "inline; filename=invoice.pdf; filename*=UTF-8''Rechnung%20M%C3%A4rz.pdf",
             'cache-control': 'no-store',
           });
           response.end(content);
@@ -187,7 +195,6 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
             `--disable-extensions-except=${extensionPath}`,
             `--load-extension=${extensionPath}`,
             '--enable-unsafe-extension-debugging',
-            '--disable-features=ExtensionsMenuAccessControl',
           ],
         },
       );
@@ -256,6 +263,12 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
       await manager.close();
       const setup = await context.newPage();
       await setup.goto(`chrome-extension://${id}/popup.html`);
+      // Restore the preapproved origins through permissions.request during setup,
+      // so Chrome dispatches onAdded and enables the response listener.
+      await setup.evaluate(() =>
+        chrome.permissions.remove({ origins: ['https://*/*', 'http://*/*'] }),
+      );
+      await setup.reload();
       await setup.getByLabel('Paperless-Adresse').fill(baseUrl);
       await setup.getByLabel('API-Token', { exact: true }).fill(token);
       await setup
@@ -370,16 +383,16 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
         .poll(async () => {
           const result = await first.command('Runtime.evaluate', {
             expression:
-              'document.querySelector("#job-list [data-status=accepted] .job-message")?.textContent',
+              'Boolean(document.querySelector("#job-list [data-status=accepted]"))',
             returnByValue: true,
           });
-          return (result['result'] as { value?: string })?.value;
+          return (result['result'] as { value?: boolean })?.value;
         })
-        .toBe('An Paperless übertragen');
+        .toBe(true);
       await expect.poll(() => uploads.length).toBe(1);
       expect(uploads[0]).toEqual({
         authorization: `Token ${token}`,
-        name: 'Dokument.pdf',
+        name: expectedName,
         content: pdf,
       });
       expect(sourceRequests).toHaveLength(sourceType === 'blob' ? 0 : 1);
@@ -418,7 +431,7 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
           jobs: [
             {
               status: 'accepted',
-              name: 'Dokument.pdf',
+              name: expectedName,
               source: { url: sourceUrl },
             },
           ],
@@ -470,6 +483,7 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
           expression: 'document.querySelector("#send-current").click()',
         });
         await expect.poll(() => uploads.length).toBe(2);
+        expect(uploads[1]?.name).toBe('Neue Rechnung.pdf');
         expect(uploads[1]?.content).toEqual(
           Buffer.concat([pdf, Buffer.from('% different document\n')]),
         );
@@ -480,6 +494,69 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
         const original = (await sourceCache())[0]!;
         const replacement = await context.newPage();
         await replacement.goto(`chrome-extension://${id}/popup.html`);
+        await test.step('Late captures cannot replace or resurrect a tab entry', async () => {
+          const result = await replacement.evaluate(async (url) => {
+            const {
+              capturePdf,
+              capturedSources,
+              clearCapturedPdf,
+              finishPdfCapture,
+            } = (await import(
+              chrome.runtime.getURL('data/sources.js')
+            )) as typeof import('../../src/data/sources.js');
+            const tabId = -1;
+            const current = async () =>
+              (await capturedSources()).find(
+                (source) => source.tabId === tabId,
+              );
+            const old = {
+              tabId,
+              url,
+              name: 'Old.pdf',
+              createdAt: Date.now(),
+              fingerprint: 'old-loading',
+            };
+            const next = {
+              ...old,
+              name: 'New.pdf',
+              fingerprint: 'new-loading',
+            };
+            const file = new Blob(['%PDF-1.7']);
+            await capturePdf(old);
+            await capturePdf(next);
+            await finishPdfCapture(
+              { ...old, fingerprint: 'old-content', file },
+              old.fingerprint,
+            );
+            await finishPdfCapture(
+              { ...old, error: 'late error' },
+              old.fingerprint,
+            );
+            const afterStale = await current();
+            await finishPdfCapture(
+              { ...next, fingerprint: 'new-content', file },
+              next.fingerprint,
+            );
+            const afterCurrent = await current();
+            await capturePdf(next);
+            await clearCapturedPdf(tabId);
+            await finishPdfCapture(
+              { ...next, fingerprint: 'new-content', file },
+              next.fingerprint,
+            );
+            const afterClear = await current();
+            return { afterStale, afterCurrent, afterClear };
+          }, sourceUrl);
+          expect(result.afterStale).toMatchObject({
+            fingerprint: 'new-loading',
+            availability: 'loading',
+          });
+          expect(result.afterCurrent).toMatchObject({
+            fingerprint: 'new-content',
+            availability: 'ready',
+          });
+          expect(result.afterClear).toBeUndefined();
+        });
         // Fill the real cache without running 25 PDF viewer processes.
         const ready = await replacement.evaluate(async (url) => {
           const { capturePdf, capturedSources, clearCapturedPdf } =

@@ -39,6 +39,8 @@ let releaseTask: (() => void) | undefined;
 let status = 200;
 let profileRedirect = false;
 let replacementProfileRequests = 0;
+let pauseReplacementProfile = false;
+let releaseReplacementProfile: (() => void) | undefined;
 let redirectVisits = 0;
 let slow = false;
 let release: (() => void) | undefined;
@@ -66,7 +68,7 @@ async function chooseFile(
   content = pdf,
 ): Promise<void> {
   const chooser = popup.waitForEvent('filechooser');
-  await popup.getByRole('button', { name: /PDFs hier hineinziehen/ }).click();
+  await popup.getByRole('button', { name: 'Dateien wählen' }).click();
   await (
     await chooser
   ).setFiles({ name, mimeType: 'application/pdf', buffer: content });
@@ -154,6 +156,10 @@ test.beforeAll(async () => {
         request.url === '/other-paperless/api/profile/'
       ) {
         replacementProfileRequests++;
+        if (pauseReplacementProfile)
+          await new Promise<void>((resolve) => {
+            releaseReplacementProfile = resolve;
+          });
         const valid =
           request.headers.authorization === `Token ${replacementToken}`;
         response.writeHead(valid ? 200 : 401, {
@@ -267,6 +273,8 @@ test.beforeEach(async () => {
   status = 200;
   profileRedirect = false;
   replacementProfileRequests = 0;
+  pauseReplacementProfile = false;
+  releaseReplacementProfile = undefined;
   redirectVisits = 0;
   slow = false;
   release = undefined;
@@ -294,6 +302,7 @@ test.beforeEach(async () => {
 });
 
 test.afterEach(async () => {
+  releaseReplacementProfile?.();
   release?.();
   releaseTask?.();
   await context?.close();
@@ -602,8 +611,22 @@ test('dismissing validation errors retains uncertain outcomes and duplicate prot
 
 test('invalid files stay local and a dropped PDF uploads', async () => {
   await connect();
-  await chooseFile('fake.pdf', Buffer.from('<html>This is not a PDF</html>'));
-  await expect(popup.locator('#upload-status')).toContainText('keine PDF');
+  const chooser = popup.waitForEvent('filechooser');
+  await popup.getByRole('button', { name: 'Dateien wählen' }).click();
+  await (
+    await chooser
+  ).setFiles([
+    { name: 'valid.pdf', mimeType: 'application/pdf', buffer: pdf },
+    {
+      name: 'fake.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('<html>This is not a PDF</html>'),
+    },
+  ]);
+  await expect(popup.locator('#upload-status')).toContainText(
+    /fake\.pdf.*keine PDF/,
+  );
+  await expect(popup.locator('#job-list li')).toHaveCount(0);
   expect(uploads).toHaveLength(0);
   const transfer = await popup.evaluateHandle(
     (content) => {
@@ -618,7 +641,7 @@ test('invalid files stay local and a dropped PDF uploads', async () => {
     [...pdf],
   );
   await popup
-    .locator('#drop-zone')
+    .locator('#drop-hint')
     .dispatchEvent('drop', { dataTransfer: transfer });
   await transfer.dispose();
   await expect(
@@ -676,7 +699,7 @@ test('a multi-file batch waits for each upload before starting the next', async 
   await connect();
   slow = true;
   const chooser = popup.waitForEvent('filechooser');
-  await popup.getByRole('button', { name: /PDFs hier hineinziehen/ }).click();
+  await popup.getByRole('button', { name: 'Dateien wählen' }).click();
   await (
     await chooser
   ).setFiles([
@@ -706,6 +729,39 @@ test('a multi-file batch waits for each upload before starting the next', async 
     'First.pdf',
     'Second.pdf',
   ]);
+});
+
+test('saving a new server cannot take over a batch that starts during verification', async () => {
+  await connect();
+  const settings = await openPopup();
+  await settings.getByRole('button', { name: 'Einstellungen' }).click();
+  await settings
+    .getByLabel('Paperless-Adresse')
+    .fill(new URL('/other-paperless/', baseUrl).href);
+  await settings
+    .getByLabel('API-Token', { exact: true })
+    .fill(replacementToken);
+  pauseReplacementProfile = true;
+  await settings.getByRole('button', { name: 'Verbindung speichern' }).click();
+  await expect.poll(() => replacementProfileRequests).toBe(1);
+
+  slow = true;
+  await chooseFile('Existing destination.pdf');
+  await expect.poll(() => uploads.length).toBe(1);
+  releaseReplacementProfile?.();
+  await expect(settings.locator('#settings-status')).toContainText(
+    'Übertragung abgeschlossen',
+  );
+  expect(
+    await settings.evaluate(async () => {
+      const { settings } = await chrome.storage.local.get('settings');
+      return settings?.url;
+    }),
+  ).toBe(baseUrl);
+  release?.();
+  await expect(popup.locator('[data-status="accepted"]')).toContainText(
+    'Existing destination.pdf',
+  );
 });
 
 test('an interrupted POST becomes uncertain after recovery without being sent again', async () => {
@@ -764,30 +820,32 @@ test('dismissing results cannot alter an active batch', async () => {
   expect(uploads).toHaveLength(2);
 });
 
-test('successful imports stay visible until dismissed and still prevent duplicate uploads', async () => {
+test('successful imports disappear after a short delay and still prevent duplicate uploads', async () => {
   await useCurrentPdf();
   await connect();
   taskStatus = 'STARTED';
   relatedDocument = null;
   await popup.locator('#send-current').click();
-  await expect(popup.locator('[data-import-status="pending"]')).toContainText(
-    'verarbeitet',
+  await expect(popup.locator('[data-import-status="pending"]')).toHaveText(
+    'Wird importiert …',
   );
   expect(taskRequests).toBe(1);
   taskStatus = 'SUCCESS';
   relatedDocument = '42';
-  await expect(popup.locator('[data-import-status="success"]')).toContainText(
-    'importiert',
+  await expect(popup.locator('[data-import-status="success"]')).toHaveText(
+    'Importiert',
   );
   await expect(popup.locator('.document-link')).toHaveAttribute(
     'href',
     `${baseUrl}documents/42/details`,
   );
   await screenshot('import-success');
+  await popup.locator('.document-link').focus();
   await popup.clock.setSystemTime(Date.now() + 60_000);
-  await popup.reload();
-  await expect(popup.locator('.document-link')).toBeVisible();
-  await popup.locator('#dismiss-results').click();
+  // Wait past the next state refresh to verify focus prevents the row from vanishing.
+  await popup.waitForTimeout(750);
+  await expect(popup.locator('.document-link')).toBeFocused();
+  await popup.keyboard.press('Shift+Tab');
   await expect(popup.locator('#job-list li')).toHaveCount(0);
   await expect(popup.locator('#batch-summary')).toBeHidden();
   await popup.reload();
@@ -798,6 +856,56 @@ test('successful imports stay visible until dismissed and still prevent duplicat
   );
   expect(uploads).toHaveLength(1);
   expect(taskRequests).toBe(2);
+});
+
+test('settings fit without scrolling or shifting when connection feedback is visible', async () => {
+  await connect();
+  const settings = popup.getByRole('button', { name: 'Einstellungen' });
+  const layout = () =>
+    settings.evaluate((button) => ({
+      x: button.getBoundingClientRect().x,
+      width: document.body.clientWidth,
+      overflows: document.body.scrollHeight > document.body.clientHeight,
+    }));
+  const uploadLayout = await layout();
+  await settings.click();
+  await expect(popup.locator('#http-warning')).toBeVisible();
+  expect(await layout()).toEqual({ ...uploadLayout, overflows: false });
+  profileRedirect = true;
+  await popup.getByRole('button', { name: 'Verbindung speichern' }).click();
+  await expect(popup.locator('#settings-status')).toContainText(
+    'leitet die API-Anfrage weiter',
+  );
+  await expect(popup.locator('.privacy-note')).toBeInViewport();
+  expect(await layout()).toEqual({ ...uploadLayout, overflows: false });
+  await screenshot('settings-no-scroll');
+});
+
+test('success display preference persists and applies without resending the PDF', async () => {
+  await connect();
+  const settings = popup.getByRole('button', { name: 'Einstellungen' });
+  const duration = popup.getByLabel('Erfolgsmeldungen ausblenden');
+  await settings.click();
+  await expect(duration).toBeFocused();
+  await expect(duration).toHaveValue('8');
+  await duration.selectOption('0');
+  await expect(duration).toBeEnabled();
+  await settings.click();
+  await chooseFile();
+  const result = popup.locator('[data-import-status="success"]');
+  await expect(result).toBeVisible();
+  await popup.clock.setSystemTime(Date.now() + 60_000);
+  await popup.reload();
+  await expect(result).toBeVisible();
+  await settings.click();
+  await expect(duration).toHaveValue('0');
+  await screenshot('display-settings');
+  await duration.selectOption('30');
+  await expect(duration).toBeEnabled();
+  await settings.click();
+  await expect(result).toHaveCount(0);
+  expect(uploads).toHaveLength(1);
+  expect(taskRequests).toBe(1);
 });
 
 for (const duplicate of [false, true]) {
@@ -848,6 +956,23 @@ test('unavailable task permissions stay visible and can be dismissed without ano
   expect(uploads).toHaveLength(1);
 });
 
+test('retrying an unavailable import status only sends another GET', async () => {
+  await connect();
+  taskHttpStatus = 403;
+  await chooseFile();
+  const retry = popup.getByRole('button', {
+    name: /Importstatus erneut prüfen/,
+  });
+  await expect(retry).toBeVisible();
+  expect(taskRequests).toBe(1);
+  taskHttpStatus = 200;
+  await retry.click();
+  await expect(popup.locator('[data-import-status="success"]')).toBeVisible();
+  await expect(retry).toHaveCount(0);
+  expect(taskRequests).toBe(2);
+  expect(uploads).toHaveLength(1);
+});
+
 test('automatic import checks continue after closing the popup', async () => {
   await connect();
   taskStatus = 'PENDING';
@@ -871,7 +996,7 @@ test('automatic import checks never query an old task on a new server', async ()
       settings: { url, token: 'new-fixture-token' },
     });
   }, new URL('/other-server/', baseUrl).href);
-  await expect(popup.locator('.import-result')).toContainText(
+  await expect(popup.locator('.job-message')).toContainText(
     'anderen Paperless-Server',
   );
   await popup.waitForTimeout(5_500);
@@ -879,7 +1004,7 @@ test('automatic import checks never query an old task on a new server', async ()
   expect(uploads).toHaveLength(1);
 });
 
-test('an in-flight import check cannot resurrect a replaced batch', async () => {
+test('an in-flight import remains tracked while another batch uploads', async () => {
   await connect();
   slowTask = true;
   await chooseFile('Old.pdf');
@@ -888,10 +1013,12 @@ test('an in-flight import check cannot resurrect a replaced batch', async () => 
   await expect(popup.locator('#job-list')).toContainText('New.pdf');
   slowTask = false;
   releaseTask?.();
-  await expect(popup.locator('[data-import-status="success"]')).toBeVisible();
+  await expect(popup.locator('[data-import-status="success"]')).toHaveCount(2);
   await popup.reload();
-  await expect(popup.locator('#job-list li')).toHaveCount(1);
-  await expect(popup.locator('#job-list')).toContainText('New.pdf');
+  await expect(popup.locator('#job-list li')).toHaveText([
+    /Old\.pdf.*Importiert/,
+    /New\.pdf.*Importiert/,
+  ]);
   expect(uploads).toHaveLength(2);
 });
 
@@ -947,6 +1074,19 @@ test('web access is requested once, denial does not upload, and granted access i
   expect(requests).toHaveLength(1);
   expect(uploads).toHaveLength(0);
   await ordinary.close();
+});
+
+test('the popup brand opens the configured Paperless base address in a new tab', async () => {
+  const brand = popup.getByRole('link', { name: 'Paperless Upload' });
+  await expect(brand).toHaveCount(0);
+  await connect();
+  await expect(brand).toHaveAttribute('href', baseUrl);
+  const opened = context.waitForEvent('page');
+  await brand.locator('img').click();
+  const paperless = await opened;
+  await expect(paperless).toHaveURL(baseUrl);
+  await expect(paperless).toHaveTitle('Fixture');
+  await expect(popup).toHaveURL(popupUrl);
 });
 
 test('settings artwork is centered and the ready screen has no secondary workflow buttons', async () => {

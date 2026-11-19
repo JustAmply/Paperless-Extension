@@ -1,6 +1,12 @@
-import { capturePdf } from './data/sources.js';
+import { capturePdf, finishPdfCapture } from './data/sources.js';
 import { errorMessage, UserError } from './shared/model.js';
-import { documentSource, pdfName, validatePdf } from './shared/pdf.js';
+import {
+  documentSource,
+  pdfFingerprint,
+  pdfName,
+  validatePdf,
+} from './shared/pdf.js';
+import { request } from './shared/messaging.js';
 
 function showError(error: unknown): void {
   const status = document.getElementById('status');
@@ -14,13 +20,23 @@ async function capture(): Promise<void> {
   const stream = await chrome.mimeHandler.getStreamInfo();
   const url = documentSource(stream.originalUrl);
   if (!url) throw new UserError('Diese PDF-Adresse wird nicht unterstützt.');
-  const disposition = Object.entries(stream.responseHeaders).find(
+  const streamDisposition = Object.entries(stream.responseHeaders).find(
     ([name]) => name.toLowerCase() === 'content-disposition',
   )?.[1];
+  let disposition =
+    typeof streamDisposition === 'string' ? streamDisposition : '';
+  if (!disposition && /^https?:/.test(url)) {
+    const response = await request({
+      target: 'background',
+      type: 'pdf-disposition',
+      url,
+    }).catch(() => undefined);
+    disposition = response?.disposition ?? '';
+  }
   const metadata = {
     tabId: stream.tabId,
     url,
-    name: pdfName(url, typeof disposition === 'string' ? disposition : ''),
+    name: pdfName(url, disposition),
     createdAt: Date.now(),
     fingerprint: crypto.randomUUID(),
   };
@@ -29,31 +45,33 @@ async function capture(): Promise<void> {
   try {
     const response = await fetch(stream.streamUrl);
     if (!response.ok) throw new Error('Missing PDF stream');
+    disposition ||= response.headers.get('content-disposition') ?? '';
+    metadata.name = pdfName(url, disposition);
     // Let the browser assemble a Blob without copying the document into a
     // JavaScript byte array. The viewer also supports PDFs above the upload cap.
     file = await response.blob();
   } catch (error) {
-    await capturePdf({ ...metadata, error: errorMessage(error) }).catch(
-      showError,
-    );
+    await finishPdfCapture(
+      { ...metadata, error: errorMessage(error) },
+      metadata.fingerprint,
+    ).catch(showError);
     throw error;
   }
   const status = document.getElementById('status');
   if (status) status.hidden = true;
   try {
     await validatePdf(file);
-    const digest = await crypto.subtle.digest(
-      'SHA-256',
-      await file.arrayBuffer(),
+    const fingerprint = await pdfFingerprint(file);
+    metadata.name = pdfName(url, disposition, fingerprint);
+    await finishPdfCapture(
+      { ...metadata, fingerprint, file },
+      metadata.fingerprint,
     );
-    const fingerprint = Array.from(new Uint8Array(digest), (byte) =>
-      byte.toString(16).padStart(2, '0'),
-    ).join('');
-    await capturePdf({ ...metadata, fingerprint, file });
   } catch (error) {
-    await capturePdf({ ...metadata, error: errorMessage(error) }).catch(
-      showError,
-    );
+    await finishPdfCapture(
+      { ...metadata, error: errorMessage(error) },
+      metadata.fingerprint,
+    ).catch(showError);
     showError(error);
   }
   const viewer = document.createElement('iframe');

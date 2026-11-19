@@ -38,6 +38,7 @@ export interface Job {
   createdAt: number;
   completedAt?: number;
   dismissed?: boolean;
+  serverUrl?: string;
   source?: Source;
   importTask?: {
     taskId: string;
@@ -63,16 +64,20 @@ export interface State {
 
 export type BackgroundRequest =
   | { target: 'background'; type: 'state' }
+  | { target: 'background'; type: 'pdf-disposition'; url: string }
   | { target: 'background'; type: 'dismiss-results' }
+  | { target: 'background'; type: 'retry-import'; jobId: string }
   | { target: 'background'; type: 'save'; url: string; token: string }
   | { target: 'background'; type: 'process' }
   | {
       target: 'background';
       type: 'upload-window';
       windowId: number;
+      serverUrl: string;
     }
   | { target: 'background'; type: 'changed' }
   | { target: 'background'; type: 'idle' }
+  | { target: 'background'; type: 'runner-stopped' }
   | { target: 'background'; type: 'settings' };
 
 export interface BackgroundResponse {
@@ -81,6 +86,7 @@ export interface BackgroundResponse {
   state?: State;
   settings?: Settings;
   message?: string;
+  disposition?: string;
 }
 
 export function isActive(job: Job): boolean {
