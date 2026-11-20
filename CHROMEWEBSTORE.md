@@ -6,7 +6,7 @@ Last updated: 2026-11-20
 
 - Name: Paperless Upload
 - Category: Productivity → Tools
-- Default language: German
+- Default language: English
 - Single purpose: Send user-selected PDF documents to the user's own Paperless-ngx server.
 
 The manifest supplies each short description from `extensionDescription` in the corresponding [Chrome message catalog](_locales/). The following plain-text files contain the detailed descriptions exactly as they should appear in the Developer Dashboard.
@@ -75,6 +75,7 @@ Policy source: [docs/PRIVACY_POLICY.md](docs/PRIVACY_POLICY.md). Public policy U
 
 | Version | Date       | Changes                                                                                         | Status      |
 | ------- | ---------- | ----------------------------------------------------------------------------------------------- | ----------- |
+| 0.4.1   | 2026-11-20 | Use English for the default extension and store language.                                       | Local build |
 | 0.4.0   | 2026-11-20 | Localize the extension and store materials in ten languages.                                    | Store draft |
 | 0.3.1   | 2026-11-19 | Save displayed PDFs by keyboard and recognize protected invoices in direct or embedded viewers. | Local build |
 | 0.3.0   | 2026-11-17 | First store release with PDF uploads and import-status feedback.                                | Published   |

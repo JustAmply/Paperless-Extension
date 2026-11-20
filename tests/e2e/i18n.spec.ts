@@ -16,14 +16,14 @@ for (const sample of [
   },
   {
     locale: 'cs',
-    language: 'de',
-    setup: 'Mit Paperless verbinden',
-    address: 'Paperless-Adresse',
-    token: 'API-Token',
-    settings: 'Einstellungen',
-    connect: 'Verbinden',
-    actionTitle: 'PDF an Paperless senden',
-    error: 'Bitte gib eine gültige Paperless-Adresse ein.',
+    language: 'en',
+    setup: 'Connect to Paperless',
+    address: 'Paperless address',
+    token: 'API token',
+    settings: 'Settings',
+    connect: 'Connect',
+    actionTitle: 'Send PDF to Paperless',
+    error: 'Enter a valid Paperless address.',
   },
 ]) {
   test(`Chrome locale ${sample.locale} uses ${sample.language} for the manifest, popup and validation`, async () => {

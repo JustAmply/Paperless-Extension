@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Paperless Upload",
-  "default_locale": "de",
-  "version": "0.4.0",
+  "default_locale": "en",
+  "version": "0.4.1",
   "description": "__MSG_extensionDescription__",
   "minimum_chrome_version": "116",
   "permissions": [

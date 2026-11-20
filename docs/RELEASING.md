@@ -35,7 +35,7 @@ Run `npm run build` followed by `node scripts/store-assets.mjs` with Playwright 
 When the release changes listing text or graphics:
 
 1. Choose `upload` in the release workflow to create a package draft. The uploaded package supplies the locale list and localized short descriptions.
-2. Open **Store listing** in the Developer Dashboard. Select each language, paste its [detailed description](../store/listing/) and replace its localized screenshot with the matching `screenshot-1280x800.png`. Use the German screenshot for the default listing.
+2. Open **Store listing** in the Developer Dashboard. Select each language, paste its [detailed description](../store/listing/) and replace its localized screenshot with the matching `screenshot-1280x800.png`. Use the English screenshot for the default listing.
 3. Replace the global small promotional tile with `store/graphics/promo-440x280.png`. Save the listing and verify the language selections, images and descriptions before submitting the draft for review.
 
 ## References

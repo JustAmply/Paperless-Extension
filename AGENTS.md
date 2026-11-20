@@ -1,6 +1,6 @@
 # Paperless Upload
 
-Focused Manifest V3 Chrome extension. Its only product feature is PDF upload to a user-configured Paperless-ngx server. Keep user-facing copy in the Chrome message catalogs under `_locales/` and update every supported locale together. German is the fallback. Source, documentation, and identifiers are English.
+Focused Manifest V3 Chrome extension. Its only product feature is PDF upload to a user-configured Paperless-ngx server. Keep user-facing copy in the Chrome message catalogs under `_locales/` and update every supported locale together. English is the fallback. Source, documentation, and identifiers are English.
 
 - Use strict TypeScript, native ES modules, and browser APIs without runtime dependencies or remote code.
 - For changes to the upload flow, permissions, or lifecycle, read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for component responsibilities and platform constraints.

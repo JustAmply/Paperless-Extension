@@ -1,6 +1,6 @@
 import { legacyMessage } from './legacy-message.js';
 
-export type MessageKey = keyof typeof import('../../_locales/de/messages.json');
+export type MessageKey = keyof typeof import('../../_locales/en/messages.json');
 
 export interface LocalizedMessage {
   key: MessageKey;
