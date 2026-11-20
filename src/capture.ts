@@ -1,3 +1,4 @@
+import { localizeDocument, resolveMessage } from './shared/i18n.js';
 import {
   capturePdf,
   finishPdfCapture,
@@ -13,11 +14,13 @@ import {
 } from './shared/pdf.js';
 import { request } from './shared/messaging.js';
 
+localizeDocument();
+
 function showError(error: unknown): void {
   const status = document.getElementById('status');
   if (status) {
     status.hidden = false;
-    status.textContent = errorMessage(error);
+    status.textContent = resolveMessage(errorMessage(error));
   }
 }
 

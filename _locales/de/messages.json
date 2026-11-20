@@ -1,0 +1,408 @@
+{
+  "languageTag": {
+    "message": "de"
+  },
+  "extensionDescription": {
+    "message": "Geöffnete PDFs oder lokale PDF-Dateien direkt an deinen Paperless-ngx-Server übertragen."
+  },
+  "sendPdf": {
+    "message": "PDF an Paperless senden"
+  },
+  "badgeBusy": {
+    "message": "Paperless Upload: Übertragung läuft"
+  },
+  "badgeCheck": {
+    "message": "Paperless Upload: Übertragung prüfen"
+  },
+  "badgeStopped": {
+    "message": "Paperless Upload: Warteschlange angehalten. Popup erneut öffnen."
+  },
+  "accessDenied": {
+    "message": "Zugriff verweigert."
+  },
+  "waitForTransfer": {
+    "message": "Bitte warte, bis die laufende Übertragung abgeschlossen ist."
+  },
+  "allowServer": {
+    "message": "Bitte erlaube den Zugriff auf deinen Paperless-Server."
+  },
+  "restartUpload": {
+    "message": "Das Upload-Ziel hat sich geändert. Starte den Upload erneut."
+  },
+  "localTabsSkipped": {
+    "message": "Lokale Tabs wurden übersprungen. Erlaube den Zugriff auf lokale PDFs, um sie einzubeziehen."
+  },
+  "noPdfTabs": {
+    "message": "Keine PDF-Tabs in diesem Fenster gefunden."
+  },
+  "allowWebsites": {
+    "message": "Der Webseitenzugriff fehlt. Bitte klicke erneut auf „Alle PDF-Tabs hochladen“ und erlaube den Zugriff in Chrome."
+  },
+  "cannotCheckAgain": {
+    "message": "Dieser Importstatus kann nicht erneut geprüft werden."
+  },
+  "selectPdf": {
+    "message": "Bitte wähle mindestens eine PDF aus."
+  },
+  "batchLimit": {
+    "message": "Die ausgewählten PDFs dürfen zusammen höchstens $LIMIT$ MiB groß sein.",
+    "placeholders": {
+      "limit": {
+        "content": "$1"
+      }
+    }
+  },
+  "invalidFileDetail": {
+    "message": "„$FILE$“: $REASON$",
+    "placeholders": {
+      "file": {
+        "content": "$1"
+      },
+      "reason": {
+        "content": "$2"
+      }
+    }
+  },
+  "waitingForTransfer": {
+    "message": "Wartet auf Übertragung"
+  },
+  "tabPdfChanged": {
+    "message": "Die PDF im Tab hat sich geändert oder wurde geschlossen. Bitte öffne die Erweiterung erneut."
+  },
+  "tabPdfLoading": {
+    "message": "Die PDF wird noch geladen. Bitte warte kurz und versuche es erneut."
+  },
+  "cacheUnavailable": {
+    "message": "Die zwischengespeicherte PDF ist nicht mehr verfügbar. Speichere sie im PDF-Viewer und ziehe sie hier hinein."
+  },
+  "uiSettings": {
+    "message": "Einstellungen"
+  },
+  "uiConnectToPaperless": {
+    "message": "Mit Paperless verbinden"
+  },
+  "uiSetupHint": {
+    "message": "Einmal einrichten. PDFs direkt ablegen."
+  },
+  "uiDisplayTitle": {
+    "message": "Anzeige"
+  },
+  "uiHideSuccess": {
+    "message": "Erfolgsmeldungen ausblenden"
+  },
+  "uiAfterSeconds": {
+    "message": "Nach $SECONDS$ Sekunden",
+    "placeholders": {
+      "seconds": {
+        "content": "$1",
+        "example": "15"
+      }
+    }
+  },
+  "uiNeverHide": {
+    "message": "Nicht automatisch"
+  },
+  "uiSavedImmediately": {
+    "message": "Die Auswahl wird sofort gespeichert."
+  },
+  "uiConnection": {
+    "message": "Paperless-Verbindung"
+  },
+  "uiServerAddress": {
+    "message": "Paperless-Adresse"
+  },
+  "uiServerHelp": {
+    "message": "Die Basisadresse deines Servers, ggf. mit Unterpfad."
+  },
+  "uiApiToken": {
+    "message": "API-Token"
+  },
+  "uiYourToken": {
+    "message": "Dein API-Token"
+  },
+  "uiFindToken": {
+    "message": "In Paperless unter „Mein Profil“ → „API-Token“."
+  },
+  "uiHttpWarning": {
+    "message": "HTTP überträgt Token und PDFs unverschlüsselt."
+  },
+  "uiConnectionAccess": {
+    "message": "Chrome fragt einmalig nach Zugriff auf alle Webseiten, damit du PDFs ohne weitere Freigaben hochladen kannst."
+  },
+  "uiConnect": {
+    "message": "Verbinden"
+  },
+  "uiLocalToken": {
+    "message": "Token nur in diesem Chrome-Profil gespeichert."
+  },
+  "uiUploadPdfs": {
+    "message": "PDFs hochladen"
+  },
+  "uiUploadCurrent": {
+    "message": "Aktuelle PDF hochladen"
+  },
+  "uiChooseFiles": {
+    "message": "Dateien wählen"
+  },
+  "uiUploadAllTabs": {
+    "message": "Alle PDF-Tabs hochladen"
+  },
+  "uiUploadWindow": {
+    "message": "PDFs im aktuellen Fenster hochladen"
+  },
+  "uiAllTabs": {
+    "message": "Alle PDF-Tabs"
+  },
+  "uiDropHint": {
+    "message": "Oder PDFs hierher ziehen"
+  },
+  "uiWebAccess": {
+    "message": "Chrome fragt einmalig nach Zugriff auf alle Webseiten."
+  },
+  "uiAllowLocal": {
+    "message": "Zugriff auf lokale PDFs erlauben"
+  },
+  "uiTransfers": {
+    "message": "Übertragungen"
+  },
+  "uiDismiss": {
+    "message": "Meldungen schließen"
+  },
+  "uiOpeningPdf": {
+    "message": "PDF wird geöffnet"
+  },
+  "uiLoadingPdf": {
+    "message": "PDF wird geladen …"
+  },
+  "uiImported": {
+    "message": "Importiert"
+  },
+  "uiDuplicate": {
+    "message": "Bereits vorhanden"
+  },
+  "uiImportOtherServer": {
+    "message": "Import gehört zu einem anderen Paperless-Server."
+  },
+  "uiImporting": {
+    "message": "Wird importiert …"
+  },
+  "uiTransferred": {
+    "message": "Übertragen"
+  },
+  "uiWaiting": {
+    "message": "Wartet"
+  },
+  "uiDownloading": {
+    "message": "Wird geladen …"
+  },
+  "uiUploading": {
+    "message": "Wird hochgeladen …"
+  },
+  "uiOpenInPaperless": {
+    "message": "In Paperless öffnen"
+  },
+  "uiOpenNamedDocument": {
+    "message": "$NAME$ in Paperless öffnen",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "invoice.pdf"
+      }
+    }
+  },
+  "uiRecheckImport": {
+    "message": "Importstatus erneut prüfen"
+  },
+  "uiRecheckNamedImport": {
+    "message": "$NAME$: Importstatus erneut prüfen",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "invoice.pdf"
+      }
+    }
+  },
+  "uiOpenPaperlessTab": {
+    "message": "Paperless im neuen Tab öffnen"
+  },
+  "uiAlreadySent": {
+    "message": "Bereits an Paperless übertragen"
+  },
+  "uiUnconfirmed": {
+    "message": "Übertragung unbestätigt"
+  },
+  "uiPreparing": {
+    "message": "Vorbereitung … Fenster kurz geöffnet lassen."
+  },
+  "uiMayClose": {
+    "message": "Du kannst dieses Fenster schließen."
+  },
+  "uiKeepToken": {
+    "message": "Gespeicherten Token beibehalten"
+  },
+  "uiKeepTokenHelp": {
+    "message": "Leer lassen, um den gespeicherten Token zu behalten."
+  },
+  "uiNewTokenHelp": {
+    "message": "Gib für die neue Paperless-Adresse einen API-Token ein."
+  },
+  "uiCheckingConnection": {
+    "message": "Verbindung wird geprüft …"
+  },
+  "uiSiteDenied": {
+    "message": "Der Webseitenzugriff wurde nicht erlaubt. Bitte bestätige die Freigabe in Chrome."
+  },
+  "uiSaveConnection": {
+    "message": "Verbindung speichern"
+  },
+  "uiSaveChoiceFailed": {
+    "message": "Die Auswahl konnte nicht gespeichert werden."
+  },
+  "uiTabAccessDenied": {
+    "message": "Der Zugriff auf die PDF-Tabs wurde nicht erlaubt."
+  },
+  "uiLocalAccessDenied": {
+    "message": "Der Zugriff auf lokale PDFs wurde nicht erlaubt."
+  },
+  "uiEnableFileAccess": {
+    "message": "Aktiviere unter chrome://extensions → Paperless Upload → Details den „Zugriff auf Datei-URLs“. Alternativ kannst du die PDF hier hineinziehen."
+  },
+  "actionFailed": {
+    "message": "Die Aktion konnte nicht abgeschlossen werden. Bitte versuche es erneut."
+  },
+  "pdfTooLarge": {
+    "message": "Die PDF ist zu groß. Pro Datei sind bis zu 50 MiB möglich."
+  },
+  "invalidPdf": {
+    "message": "Diese Datei ist keine PDF. Bitte wähle eine PDF-Datei aus."
+  },
+  "invalidServer": {
+    "message": "Bitte gib eine gültige Paperless-Adresse ein."
+  },
+  "invalidServerUrl": {
+    "message": "Nutze eine HTTP(S)-Adresse ohne Zugangsdaten, Suche oder Sprungmarke."
+  },
+  "invalidTokenFormat": {
+    "message": "Bitte gib deinen Paperless-API-Token ohne Leerzeichen ein."
+  },
+  "sourceFetchFailed": {
+    "message": "Die PDF lässt sich nicht erneut abrufen. Lade die PDF aus dem geöffneten PDF-Viewer herunter und wähle sie hier aus oder ziehe sie hinein."
+  },
+  "sourceExpired": {
+    "message": "Die ursprüngliche PDF-Adresse ist nicht mehr verfügbar. Der Link kann abgelaufen oder nur einmal gültig sein (HTTP $status$). Es wurde nichts an Paperless gesendet. Lade die PDF aus dem geöffneten PDF-Viewer herunter und wähle sie hier aus oder ziehe sie hinein.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "sourceDenied": {
+    "message": "Die Website verweigert den Zugriff auf die PDF. Möglicherweise ist die Anmeldung abgelaufen (HTTP $status$). Es wurde nichts an Paperless gesendet. Lade die PDF aus dem geöffneten PDF-Viewer herunter und wähle sie hier aus oder ziehe sie hinein.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "sourceHttpError": {
+    "message": "Die Website konnte die PDF nicht liefern (HTTP $status$). Es wurde nichts an Paperless gesendet. Lade die PDF aus dem geöffneten PDF-Viewer herunter und wähle sie hier aus oder ziehe sie hinein.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "sourceInterrupted": {
+    "message": "Der Abruf der PDF wurde unterbrochen. Lade die PDF aus dem geöffneten PDF-Viewer herunter und wähle sie hier aus oder ziehe sie hinein."
+  },
+  "apiInvalidToken": {
+    "message": "Der API-Token ist ungültig. Bitte prüfe ihn in den Einstellungen."
+  },
+  "apiDenied": {
+    "message": "Keine Berechtigung. Prüfe die Rechte des Tokens und den Serverzugriff."
+  },
+  "apiTooLarge": {
+    "message": "Der Server lehnt die Dateigröße ab. Prüfe sein Upload-Limit."
+  },
+  "apiRateLimited": {
+    "message": "Zu viele Anfragen. Bitte versuche es später erneut."
+  },
+  "apiRejected": {
+    "message": "Paperless hat die Anfrage abgelehnt (HTTP $status$). Prüfe die Adresse und gegebenenfalls die Paperless-Protokolle.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "apiUnreachable": {
+    "message": "Paperless ist nicht erreichbar. Prüfe Adresse, HTTPS-Zertifikat und Netzwerk."
+  },
+  "apiRedirect": {
+    "message": "Der Server leitet die API-Anfrage weiter. Nutze die direkte Paperless-Basisadresse. Ein vorgeschalteter Login muss Token-Zugriff auf /api/ erlauben."
+  },
+  "apiNotFound": {
+    "message": "Unter dieser Adresse antwortet keine Paperless-API. Nutze die Basisadresse, gegebenenfalls mit Unterpfad."
+  },
+  "importUnavailable": {
+    "message": "Importstatus nicht verfügbar. Die PDF wurde übertragen. Prüfe den Import in Paperless."
+  },
+  "importRetrying": {
+    "message": "Importstatus vorübergehend nicht verfügbar. Wird automatisch erneut geprüft …"
+  },
+  "importStatusDenied": {
+    "message": "Kein Zugriff auf den Importstatus. Prüfe den API-Token und die Aufgaben-Berechtigung in Paperless."
+  },
+  "importProcessing": {
+    "message": "Paperless verarbeitet die PDF …"
+  },
+  "importSuccess": {
+    "message": "In Paperless importiert"
+  },
+  "importFailed": {
+    "message": "Paperless konnte die PDF nicht importieren. Prüfe die Aufgabe in Paperless."
+  },
+  "importDuplicate": {
+    "message": "Bereits vorhanden. Paperless hat ein Duplikat erkannt."
+  },
+  "importCancelled": {
+    "message": "Der Import wurde in Paperless abgebrochen."
+  },
+  "uploadUncertain": {
+    "message": "Keine Bestätigung erhalten. Prüfe zuerst den Paperless-Posteingang, bevor du die Datei erneut sendest."
+  },
+  "downloadInterrupted": {
+    "message": "Der Abruf wurde unterbrochen. Bitte versuche es erneut."
+  },
+  "setupServer": {
+    "message": "Bitte richte deinen Paperless-Server ein."
+  },
+  "destinationChanged": {
+    "message": "Das Upload-Ziel hat sich geändert oder fehlt. Wähle die PDF erneut aus."
+  },
+  "fetchingOpenPdf": {
+    "message": "Geöffnete PDF wird abgerufen …"
+  },
+  "sourceNotPdf": {
+    "message": "Keine PDF erhalten. Die Website liefert möglicherweise eine Anmeldeseite. Speichere die PDF im Viewer und wähle sie hier aus."
+  },
+  "fileUnavailable": {
+    "message": "Die Datei ist nicht mehr verfügbar. Bitte wähle sie erneut aus."
+  },
+  "sendingToPaperless": {
+    "message": "Wird an Paperless übertragen …"
+  },
+  "uploadAccepted": {
+    "message": "An Paperless übertragen"
+  },
+  "importTakingLonger": {
+    "message": "Die PDF wurde übertragen. Der Import dauert länger. Prüfe den Status in Paperless."
+  },
+  "uploadOtherServer": {
+    "message": "Dieser Upload gehört zu einem anderen Paperless-Server."
+  }
+}

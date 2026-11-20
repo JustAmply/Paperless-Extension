@@ -1,3 +1,4 @@
+import { browserLocale } from './locale.js';
 import { chromium, expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
@@ -9,7 +10,9 @@ test('saving a newly opened invoice uses its displayed PDF and filename', async 
     testInfo.outputPath('profile'),
     {
       channel: 'chromium',
+      ...browserLocale('de'),
       args: [
+        '--lang=de',
         `--disable-extensions-except=${extension}`,
         `--load-extension=${extension}`,
       ],

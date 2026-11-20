@@ -27,18 +27,24 @@ test('connection verification authenticates against the profile endpoint and pre
         headers: { 'content-type': 'text/html' },
       }),
   );
-  await assert.rejects(verifyConnection(settings), /keine Paperless-API/);
+  await assert.rejects(verifyConnection(settings), {
+    userMessage: { key: 'apiNotFound' },
+  });
   fetchMock.mock.mockImplementation(async () =>
     Response.json({ auth_token: 'different-fixture-token' }),
   );
-  await assert.rejects(verifyConnection(settings), /keine Paperless-API/);
+  await assert.rejects(verifyConnection(settings), {
+    userMessage: { key: 'apiNotFound' },
+  });
 });
 
 test('connection verification rejects invalid tokens rather than accepting the public API root', async (t) => {
   const fetchMock = t.mock.method(globalThis, 'fetch', async () =>
     Response.json({ detail: 'Invalid token.' }, { status: 401 }),
   );
-  await assert.rejects(verifyConnection(settings), /API-Token ist ungültig/);
+  await assert.rejects(verifyConnection(settings), {
+    userMessage: { key: 'apiInvalidToken' },
+  });
   assert.equal(fetchMock.mock.callCount(), 1);
 });
 
@@ -46,10 +52,9 @@ test('connection verification reports redirects without following them or sendin
   const fetchMock = t.mock.method(globalThis, 'fetch', async () =>
     Response.redirect('https://login.example/', 302),
   );
-  await assert.rejects(
-    verifyConnection(settings),
-    /leitet die API-Anfrage weiter/,
-  );
+  await assert.rejects(verifyConnection(settings), {
+    userMessage: { key: 'apiRedirect' },
+  });
   assert.equal(fetchMock.mock.callCount(), 1);
   assert.equal(fetchMock.mock.calls[0].arguments[1].redirect, 'manual');
 });
@@ -86,22 +91,21 @@ test('upload confines the token to the configured destination and sends the name
 });
 
 test('known HTTP rejections remain actionable failures and never trigger a retry', async (t) => {
-  for (const [status, message] of [
-    [401, /Token/],
-    [403, /Berechtigung/],
-    [413, /Dateigröße/],
-    [429, /Zu viele/],
-    [404, /HTTP 404/],
+  for (const [status, userMessage] of [
+    [401, { key: 'apiInvalidToken' }],
+    [403, { key: 'apiDenied' }],
+    [413, { key: 'apiTooLarge' }],
+    [429, { key: 'apiRateLimited' }],
+    [404, { key: 'apiRejected', substitutions: ['404'] }],
   ]) {
     const fetchMock = t.mock.method(
       globalThis,
       'fetch',
       async () => new Response(null, { status }),
     );
-    await assert.rejects(
-      uploadPdf(settings, pdf, 'invoice.pdf'),
-      (error) => error instanceof UserError && message.test(error.message),
-    );
+    await assert.rejects(uploadPdf(settings, pdf, 'invoice.pdf'), {
+      userMessage,
+    });
     assert.equal(fetchMock.mock.callCount(), 1);
     fetchMock.mock.restore();
   }
@@ -137,6 +141,7 @@ test('connection errors do not expose server response bodies or credential value
   await assert.rejects(
     verifyConnection(settings),
     (error) =>
-      error instanceof UserError && !error.message.includes(settings.token),
+      error instanceof UserError &&
+      !JSON.stringify(error.userMessage).includes(settings.token),
   );
 });

@@ -1,3 +1,4 @@
+import { message, type LocalizedMessage } from '../shared/i18n.js';
 import type { Source, SourceInfo } from '../shared/model.js';
 import { openDatabase } from './database.js';
 
@@ -10,15 +11,14 @@ export interface CapturedPdf extends Source {
   name: string;
   createdAt: number;
   file?: Blob;
-  error?: string;
+  error?: LocalizedMessage | string;
 }
 
 export function captureKey(source: Source): string | number {
   return source.documentId ?? source.tabId;
 }
 
-const unavailable =
-  'Die zwischengespeicherte PDF ist nicht mehr verfügbar. Speichere sie im PDF-Viewer und ziehe sie hier hinein.';
+const unavailable = message('cacheUnavailable');
 
 export function capturePdf(pdf: CapturedPdf): Promise<void> {
   return writeCapture(pdf);

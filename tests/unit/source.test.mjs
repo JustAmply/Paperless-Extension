@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import german from '../../_locales/de/messages.json' with { type: 'json' };
 import { downloadPdf } from '../../dist/services/source.js';
 import { MAX_PDF_BYTES } from '../../dist/shared/model.js';
 
@@ -81,10 +82,9 @@ test('streaming stops at the size limit even without a trustworthy content lengt
     'fetch',
     async () => new Response(stream, { headers: { 'content-length': '1' } }),
   );
-  await assert.rejects(
-    downloadPdf('https://files.example/large.pdf'),
-    /zu groß/,
-  );
+  await assert.rejects(downloadPdf('https://files.example/large.pdf'), {
+    userMessage: { key: 'pdfTooLarge' },
+  });
   assert.equal(cancelled, true);
 });
 
@@ -94,17 +94,16 @@ test('source HTTP and network failures explain the manual upload path', async (t
     'fetch',
     async () => new Response(null, { status: 403 }),
   );
-  await assert.rejects(
-    downloadPdf('https://files.example/private.pdf'),
-    /HTTP 403/,
-  );
+  await assert.rejects(downloadPdf('https://files.example/private.pdf'), {
+    userMessage: { key: 'sourceDenied', substitutions: ['403'] },
+  });
   fetchMock.mock.mockImplementation(async () => {
     throw new TypeError('Failed to fetch');
   });
-  await assert.rejects(
-    downloadPdf('https://files.example/private.pdf'),
-    /herunter.*hinein/,
-  );
+  await assert.rejects(downloadPdf('https://files.example/private.pdf'), {
+    userMessage: { key: 'sourceFetchFailed' },
+  });
+  assert.match(german.sourceFetchFailed.message, /herunter.*hinein/);
 });
 
 test('expired PDF links explain that nothing was sent to Paperless', async (t) => {
@@ -113,13 +112,15 @@ test('expired PDF links explain that nothing was sent to Paperless', async (t) =
     'fetch',
     async () => new Response(null, { status: 404 }),
   );
-  await assert.rejects(downloadPdf('https://files.example/once'), (error) => {
-    assert.match(error.message, /HTTP 404/);
-    assert.match(error.message, /abgelaufen oder nur einmal gültig/);
-    assert.match(error.message, /nichts an Paperless gesendet/);
-    assert.match(error.message, /PDF-Viewer/);
-    return true;
+  await assert.rejects(downloadPdf('https://files.example/once'), {
+    userMessage: { key: 'sourceExpired', substitutions: ['404'] },
   });
+  assert.match(
+    german.sourceExpired.message,
+    /abgelaufen oder nur einmal gültig/,
+  );
+  assert.match(german.sourceExpired.message, /nichts an Paperless gesendet/);
+  assert.match(german.sourceExpired.message, /PDF-Viewer/);
   assert.equal(fetchMock.mock.callCount(), 1);
 });
 
@@ -132,12 +133,12 @@ test('a broken response stream keeps actionable guidance even when cancellation 
     },
   });
   t.mock.method(globalThis, 'fetch', async () => new Response(stream));
-  await assert.rejects(
-    downloadPdf('https://files.example/interrupted.pdf'),
-    (error) => {
-      assert.match(error.message, /Abruf der PDF wurde unterbrochen/);
-      assert.match(error.message, /PDF-Viewer/);
-      return true;
-    },
+  await assert.rejects(downloadPdf('https://files.example/interrupted.pdf'), {
+    userMessage: { key: 'sourceInterrupted' },
+  });
+  assert.match(
+    german.sourceInterrupted.message,
+    /Abruf der PDF wurde unterbrochen/,
   );
+  assert.match(german.sourceInterrupted.message, /PDF-Viewer/);
 });

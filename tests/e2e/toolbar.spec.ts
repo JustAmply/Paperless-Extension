@@ -1,3 +1,5 @@
+import { browserLocale } from './locale.js';
+import type { CapturedPdf } from '../../src/data/sources.js';
 import {
   chromium,
   expect,
@@ -74,7 +76,7 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
     const pdf = samplePdf();
     const expectedName =
       sourceType === 'blob'
-        ? `PDF von localhost – ${createHash('sha256').update(pdf).digest('hex').slice(0, 8)}.pdf`
+        ? `localhost – ${createHash('sha256').update(pdf).digest('hex').slice(0, 8)}.pdf`
         : 'Rechnung März.pdf';
     const uploads: {
       authorization: string | undefined;
@@ -195,8 +197,10 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
         testInfo.outputPath('profile'),
         {
           channel: 'chromium',
+          ...browserLocale('de'),
           headless: true,
           args: [
+            '--lang=de',
             `--disable-extensions-except=${extensionPath}`,
             `--load-extension=${extensionPath}`,
             '--enable-unsafe-extension-debugging',
@@ -216,7 +220,7 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
           });
           try {
             return await new Promise<
-              { tabId: number; size: number; error?: string }[]
+              (Pick<CapturedPdf, 'tabId' | 'error'> & { size: number })[]
             >((resolve, reject) => {
               const request = db
                 .transaction('sources')
@@ -224,13 +228,11 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
                 .getAll();
               request.onsuccess = () =>
                 resolve(
-                  request.result.map(
-                    (item: { tabId: number; file?: Blob; error?: string }) => ({
-                      tabId: item.tabId,
-                      size: item.file?.size ?? 0,
-                      ...(item.error ? { error: item.error } : {}),
-                    }),
-                  ),
+                  request.result.map((item: CapturedPdf) => ({
+                    tabId: item.tabId,
+                    size: item.file?.size ?? 0,
+                    ...(item.error ? { error: item.error } : {}),
+                  })),
                 );
               request.onerror = () => reject(request.error);
             });
@@ -607,7 +609,7 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
           {
             tabId: original.tabId,
             size: 0,
-            error: expect.stringContaining('nicht mehr verfügbar'),
+            error: { key: 'cacheUnavailable' },
           },
         ]);
         const localFiles = Array.from({ length: 11 }, (_, index) => ({
@@ -666,7 +668,7 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
           {
             tabId: original.tabId,
             size: 0,
-            error: expect.stringContaining('zu groß'),
+            error: { key: 'pdfTooLarge' },
           },
         ]);
       }

@@ -1,3 +1,5 @@
+import { message, type LocalizedMessage } from './i18n.js';
+
 export const MAX_PDF_BYTES = 50 * 1024 * 1024;
 export const MAX_BATCH_BYTES = 512 * 1024 * 1024;
 
@@ -20,7 +22,7 @@ export function sourceKey(source: Source): string {
 export interface SourceInfo extends Source {
   embedded?: boolean;
   availability: 'ready' | 'loading' | 'unavailable';
-  error?: string;
+  error?: LocalizedMessage | string;
 }
 
 export type JobStatus =
@@ -36,7 +38,7 @@ export interface Job {
   id: string;
   name: string;
   status: JobStatus;
-  message: string;
+  message: LocalizedMessage | string;
   createdAt: number;
   completedAt?: number;
   dismissed?: boolean;
@@ -53,7 +55,7 @@ export interface Job {
 
 export interface ImportResult {
   status: 'pending' | 'success' | 'failure' | 'duplicate' | 'unavailable';
-  message: string;
+  message: LocalizedMessage | string;
   documentId?: number;
   retryable?: boolean;
 }
@@ -85,10 +87,10 @@ export type BackgroundRequest =
 export interface BackgroundResponse {
   ok: boolean;
   documentId?: string;
-  error?: string;
+  error?: LocalizedMessage | string;
   state?: State;
   settings?: Settings;
-  message?: string;
+  message?: LocalizedMessage | string;
   disposition?: string;
 }
 
@@ -96,10 +98,17 @@ export function isActive(job: Job): boolean {
   return ['queued', 'downloading', 'uploading'].includes(job.status);
 }
 
-export class UserError extends Error {}
+export class UserError extends Error {
+  readonly userMessage: LocalizedMessage | string;
 
-export function errorMessage(error: unknown): string {
+  constructor(userMessage: LocalizedMessage | string) {
+    super(typeof userMessage === 'string' ? userMessage : userMessage.key);
+    this.userMessage = userMessage;
+  }
+}
+
+export function errorMessage(error: unknown): LocalizedMessage | string {
   return error instanceof UserError
-    ? error.message
-    : 'Die Aktion konnte nicht abgeschlossen werden. Bitte versuche es erneut.';
+    ? error.userMessage
+    : message('actionFailed');
 }

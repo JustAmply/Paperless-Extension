@@ -1,0 +1,408 @@
+{
+  "languageTag": {
+    "message": "sv"
+  },
+  "extensionDescription": {
+    "message": "Skicka öppna PDF-filer eller PDF-filer från datorn direkt till din Paperless-ngx-server."
+  },
+  "sendPdf": {
+    "message": "Skicka PDF till Paperless"
+  },
+  "badgeBusy": {
+    "message": "Paperless Upload: överföring pågår"
+  },
+  "badgeCheck": {
+    "message": "Paperless Upload: kontrollera överföringen"
+  },
+  "badgeStopped": {
+    "message": "Paperless Upload: kön har stoppats. Öppna tillägget igen."
+  },
+  "accessDenied": {
+    "message": "Åtkomst nekad."
+  },
+  "waitForTransfer": {
+    "message": "Vänta tills den pågående överföringen är klar."
+  },
+  "allowServer": {
+    "message": "Tillåt åtkomst till din Paperless-server."
+  },
+  "restartUpload": {
+    "message": "Målet för uppladdningen har ändrats. Starta uppladdningen igen."
+  },
+  "localTabsSkipped": {
+    "message": "Lokala flikar hoppades över. Tillåt åtkomst till lokala PDF-filer för att ta med dem."
+  },
+  "noPdfTabs": {
+    "message": "Inga PDF-flikar hittades i det här fönstret."
+  },
+  "allowWebsites": {
+    "message": "Åtkomst till webbplatser saknas. Försök ladda upp alla PDF-flikar igen och tillåt åtkomst i Chrome."
+  },
+  "cannotCheckAgain": {
+    "message": "Importstatusen kan inte kontrolleras igen."
+  },
+  "selectPdf": {
+    "message": "Välj minst en PDF-fil."
+  },
+  "batchLimit": {
+    "message": "De valda PDF-filerna får vara högst $LIMIT$ MiB sammanlagt.",
+    "placeholders": {
+      "limit": {
+        "content": "$1"
+      }
+    }
+  },
+  "invalidFileDetail": {
+    "message": "”$FILE$”: $REASON$",
+    "placeholders": {
+      "file": {
+        "content": "$1"
+      },
+      "reason": {
+        "content": "$2"
+      }
+    }
+  },
+  "waitingForTransfer": {
+    "message": "Väntar på överföring"
+  },
+  "tabPdfChanged": {
+    "message": "PDF-filen i fliken har ändrats eller stängts. Öppna tillägget igen."
+  },
+  "tabPdfLoading": {
+    "message": "PDF-filen läses fortfarande in. Vänta en stund och försök igen."
+  },
+  "cacheUnavailable": {
+    "message": "Den mellanlagrade PDF-filen är inte längre tillgänglig. Spara den via PDF-visaren och dra den hit."
+  },
+  "uiSettings": {
+    "message": "Inställningar"
+  },
+  "uiConnectToPaperless": {
+    "message": "Anslut till Paperless"
+  },
+  "uiSetupHint": {
+    "message": "Ställ in anslutningen en gång för att skicka PDF-filer direkt till din server."
+  },
+  "uiDisplayTitle": {
+    "message": "Visning"
+  },
+  "uiHideSuccess": {
+    "message": "Dölj bekräftelser"
+  },
+  "uiAfterSeconds": {
+    "message": "Efter $SECONDS$ sekunder",
+    "placeholders": {
+      "seconds": {
+        "content": "$1",
+        "example": "15"
+      }
+    }
+  },
+  "uiNeverHide": {
+    "message": "Aldrig"
+  },
+  "uiSavedImmediately": {
+    "message": "Ditt val sparas direkt."
+  },
+  "uiConnection": {
+    "message": "Anslutning till Paperless"
+  },
+  "uiServerAddress": {
+    "message": "Paperless-adress"
+  },
+  "uiServerHelp": {
+    "message": "Serverns basadress, inklusive eventuell undersökväg."
+  },
+  "uiApiToken": {
+    "message": "API-token"
+  },
+  "uiYourToken": {
+    "message": "Din API-token"
+  },
+  "uiFindToken": {
+    "message": "Öppna din profil i Paperless för att hitta din API-token."
+  },
+  "uiHttpWarning": {
+    "message": "Med HTTP skickas din token och dina PDF-filer okrypterade."
+  },
+  "uiConnectionAccess": {
+    "message": "Chrome ber en gång om åtkomst till alla webbplatser så att du kan ladda upp PDF-filer utan fler frågor."
+  },
+  "uiConnect": {
+    "message": "Anslut"
+  },
+  "uiLocalToken": {
+    "message": "Din token sparas bara i den här Chrome-profilen."
+  },
+  "uiUploadPdfs": {
+    "message": "Ladda upp PDF-filer"
+  },
+  "uiUploadCurrent": {
+    "message": "Ladda upp aktuell PDF"
+  },
+  "uiChooseFiles": {
+    "message": "Välj filer"
+  },
+  "uiUploadAllTabs": {
+    "message": "Ladda upp alla PDF-flikar"
+  },
+  "uiUploadWindow": {
+    "message": "Ladda upp PDF-filerna i det här fönstret"
+  },
+  "uiAllTabs": {
+    "message": "Alla PDF-flikar"
+  },
+  "uiDropHint": {
+    "message": "Eller dra PDF-filer hit"
+  },
+  "uiWebAccess": {
+    "message": "Chrome ber en gång om åtkomst till alla webbplatser."
+  },
+  "uiAllowLocal": {
+    "message": "Tillåt åtkomst till lokala PDF-filer"
+  },
+  "uiTransfers": {
+    "message": "Överföringar"
+  },
+  "uiDismiss": {
+    "message": "Stäng meddelanden"
+  },
+  "uiOpeningPdf": {
+    "message": "Öppnar PDF-filen"
+  },
+  "uiLoadingPdf": {
+    "message": "Läser in PDF-filen …"
+  },
+  "uiImported": {
+    "message": "Importerad"
+  },
+  "uiDuplicate": {
+    "message": "Finns redan"
+  },
+  "uiImportOtherServer": {
+    "message": "Den här importen hör till en annan Paperless-server."
+  },
+  "uiImporting": {
+    "message": "Importerar …"
+  },
+  "uiTransferred": {
+    "message": "Skickad"
+  },
+  "uiWaiting": {
+    "message": "I kö"
+  },
+  "uiDownloading": {
+    "message": "Hämtar …"
+  },
+  "uiUploading": {
+    "message": "Laddar upp …"
+  },
+  "uiOpenInPaperless": {
+    "message": "Öppna i Paperless"
+  },
+  "uiOpenNamedDocument": {
+    "message": "Öppna $NAME$ i Paperless",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "invoice.pdf"
+      }
+    }
+  },
+  "uiRecheckImport": {
+    "message": "Kontrollera importstatus igen"
+  },
+  "uiRecheckNamedImport": {
+    "message": "Kontrollera importstatus för $NAME$ igen",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "invoice.pdf"
+      }
+    }
+  },
+  "uiOpenPaperlessTab": {
+    "message": "Öppna Paperless i en ny flik"
+  },
+  "uiAlreadySent": {
+    "message": "Redan skickad till Paperless"
+  },
+  "uiUnconfirmed": {
+    "message": "Överföringen är obekräftad"
+  },
+  "uiPreparing": {
+    "message": "Förbereder … Låt fönstret vara öppet en stund."
+  },
+  "uiMayClose": {
+    "message": "Du kan stänga det här fönstret."
+  },
+  "uiKeepToken": {
+    "message": "Behåll sparad token"
+  },
+  "uiKeepTokenHelp": {
+    "message": "Lämna fältet tomt för att behålla den sparade token."
+  },
+  "uiNewTokenHelp": {
+    "message": "Ange en API-token för den nya Paperless-adressen."
+  },
+  "uiCheckingConnection": {
+    "message": "Kontrollerar anslutningen …"
+  },
+  "uiSiteDenied": {
+    "message": "Åtkomst till webbplatser nekades. Ge tillstånd i Chrome."
+  },
+  "uiSaveConnection": {
+    "message": "Spara anslutningen"
+  },
+  "uiSaveChoiceFailed": {
+    "message": "Det gick inte att spara ditt val."
+  },
+  "uiTabAccessDenied": {
+    "message": "Åtkomst till PDF-flikar nekades."
+  },
+  "uiLocalAccessDenied": {
+    "message": "Åtkomst till lokala PDF-filer nekades."
+  },
+  "uiEnableFileAccess": {
+    "message": "Öppna informationen om Paperless Upload på chrome://extensions och tillåt åtkomst till filadresser. Du kan också dra PDF-filen hit."
+  },
+  "actionFailed": {
+    "message": "Åtgärden kunde inte slutföras. Försök igen."
+  },
+  "pdfTooLarge": {
+    "message": "PDF-filen är för stor. Gränsen är 50 MiB per fil."
+  },
+  "invalidPdf": {
+    "message": "Filen är inte en PDF. Välj en PDF-fil."
+  },
+  "invalidServer": {
+    "message": "Ange en giltig Paperless-adress."
+  },
+  "invalidServerUrl": {
+    "message": "Använd en HTTP- eller HTTPS-adress utan inloggningsuppgifter, frågeparametrar eller fragment."
+  },
+  "invalidTokenFormat": {
+    "message": "Ange din API-token för Paperless utan mellanslag."
+  },
+  "sourceFetchFailed": {
+    "message": "Det gick inte att hämta PDF-filen igen. Ladda ner den från den öppna PDF-visaren och välj den här eller dra den hit."
+  },
+  "sourceExpired": {
+    "message": "PDF-filens ursprungliga adress är inte tillgänglig (HTTP $status$). Länken kan ha gått ut eller varit avsedd för engångsbruk. Inget skickades till Paperless. Ladda ner filen från den öppna PDF-visaren och välj den här eller dra den hit.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "sourceDenied": {
+    "message": "Webbplatsen nekade åtkomst till PDF-filen (HTTP $status$). Din inloggningssession kan ha gått ut. Inget skickades till Paperless. Ladda ner filen från den öppna PDF-visaren och välj den här eller dra den hit.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "sourceHttpError": {
+    "message": "Webbplatsen kunde inte leverera PDF-filen (HTTP $status$). Inget skickades till Paperless. Ladda ner filen från den öppna PDF-visaren och välj den här eller dra den hit.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "sourceInterrupted": {
+    "message": "Hämtningen av PDF-filen avbröts. Ladda ner den från den öppna PDF-visaren och välj den här eller dra den hit."
+  },
+  "apiInvalidToken": {
+    "message": "API-token är ogiltig. Kontrollera den i inställningarna."
+  },
+  "apiDenied": {
+    "message": "Åtkomst nekad. Kontrollera behörigheterna för din token och din åtkomst till servern."
+  },
+  "apiTooLarge": {
+    "message": "Servern avvisade filen på grund av dess storlek. Kontrollera serverns storleksgräns för uppladdning."
+  },
+  "apiRateLimited": {
+    "message": "För många förfrågningar. Försök igen senare."
+  },
+  "apiRejected": {
+    "message": "Paperless avvisade förfrågan (HTTP $status$). Kontrollera adressen och vid behov loggarna i Paperless.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "apiUnreachable": {
+    "message": "Det gick inte att nå Paperless. Kontrollera adressen, HTTPS-certifikatet och nätverksanslutningen."
+  },
+  "apiRedirect": {
+    "message": "Servern omdirigerade API-förfrågan. Använd den direkta basadressen till Paperless. En eventuell inloggningsportal måste tillåta åtkomst till /api/ med token."
+  },
+  "apiNotFound": {
+    "message": "Inget Paperless-API svarade på den här adressen. Ange basadressen med installationssökvägen om det behövs."
+  },
+  "importUnavailable": {
+    "message": "Importstatus är inte tillgänglig. PDF-filen har skickats. Kontrollera importen i Paperless."
+  },
+  "importRetrying": {
+    "message": "Importstatus är tillfälligt otillgänglig. Den kontrolleras automatiskt igen …"
+  },
+  "importStatusDenied": {
+    "message": "Du har inte åtkomst till importstatus. Kontrollera din API-token och behörigheten till uppgifter i Paperless."
+  },
+  "importProcessing": {
+    "message": "Paperless bearbetar PDF-filen …"
+  },
+  "importSuccess": {
+    "message": "Importerad i Paperless"
+  },
+  "importFailed": {
+    "message": "Paperless kunde inte importera PDF-filen. Kontrollera uppgiften i Paperless."
+  },
+  "importDuplicate": {
+    "message": "Dokumentet finns redan. Paperless hittade en dubblett."
+  },
+  "importCancelled": {
+    "message": "Importen avbröts i Paperless."
+  },
+  "uploadUncertain": {
+    "message": "Ingen bekräftelse har kommit. Kontrollera inkorgen i Paperless innan du skickar filen igen."
+  },
+  "downloadInterrupted": {
+    "message": "Hämtningen avbröts. Försök igen."
+  },
+  "setupServer": {
+    "message": "Konfigurera först din Paperless-server."
+  },
+  "destinationChanged": {
+    "message": "Målet för uppladdningen har ändrats eller saknas. Välj PDF-filen igen."
+  },
+  "fetchingOpenPdf": {
+    "message": "Hämtar den öppna PDF-filen …"
+  },
+  "sourceNotPdf": {
+    "message": "Ingen PDF-fil togs emot. Webbplatsen kan ha skickat en inloggningssida. Spara PDF-filen från visaren och välj den här."
+  },
+  "fileUnavailable": {
+    "message": "Filen är inte längre tillgänglig. Välj den igen."
+  },
+  "sendingToPaperless": {
+    "message": "Skickar till Paperless …"
+  },
+  "uploadAccepted": {
+    "message": "Skickad till Paperless"
+  },
+  "importTakingLonger": {
+    "message": "PDF-filen har skickats. Importen tar längre tid än väntat. Kontrollera statusen i Paperless."
+  },
+  "uploadOtherServer": {
+    "message": "Den här uppladdningen hör till en annan Paperless-server."
+  }
+}

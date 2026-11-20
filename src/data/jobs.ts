@@ -1,3 +1,4 @@
+import { message, resolveMessage, t } from '../shared/i18n.js';
 import {
   isActive,
   sourceKey,
@@ -107,10 +108,7 @@ export async function retryImport(
     };
     return request;
   });
-  if (!scheduled)
-    throw new UserError(
-      'Dieser Importstatus kann nicht erneut geprüft werden.',
-    );
+  if (!scheduled) throw new UserError(message('cannotCheckAgain'));
 }
 
 export async function dismissResults(): Promise<void> {
@@ -140,18 +138,19 @@ export async function enqueue(
   serverUrl: string,
 ): Promise<void> {
   if (Array.isArray(input)) {
-    if (!input.length)
-      throw new UserError('Bitte wähle mindestens eine PDF aus.');
+    if (!input.length) throw new UserError(message('selectPdf'));
     if (input.reduce((bytes, file) => bytes + file.size, 0) > MAX_BATCH_BYTES)
       throw new UserError(
-        `Die ausgewählten PDFs dürfen zusammen höchstens ${MAX_BATCH_BYTES / 1024 ** 2} MiB groß sein.`,
+        message('batchLimit', String(MAX_BATCH_BYTES / 1024 ** 2)),
       );
     for (const file of input) {
       try {
         await validatePdf(file);
       } catch (error) {
         if (!(error instanceof UserError)) throw error;
-        throw new UserError(`„${file.name}“: ${error.message}`);
+        throw new UserError(
+          t('invalidFileDetail', file.name, resolveMessage(error.userMessage)),
+        );
       }
     }
   }
@@ -209,7 +208,7 @@ async function stage(
                 id: crypto.randomUUID(),
                 name: isFile ? item.name : pdfName(item.url),
                 status: 'queued',
-                message: 'Wartet auf Übertragung',
+                message: message('waitingForTransfer'),
                 createdAt: Date.now() + index,
                 serverUrl,
                 ...(!isFile ? { source: item } : {}),
@@ -227,8 +226,7 @@ async function stage(
                 pdf.fingerprint !== item.fingerprint)
             ) {
               job.status = 'failed';
-              job.message =
-                'Die PDF im Tab hat sich geändert oder wurde geschlossen. Bitte öffne die Erweiterung erneut.';
+              job.message = message('tabPdfChanged');
               store.put(job);
               return;
             }
@@ -238,9 +236,7 @@ async function stage(
             if (pdf.file) tx.objectStore('files').put(pdf.file, job.id);
             else {
               job.status = 'failed';
-              job.message =
-                pdf.error ??
-                'Die PDF wird noch geladen. Bitte warte kurz und versuche es erneut.';
+              job.message = pdf.error ?? message('tabPdfLoading');
             }
             store.put(job);
           };
@@ -249,13 +245,7 @@ async function stage(
     };
     tx.oncomplete = () => resolve();
     tx.onabort = () =>
-      reject(
-        busy
-          ? new UserError(
-              'Bitte warte, bis die laufende Übertragung abgeschlossen ist.',
-            )
-          : tx.error,
-      );
+      reject(busy ? new UserError(message('waitForTransfer')) : tx.error);
     tx.onerror = () => reject(tx.error);
   });
 }

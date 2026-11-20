@@ -1,3 +1,4 @@
+import { message } from '../shared/i18n.js';
 import {
   sourceKey,
   UserError,
@@ -182,9 +183,7 @@ export async function windowPdfs(
     ),
   ];
   if (origins.length && !(await chrome.permissions.contains({ origins }))) {
-    throw new UserError(
-      'Der Webseitenzugriff fehlt. Bitte klicke erneut auf „Alle PDF-Tabs hochladen“ und erlaube den Zugriff in Chrome.',
-    );
+    throw new UserError(message('allowWebsites'));
   }
   const pdfs = new Map<string, Source>();
   const capturesByTab = new Map(captured.map((pdf) => [pdf.tabId, pdf]));

@@ -1,3 +1,4 @@
+import { localizeDocument, message, resolveMessage, t } from './shared/i18n.js';
 import { enqueue } from './data/jobs.js';
 import { request } from './shared/messaging.js';
 import {
@@ -26,6 +27,8 @@ import {
   isJobVisible,
   successDisplaySeconds,
 } from './shared/job-state.js';
+
+localizeDocument();
 
 function element<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -142,35 +145,43 @@ function jobPresentation(
   if (job.status === 'accepted') {
     const result = job.importTask?.result;
     if (result?.status === 'success')
-      return { symbol: 'check', tone: 'success', label: 'Importiert' };
+      return { symbol: 'check', tone: 'success', label: t('uiImported') };
     if (result?.status === 'duplicate')
-      return { symbol: 'check', tone: 'success', label: 'Bereits vorhanden' };
+      return { symbol: 'check', tone: 'success', label: t('uiDuplicate') };
     if (job.importTask && job.importTask.serverUrl !== serverUrl)
       return {
         symbol: 'warning',
         tone: 'warning',
-        label: 'Import gehört zu einem anderen Paperless-Server.',
+        label: t('uiImportOtherServer'),
       };
     if (result?.status === 'failure' || result?.status === 'unavailable')
-      return { symbol: 'warning', tone: 'warning', label: result.message };
+      return {
+        symbol: 'warning',
+        tone: 'warning',
+        label: resolveMessage(result.message),
+      };
     if (job.importTask)
-      return { symbol: 'clock', tone: 'progress', label: 'Wird importiert …' };
-    return { symbol: 'check', tone: 'success', label: 'Übertragen' };
+      return { symbol: 'clock', tone: 'progress', label: t('uiImporting') };
+    return { symbol: 'check', tone: 'success', label: t('uiTransferred') };
   }
   if (isActive(job)) {
     const label =
       job.status === 'queued'
-        ? 'Wartet'
+        ? t('uiWaiting')
         : job.status === 'downloading'
-          ? 'Wird geladen …'
-          : 'Wird hochgeladen …';
+          ? t('uiDownloading')
+          : t('uiUploading');
     return {
       symbol: job.status === 'uploading' ? 'upload' : 'clock',
       tone: 'progress',
       label,
     };
   }
-  return { symbol: 'warning', tone: 'warning', label: job.message };
+  return {
+    symbol: 'warning',
+    tone: 'warning',
+    label: resolveMessage(job.message),
+  };
 }
 
 function renderJob(job: Job, serverUrl: string): HTMLLIElement {
@@ -200,8 +211,8 @@ function renderJob(job: Job, serverUrl: string): HTMLLIElement {
       `documents/${result.documentId}/details`,
       task.serverUrl,
     ).href;
-    link.title = 'In Paperless öffnen';
-    link.setAttribute('aria-label', `${job.name} in Paperless öffnen`);
+    link.title = t('uiOpenInPaperless');
+    link.setAttribute('aria-label', t('uiOpenNamedDocument', job.name));
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     link.append(icon('open'));
@@ -210,8 +221,8 @@ function renderJob(job: Job, serverUrl: string): HTMLLIElement {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'job-retry';
-    button.title = 'Importstatus erneut prüfen';
-    button.setAttribute('aria-label', `${job.name}: ${button.title}`);
+    button.title = t('uiRecheckImport');
+    button.setAttribute('aria-label', t('uiRecheckNamedImport', job.name));
     button.append(icon('retry'));
     button.addEventListener('click', async () => {
       button.disabled = true;
@@ -241,7 +252,7 @@ function render(state: State): void {
       ui.paperlessLink.href = paperlessUrl;
       ui.paperlessLink.target = '_blank';
       ui.paperlessLink.rel = 'noopener noreferrer';
-      ui.paperlessLink.title = 'Paperless im neuen Tab öffnen';
+      ui.paperlessLink.title = t('uiOpenPaperlessTab');
     } else {
       for (const attribute of ['href', 'target', 'rel', 'title'])
         ui.paperlessLink.removeAttribute(attribute);
@@ -251,8 +262,8 @@ function render(state: State): void {
   ui.toggle.hidden = !state.settings.configured;
   ui.displaySettings.hidden = !state.settings.configured;
   ui.settingsTitle.textContent = state.settings.configured
-    ? 'Einstellungen'
-    : 'Mit Paperless verbinden';
+    ? t('uiSettings')
+    : t('uiConnectToPaperless');
   ui.setupHint.hidden = state.settings.configured;
   ui.connectionTitle.hidden = !state.settings.configured;
   ui.drop.disabled = active;
@@ -266,9 +277,11 @@ function render(state: State): void {
   const isLocal = activeSource?.url.startsWith('file:');
   ui.send.hidden = !currentSource;
   ui.fileAccess.hidden = !hasFileTabs() || localFileAccess;
-  ui.currentStatus.textContent =
-    captured?.error ??
-    (captured?.availability === 'loading' ? 'PDF wird geladen …' : '');
+  ui.currentStatus.textContent = captured?.error
+    ? resolveMessage(captured.error)
+    : captured?.availability === 'loading'
+      ? t('uiLoadingPdf')
+      : '';
   ui.currentStatus.hidden = !ui.currentStatus.textContent;
   ui.currentStatus.classList.toggle(
     'error',
@@ -290,10 +303,10 @@ function render(state: State): void {
     sourceJob !== undefined;
   ui.sendLabel.textContent =
     sourceJob?.status === 'accepted'
-      ? 'Bereits an Paperless übertragen'
+      ? t('uiAlreadySent')
       : sourceJob?.status === 'uncertain'
-        ? 'Übertragung unbestätigt'
-        : 'Aktuelle PDF hochladen';
+        ? t('uiUnconfirmed')
+        : t('uiUploadCurrent');
   const engaged = new Set(
     Array.from(
       ui.jobs.querySelectorAll<HTMLLIElement>('li:hover, li:focus-within'),
@@ -325,16 +338,12 @@ function render(state: State): void {
   ui.status.textContent =
     uploadError ||
     uploadNotice ||
-    (staged
-      ? 'Vorbereitung … Fenster kurz geöffnet lassen.'
-      : active
-        ? 'Du kannst dieses Fenster schließen.'
-        : '');
+    (staged ? t('uiPreparing') : active ? t('uiMayClose') : '');
 }
 
 function showUploadError(error: unknown): void {
   uploadNotice = '';
-  uploadError = errorMessage(error);
+  uploadError = resolveMessage(errorMessage(error));
   ui.status.textContent = uploadError;
   ui.status.classList.add('error');
   ui.dismiss.hidden = false;
@@ -378,14 +387,12 @@ function updateTokenField(): void {
     }
   }
   ui.token.required = !sameServer;
-  ui.token.placeholder = sameServer
-    ? 'Gespeicherten Token beibehalten'
-    : 'Dein API-Token';
+  ui.token.placeholder = sameServer ? t('uiKeepToken') : t('uiYourToken');
   ui.tokenHelp.textContent = sameServer
-    ? 'Leer lassen, um den gespeicherten Token zu behalten.'
+    ? t('uiKeepTokenHelp')
     : savedUrl
-      ? 'Gib für die neue Paperless-Adresse einen API-Token ein.'
-      : 'In Paperless unter „Mein Profil“ → „API-Token“.';
+      ? t('uiNewTokenHelp')
+      : t('uiFindToken');
 }
 
 ui.form.addEventListener('submit', (event) => {
@@ -400,19 +407,16 @@ ui.form.addEventListener('submit', (event) => {
       ? Promise.resolve(true)
       : chrome.permissions.request({ origins: webOrigins });
   } catch (error) {
-    ui.settingsStatus.textContent = errorMessage(error);
+    ui.settingsStatus.textContent = resolveMessage(errorMessage(error));
     ui.settingsStatus.classList.add('error');
     return;
   }
   ui.save.disabled = true;
   ui.settingsStatus.classList.remove('error');
-  ui.settingsStatus.textContent = 'Verbindung wird geprüft …';
+  ui.settingsStatus.textContent = t('uiCheckingConnection');
   void (async () => {
     try {
-      if (!(await permission))
-        throw new UserError(
-          'Der Webseitenzugriff wurde nicht erlaubt. Bitte bestätige die Freigabe in Chrome.',
-        );
+      if (!(await permission)) throw new UserError(message('uiSiteDenied'));
       const result = await request({
         target: 'background',
         type: 'save',
@@ -423,11 +427,11 @@ ui.form.addEventListener('submit', (event) => {
       ui.token.value = '';
       if (result.state) render(result.state);
       ui.settingsStatus.textContent = '';
-      ui.save.textContent = 'Verbindung speichern';
+      ui.save.textContent = t('uiSaveConnection');
       updateTokenField();
       showSettings(false);
     } catch (error) {
-      ui.settingsStatus.textContent = errorMessage(error);
+      ui.settingsStatus.textContent = resolveMessage(errorMessage(error));
       ui.settingsStatus.classList.add('error');
     } finally {
       ui.save.disabled = false;
@@ -455,8 +459,7 @@ ui.displayDuration.addEventListener('change', () => {
     })
     .catch(() => {
       ui.displayDuration.value = String(displaySeconds);
-      ui.displayStatus.textContent =
-        'Die Auswahl konnte nicht gespeichert werden.';
+      ui.displayStatus.textContent = t('uiSaveChoiceFailed');
     })
     .finally(() => {
       ui.displayDuration.disabled = false;
@@ -489,9 +492,7 @@ ui.sendWindow.addEventListener('click', () => {
   void (async () => {
     try {
       if (!(await permission))
-        throw new UserError(
-          'Der Zugriff auf die PDF-Tabs wurde nicht erlaubt.',
-        );
+        throw new UserError(message('uiTabAccessDenied'));
       const response = await request({
         target: 'background',
         type: 'upload-window',
@@ -499,7 +500,7 @@ ui.sendWindow.addEventListener('click', () => {
         serverUrl,
       });
       await updateWebAccess();
-      uploadNotice = response.message ?? '';
+      uploadNotice = response.message ? resolveMessage(response.message) : '';
     } catch (error) {
       showUploadError(error);
     } finally {
@@ -541,12 +542,9 @@ ui.fileAccess.addEventListener('click', () => {
   void chrome.permissions
     .request({ origins: ['file:///*'] })
     .then(async (granted) => {
-      if (!granted)
-        throw new UserError('Der Zugriff auf lokale PDFs wurde nicht erlaubt.');
+      if (!granted) throw new UserError(message('uiLocalAccessDenied'));
       if (!(await chrome.extension.isAllowedFileSchemeAccess())) {
-        throw new UserError(
-          'Aktiviere unter chrome://extensions → Paperless Upload → Details den „Zugriff auf Datei-URLs“. Alternativ kannst du die PDF hier hineinziehen.',
-        );
+        throw new UserError(message('uiEnableFileAccess'));
       }
       localFileAccess = true;
       await refresh();
@@ -573,6 +571,10 @@ async function resolveCurrentPdf(
 }
 
 async function initialize(): Promise<void> {
+  for (const option of ui.displayDuration.options) {
+    if (option.value !== '0')
+      option.textContent = t('uiAfterSeconds', option.value);
+  }
   [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
   activeSource = tabSource(currentTab);
   if (currentTab) await updateWindowTabs(currentTab.windowId);
@@ -585,7 +587,7 @@ async function initialize(): Promise<void> {
   ui.httpWarning.hidden = !ui.url.value.startsWith('http://');
   updateTokenField();
   if (currentState.settings.configured)
-    ui.save.textContent = 'Verbindung speichern';
+    ui.save.textContent = t('uiSaveConnection');
   showSettings(!currentState.settings.configured);
   if (currentState.jobs.some((job) => isActive(job) || hasImportWork(job)))
     await request({ target: 'background', type: 'process' });
@@ -610,6 +612,6 @@ chrome.permissions.onRemoved.addListener(() => {
 });
 
 void initialize().catch((error: unknown) => {
-  ui.fatal.textContent = errorMessage(error);
+  ui.fatal.textContent = resolveMessage(errorMessage(error));
   ui.fatal.hidden = false;
 });

@@ -1,15 +1,14 @@
+import { message } from '../shared/i18n.js';
 import type { Settings, ImportResult } from '../shared/model.js';
 
 const unavailable: ImportResult = {
   status: 'unavailable',
-  message:
-    'Importstatus nicht verfügbar. Die PDF wurde übertragen; prüfe den Import in Paperless.',
+  message: message('importUnavailable'),
 };
 const retryable: ImportResult = {
   status: 'unavailable',
   retryable: true,
-  message:
-    'Importstatus vorübergehend nicht verfügbar. Wird automatisch erneut geprüft …',
+  message: message('importRetrying'),
 };
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -45,8 +44,7 @@ export async function checkImport(
     if (response.status === 401 || response.status === 403) {
       return {
         status: 'unavailable',
-        message:
-          'Kein Zugriff auf den Importstatus. Prüfe den API-Token und die Aufgaben-Berechtigung in Paperless.',
+        message: message('importStatusDenied'),
       };
     }
     if (!response.ok)
@@ -76,7 +74,7 @@ export async function checkImport(
   if (!record(task) || typeof task['status'] !== 'string') return unavailable;
   const status = task['status'].toLowerCase();
   if (['pending', 'started', 'retry'].includes(status)) {
-    return { status: 'pending', message: 'Paperless verarbeitet die PDF …' };
+    return { status: 'pending', message: message('importProcessing') };
   }
 
   const result = record(task['result_data']) ? task['result_data'] : undefined;
@@ -86,7 +84,7 @@ export async function checkImport(
       ? unavailable
       : {
           status: 'success',
-          message: 'In Paperless importiert',
+          message: message('importSuccess'),
           documentId: id,
         };
   }
@@ -97,19 +95,18 @@ export async function checkImport(
     return id === undefined
       ? {
           status: 'failure',
-          message:
-            'Paperless konnte die PDF nicht importieren. Prüfe die Aufgabe in Paperless.',
+          message: message('importFailed'),
         }
       : {
           status: 'duplicate',
-          message: 'Bereits vorhanden: Paperless hat ein Duplikat erkannt.',
+          message: message('importDuplicate'),
           documentId: id,
         };
   }
   if (status === 'revoked') {
     return {
       status: 'failure',
-      message: 'Der Import wurde in Paperless abgebrochen.',
+      message: message('importCancelled'),
     };
   }
   return unavailable;

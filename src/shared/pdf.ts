@@ -1,3 +1,4 @@
+import { message } from './i18n.js';
 import { MAX_PDF_BYTES, UserError } from './model.js';
 
 export function hasPdfSignature(bytes: Uint8Array): boolean {
@@ -7,16 +8,12 @@ export function hasPdfSignature(bytes: Uint8Array): boolean {
 
 export async function validatePdf(file: Blob): Promise<void> {
   if (file.size > MAX_PDF_BYTES) {
-    throw new UserError(
-      'Die PDF ist zu groß. Pro Datei sind bis zu 50 MiB möglich.',
-    );
+    throw new UserError(message('pdfTooLarge'));
   }
   if (
     !hasPdfSignature(new Uint8Array(await file.slice(0, 1024).arrayBuffer()))
   ) {
-    throw new UserError(
-      'Diese Datei ist keine PDF. Bitte wähle eine PDF-Datei aus.',
-    );
+    throw new UserError(message('invalidPdf'));
   }
 }
 
@@ -78,12 +75,10 @@ export function pdfName(
 ): string {
   const name = knownPdfName(url, disposition);
   if (name) return name;
-  if (!fingerprint) return 'Dokument.pdf';
+  if (!fingerprint) return 'PDF.pdf';
   const { origin } = new URL(url);
   const host = origin === 'null' ? '' : new URL(origin).hostname;
-  const label = host
-    ? `PDF von ${host.replace(/:/g, '_').slice(0, 150)}`
-    : 'PDF';
+  const label = host.replace(/:/g, '_').slice(0, 150) || 'PDF';
   return `${label} – ${fingerprint.slice(0, 8)}.pdf`;
 }
 

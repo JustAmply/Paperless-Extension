@@ -33,7 +33,9 @@ test('PDF size limit accepts the boundary and rejects larger files', async () =>
   const file = new Blob(['%PDF-1.7', new Uint8Array(MAX_PDF_BYTES - 8)]);
   assert.equal(file.size, MAX_PDF_BYTES);
   await validatePdf(file);
-  await assert.rejects(validatePdf(new Blob([file, 'x'])), /zu groß/);
+  await assert.rejects(validatePdf(new Blob([file, 'x'])), {
+    userMessage: { key: 'pdfTooLarge' },
+  });
 });
 
 test('filenames prefer server metadata and remove path and control characters', () => {
@@ -71,7 +73,7 @@ test('PDF names preserve explicit filenames without treating URL routes as filen
     pdfName(url, 'attachment; filename="invoice.html"'),
     'invoice.html.pdf',
   );
-  assert.equal(pdfName(url), 'Dokument.pdf');
+  assert.equal(pdfName(url), 'PDF.pdf');
 });
 
 test('long PDF filenames are truncated before the suffix', () => {
@@ -93,7 +95,7 @@ test('names use explicit filename parameters or a distinct source-based fallback
   );
   assert.equal(
     pdfName('blob:https://files.example/id', '', 'abcdef0123456789'),
-    'PDF von files.example – abcdef01.pdf',
+    'files.example – abcdef01.pdf',
   );
   assert.equal(
     pdfName(
@@ -101,7 +103,7 @@ test('names use explicit filename parameters or a distinct source-based fallback
       '',
       '1234567890abcdef',
     ),
-    'PDF von files.example – 12345678.pdf',
+    'files.example – 12345678.pdf',
   );
 });
 

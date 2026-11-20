@@ -1,27 +1,18 @@
+import { message } from '../shared/i18n.js';
 import { UserError, type Settings } from '../shared/model.js';
 
 function rejection(status: number): UserError {
   switch (status) {
     case 401:
-      return new UserError(
-        'Der API-Token ist ungültig. Bitte prüfe ihn in den Einstellungen.',
-      );
+      return new UserError(message('apiInvalidToken'));
     case 403:
-      return new UserError(
-        'Keine Berechtigung. Prüfe die Rechte des Tokens und den Serverzugriff.',
-      );
+      return new UserError(message('apiDenied'));
     case 413:
-      return new UserError(
-        'Der Server lehnt die Dateigröße ab. Prüfe sein Upload-Limit.',
-      );
+      return new UserError(message('apiTooLarge'));
     case 429:
-      return new UserError(
-        'Zu viele Anfragen. Bitte versuche es später erneut.',
-      );
+      return new UserError(message('apiRateLimited'));
     default:
-      return new UserError(
-        `Paperless hat die Anfrage abgelehnt (HTTP ${status}). Prüfe die Adresse und gegebenenfalls die Paperless-Protokolle.`,
-      );
+      return new UserError(message('apiRejected', String(status)));
   }
 }
 
@@ -44,17 +35,13 @@ export async function verifyConnection(settings: Settings): Promise<void> {
       signal: AbortSignal.timeout(15_000),
     });
   } catch {
-    throw new UserError(
-      'Paperless ist nicht erreichbar. Prüfe Adresse, HTTPS-Zertifikat und Netzwerk.',
-    );
+    throw new UserError(message('apiUnreachable'));
   }
   if (
     response.type === 'opaqueredirect' ||
     (response.status >= 300 && response.status < 400)
   ) {
-    throw new UserError(
-      'Der Server leitet die API-Anfrage weiter. Nutze die direkte Paperless-Basisadresse. Ein vorgeschalteter Login muss Token-Zugriff auf /api/ erlauben.',
-    );
+    throw new UserError(message('apiRedirect'));
   }
   if (!response.ok) throw rejection(response.status);
   let body: unknown;
@@ -69,9 +56,7 @@ export async function verifyConnection(settings: Settings): Promise<void> {
     !('auth_token' in body) ||
     body.auth_token !== settings.token
   ) {
-    throw new UserError(
-      'Unter dieser Adresse antwortet keine Paperless-API. Nutze die Basisadresse, gegebenenfalls mit Unterpfad.',
-    );
+    throw new UserError(message('apiNotFound'));
   }
 }
 

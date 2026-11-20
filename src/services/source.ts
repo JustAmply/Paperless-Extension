@@ -1,3 +1,4 @@
+import { message } from '../shared/i18n.js';
 import { MAX_PDF_BYTES, UserError } from '../shared/model.js';
 import {
   hasPdfSignature,
@@ -5,9 +6,6 @@ import {
   pdfFingerprint,
   pdfName,
 } from '../shared/pdf.js';
-
-const manualUpload =
-  'Lade die PDF aus dem geöffneten PDF-Viewer herunter und wähle sie hier aus oder ziehe sie hinein.';
 
 export async function downloadPdf(
   url: string,
@@ -20,20 +18,16 @@ export async function downloadPdf(
       signal: AbortSignal.timeout(60_000),
     });
   } catch {
-    throw new UserError(
-      `Die PDF lässt sich nicht erneut abrufen. ${manualUpload}`,
-    );
+    throw new UserError(message('sourceFetchFailed'));
   }
   if (!response.ok) {
     const reason =
       response.status === 404 || response.status === 410
-        ? 'Die ursprüngliche PDF-Adresse ist nicht mehr verfügbar. Der Link kann abgelaufen oder nur einmal gültig sein.'
+        ? 'sourceExpired'
         : response.status === 401 || response.status === 403
-          ? 'Die Website verweigert den Zugriff auf die PDF. Möglicherweise ist die Anmeldung abgelaufen.'
-          : 'Die Website konnte die PDF nicht liefern.';
-    throw new UserError(
-      `${reason} (HTTP ${response.status}) Es wurde nichts an Paperless gesendet. ${manualUpload}`,
-    );
+          ? 'sourceDenied'
+          : 'sourceHttpError';
+    throw new UserError(message(reason, String(response.status)));
   }
   if (!response.body) return undefined;
   const reader = response.body.getReader();
@@ -45,10 +39,7 @@ export async function downloadPdf(
       const { done, value } = await reader.read();
       if (done) break;
       size += value.length;
-      if (size > MAX_PDF_BYTES)
-        throw new UserError(
-          'Die PDF ist zu groß. Pro Datei sind bis zu 50 MiB möglich.',
-        );
+      if (size > MAX_PDF_BYTES) throw new UserError(message('pdfTooLarge'));
       chunks.push(value);
       if (!verified) {
         if (size >= 1024) {
@@ -77,9 +68,7 @@ export async function downloadPdf(
     };
   } catch (error) {
     if (error instanceof UserError) throw error;
-    throw new UserError(
-      `Der Abruf der PDF wurde unterbrochen. ${manualUpload}`,
-    );
+    throw new UserError(message('sourceInterrupted'));
   } finally {
     // An errored stream also rejects cancellation; preserve the read error above.
     await reader.cancel().catch(() => undefined);

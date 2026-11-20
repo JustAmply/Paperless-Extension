@@ -1,3 +1,4 @@
+import { message } from './i18n.js';
 import {
   UserError,
   type BackgroundRequest,
@@ -5,13 +6,11 @@ import {
 } from './model.js';
 
 export async function request(
-  message: BackgroundRequest,
+  payload: BackgroundRequest,
 ): Promise<BackgroundResponse> {
   const response: BackgroundResponse =
-    await chrome.runtime.sendMessage(message);
+    await chrome.runtime.sendMessage(payload);
   if (!response.ok)
-    throw new UserError(
-      response.error ?? 'Die Aktion konnte nicht abgeschlossen werden.',
-    );
+    throw new UserError(response.error ?? message('actionFailed'));
   return response;
 }

@@ -1,3 +1,4 @@
+import { browserLocale } from './locale.js';
 import { chromium, expect, test } from '@playwright/test';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -7,7 +8,9 @@ test('uploads the visible invoice in a portal frame and a blank blob viewer with
   const extension = path.resolve('dist');
   const context = await chromium.launchPersistentContext('', {
     channel: 'chromium',
+    ...browserLocale('de'),
     args: [
+      '--lang=de',
       '--disable-features=ExtensionsMenuAccessControl',
       `--load-extension=${extension}`,
       `--disable-extensions-except=${extension}`,

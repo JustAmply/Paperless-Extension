@@ -1,3 +1,4 @@
+import { message } from './shared/i18n.js';
 import {
   errorMessage,
   UserError,
@@ -10,9 +11,6 @@ import {
   importDeadline,
   nextImportCheck,
 } from './shared/job-state.js';
-
-const uncertain =
-  'Keine Bestätigung erhalten. Prüfe zuerst den Paperless-Posteingang, bevor du die Datei erneut sendest.';
 
 export function createUploadRunner(effects: {
   getJobs(): Promise<Job[]>;
@@ -62,8 +60,8 @@ export function createUploadRunner(effects: {
         ...job,
         status: uploading ? 'uncertain' : 'failed',
         message: uploading
-          ? uncertain
-          : 'Der Abruf wurde unterbrochen. Bitte versuche es erneut.',
+          ? message('uploadUncertain')
+          : message('downloadInterrupted'),
       });
     }
     await notify();
@@ -71,48 +69,42 @@ export function createUploadRunner(effects: {
 
   async function transfer(job: Job): Promise<Job> {
     const settings = await getSettings();
-    if (!settings)
-      throw new UserError('Bitte richte deinen Paperless-Server ein.');
+    if (!settings) throw new UserError(message('setupServer'));
     if (job.serverUrl !== settings.url)
-      throw new UserError(
-        'Das Upload-Ziel hat sich geändert oder fehlt. Wähle die PDF erneut aus.',
-      );
+      throw new UserError(message('destinationChanged'));
     let file = await getFile(job.id);
     if (!file && job.source) {
       await update({
         ...job,
         status: 'downloading',
-        message: 'Geöffnete PDF wird abgerufen …',
+        message: message('fetchingOpenPdf'),
       });
       const pdf = await downloadPdf(job.source.url);
       if (!pdf) {
         return {
           ...job,
           status: 'skipped',
-          message:
-            'Keine PDF erhalten. Die Website liefert möglicherweise eine Anmeldeseite. Speichere die PDF im Viewer und wähle sie hier aus.',
+          message: message('sourceNotPdf'),
         };
       }
       file = pdf.file;
       job.name = pdf.name;
     }
-    if (!file)
-      throw new UserError(
-        'Die Datei ist nicht mehr verfügbar. Bitte wähle sie erneut aus.',
-      );
+    if (!file) throw new UserError(message('fileUnavailable'));
     await validatePdf(file);
     await update({
       ...job,
       status: 'uploading',
-      message: 'Wird an Paperless übertragen …',
+      message: message('sendingToPaperless'),
     });
     const outcome = await uploadPdf(settings, file, job.name);
     return {
       ...job,
       status: outcome.status,
       completedAt: Date.now(),
-      message:
-        outcome.status === 'accepted' ? 'An Paperless übertragen' : uncertain,
+      message: message(
+        outcome.status === 'accepted' ? 'uploadAccepted' : 'uploadUncertain',
+      ),
       ...(outcome.status === 'accepted'
         ? {
             importTask: {
@@ -155,15 +147,14 @@ export function createUploadRunner(effects: {
     ) {
       await updateImportResult(job, {
         status: 'unavailable',
-        message:
-          'Die PDF wurde übertragen. Der Import dauert länger; prüfe den Status in Paperless.',
+        message: message('importTakingLonger'),
       });
     } else {
       const settings = await getSettings();
       if (!settings || settings.url !== job.importTask.serverUrl) {
         await updateImportResult(job, {
           status: 'unavailable',
-          message: 'Dieser Upload gehört zu einem anderen Paperless-Server.',
+          message: message('uploadOtherServer'),
         });
       } else {
         await updateImportResult(

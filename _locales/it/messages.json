@@ -1,0 +1,408 @@
+{
+  "languageTag": {
+    "message": "it"
+  },
+  "extensionDescription": {
+    "message": "Invia i PDF aperti o i file PDF locali direttamente al tuo server Paperless-ngx."
+  },
+  "sendPdf": {
+    "message": "Invia PDF a Paperless"
+  },
+  "badgeBusy": {
+    "message": "Paperless Upload: trasferimento in corso"
+  },
+  "badgeCheck": {
+    "message": "Paperless Upload: controlla il trasferimento"
+  },
+  "badgeStopped": {
+    "message": "Paperless Upload: coda interrotta. Riapri l’estensione."
+  },
+  "accessDenied": {
+    "message": "Accesso negato."
+  },
+  "waitForTransfer": {
+    "message": "Attendi che il trasferimento in corso sia completato."
+  },
+  "allowServer": {
+    "message": "Consenti l’accesso al tuo server Paperless."
+  },
+  "restartUpload": {
+    "message": "La destinazione è cambiata. Riavvia il caricamento."
+  },
+  "localTabsSkipped": {
+    "message": "Le schede locali sono state saltate. Consenti l’accesso ai PDF locali per includerle."
+  },
+  "noPdfTabs": {
+    "message": "Nessuna scheda PDF trovata in questa finestra."
+  },
+  "allowWebsites": {
+    "message": "Manca l’accesso ai siti. Riprova a caricare tutte le schede PDF e consenti l’accesso in Chrome."
+  },
+  "cannotCheckAgain": {
+    "message": "Impossibile ricontrollare lo stato di questa importazione."
+  },
+  "selectPdf": {
+    "message": "Seleziona almeno un PDF."
+  },
+  "batchLimit": {
+    "message": "I PDF selezionati non possono superare complessivamente $LIMIT$ MiB.",
+    "placeholders": {
+      "limit": {
+        "content": "$1"
+      }
+    }
+  },
+  "invalidFileDetail": {
+    "message": "«$FILE$»: $REASON$",
+    "placeholders": {
+      "file": {
+        "content": "$1"
+      },
+      "reason": {
+        "content": "$2"
+      }
+    }
+  },
+  "waitingForTransfer": {
+    "message": "In attesa del trasferimento"
+  },
+  "tabPdfChanged": {
+    "message": "Il PDF nella scheda è cambiato o è stato chiuso. Riapri l’estensione."
+  },
+  "tabPdfLoading": {
+    "message": "Il PDF è ancora in fase di caricamento. Attendi un momento e riprova."
+  },
+  "cacheUnavailable": {
+    "message": "Il PDF nella cache non è più disponibile. Salvalo dal visualizzatore PDF e trascinalo qui."
+  },
+  "uiSettings": {
+    "message": "Impostazioni"
+  },
+  "uiConnectToPaperless": {
+    "message": "Connetti a Paperless"
+  },
+  "uiSetupHint": {
+    "message": "Configura la connessione una volta per inviare i PDF direttamente al tuo server."
+  },
+  "uiDisplayTitle": {
+    "message": "Visualizzazione"
+  },
+  "uiHideSuccess": {
+    "message": "Nascondi le conferme"
+  },
+  "uiAfterSeconds": {
+    "message": "Dopo $SECONDS$ secondi",
+    "placeholders": {
+      "seconds": {
+        "content": "$1",
+        "example": "15"
+      }
+    }
+  },
+  "uiNeverHide": {
+    "message": "Mai"
+  },
+  "uiSavedImmediately": {
+    "message": "La scelta viene salvata subito."
+  },
+  "uiConnection": {
+    "message": "Connessione a Paperless"
+  },
+  "uiServerAddress": {
+    "message": "Indirizzo di Paperless"
+  },
+  "uiServerHelp": {
+    "message": "L’indirizzo base del server, incluso l’eventuale sottopercorso."
+  },
+  "uiApiToken": {
+    "message": "Token API"
+  },
+  "uiYourToken": {
+    "message": "Il tuo token API"
+  },
+  "uiFindToken": {
+    "message": "In Paperless, apri il tuo profilo e cerca il token API."
+  },
+  "uiHttpWarning": {
+    "message": "Con HTTP il token e i PDF vengono trasmessi senza cifratura."
+  },
+  "uiConnectionAccess": {
+    "message": "Chrome chiede una sola volta l’accesso a tutti i siti per consentirti di caricare i PDF senza altre richieste."
+  },
+  "uiConnect": {
+    "message": "Connetti"
+  },
+  "uiLocalToken": {
+    "message": "Il token viene salvato solo in questo profilo Chrome."
+  },
+  "uiUploadPdfs": {
+    "message": "Carica PDF"
+  },
+  "uiUploadCurrent": {
+    "message": "Carica il PDF aperto"
+  },
+  "uiChooseFiles": {
+    "message": "Scegli file"
+  },
+  "uiUploadAllTabs": {
+    "message": "Carica tutte le schede PDF"
+  },
+  "uiUploadWindow": {
+    "message": "Carica i PDF in questa finestra"
+  },
+  "uiAllTabs": {
+    "message": "Tutte le schede PDF"
+  },
+  "uiDropHint": {
+    "message": "Oppure trascina qui i PDF"
+  },
+  "uiWebAccess": {
+    "message": "Chrome chiede una sola volta l’accesso a tutti i siti."
+  },
+  "uiAllowLocal": {
+    "message": "Consenti l’accesso ai PDF locali"
+  },
+  "uiTransfers": {
+    "message": "Trasferimenti"
+  },
+  "uiDismiss": {
+    "message": "Chiudi i messaggi"
+  },
+  "uiOpeningPdf": {
+    "message": "Apertura del PDF"
+  },
+  "uiLoadingPdf": {
+    "message": "Caricamento del PDF…"
+  },
+  "uiImported": {
+    "message": "Importato"
+  },
+  "uiDuplicate": {
+    "message": "Già presente"
+  },
+  "uiImportOtherServer": {
+    "message": "Questa importazione appartiene a un altro server Paperless."
+  },
+  "uiImporting": {
+    "message": "Importazione in corso…"
+  },
+  "uiTransferred": {
+    "message": "Inviato"
+  },
+  "uiWaiting": {
+    "message": "In coda"
+  },
+  "uiDownloading": {
+    "message": "Download in corso…"
+  },
+  "uiUploading": {
+    "message": "Caricamento in corso…"
+  },
+  "uiOpenInPaperless": {
+    "message": "Apri in Paperless"
+  },
+  "uiOpenNamedDocument": {
+    "message": "Apri $NAME$ in Paperless",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "invoice.pdf"
+      }
+    }
+  },
+  "uiRecheckImport": {
+    "message": "Ricontrolla lo stato dell’importazione"
+  },
+  "uiRecheckNamedImport": {
+    "message": "Ricontrolla lo stato dell’importazione di $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "invoice.pdf"
+      }
+    }
+  },
+  "uiOpenPaperlessTab": {
+    "message": "Apri Paperless in una nuova scheda"
+  },
+  "uiAlreadySent": {
+    "message": "Già inviato a Paperless"
+  },
+  "uiUnconfirmed": {
+    "message": "Invio non confermato"
+  },
+  "uiPreparing": {
+    "message": "Preparazione… Lascia aperta questa finestra per un momento."
+  },
+  "uiMayClose": {
+    "message": "Puoi chiudere questa finestra."
+  },
+  "uiKeepToken": {
+    "message": "Mantieni il token salvato"
+  },
+  "uiKeepTokenHelp": {
+    "message": "Lascia vuoto il campo per mantenere il token salvato."
+  },
+  "uiNewTokenHelp": {
+    "message": "Inserisci un token API per il nuovo indirizzo di Paperless."
+  },
+  "uiCheckingConnection": {
+    "message": "Verifica della connessione…"
+  },
+  "uiSiteDenied": {
+    "message": "L’accesso ai siti è stato negato. Concedi l’autorizzazione in Chrome."
+  },
+  "uiSaveConnection": {
+    "message": "Salva connessione"
+  },
+  "uiSaveChoiceFailed": {
+    "message": "Impossibile salvare la scelta."
+  },
+  "uiTabAccessDenied": {
+    "message": "L’accesso alle schede PDF è stato negato."
+  },
+  "uiLocalAccessDenied": {
+    "message": "L’accesso ai PDF locali è stato negato."
+  },
+  "uiEnableFileAccess": {
+    "message": "In chrome://extensions, apri i dettagli di Paperless Upload e consenti l’accesso agli URL dei file. Puoi anche trascinare il PDF qui."
+  },
+  "actionFailed": {
+    "message": "Impossibile completare l’operazione. Riprova."
+  },
+  "pdfTooLarge": {
+    "message": "Il PDF è troppo grande. Il limite per file è di 50 MiB."
+  },
+  "invalidPdf": {
+    "message": "Questo file non è un PDF. Seleziona un file PDF."
+  },
+  "invalidServer": {
+    "message": "Inserisci un indirizzo Paperless valido."
+  },
+  "invalidServerUrl": {
+    "message": "Usa un indirizzo HTTP o HTTPS senza credenziali, parametri di ricerca o frammenti."
+  },
+  "invalidTokenFormat": {
+    "message": "Inserisci il token API di Paperless senza spazi."
+  },
+  "sourceFetchFailed": {
+    "message": "Impossibile recuperare di nuovo il PDF. Scaricalo dal visualizzatore aperto, poi selezionalo o trascinalo qui."
+  },
+  "sourceExpired": {
+    "message": "L’indirizzo originale del PDF non è disponibile (HTTP $status$). Il collegamento potrebbe essere scaduto o essere monouso. Non è stato inviato nulla a Paperless. Scarica il PDF dal visualizzatore aperto, poi selezionalo o trascinalo qui.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "sourceDenied": {
+    "message": "Il sito ha negato l’accesso al PDF (HTTP $status$). La sessione potrebbe essere scaduta. Non è stato inviato nulla a Paperless. Scarica il PDF dal visualizzatore aperto, poi selezionalo o trascinalo qui.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "sourceHttpError": {
+    "message": "Il sito non ha restituito il PDF (HTTP $status$). Non è stato inviato nulla a Paperless. Scarica il PDF dal visualizzatore aperto, poi selezionalo o trascinalo qui.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "sourceInterrupted": {
+    "message": "Il download del PDF è stato interrotto. Scaricalo dal visualizzatore aperto, poi selezionalo o trascinalo qui."
+  },
+  "apiInvalidToken": {
+    "message": "Il token API non è valido. Controllalo nelle impostazioni."
+  },
+  "apiDenied": {
+    "message": "Accesso negato. Controlla le autorizzazioni del token e l’accesso al server."
+  },
+  "apiTooLarge": {
+    "message": "Il server ha rifiutato il file per le sue dimensioni. Controlla il limite di caricamento del server."
+  },
+  "apiRateLimited": {
+    "message": "Troppe richieste. Riprova più tardi."
+  },
+  "apiRejected": {
+    "message": "Paperless ha rifiutato la richiesta (HTTP $status$). Controlla l’indirizzo e, se necessario, i registri di Paperless.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "apiUnreachable": {
+    "message": "Impossibile raggiungere Paperless. Controlla l’indirizzo, il certificato HTTPS e la connessione di rete."
+  },
+  "apiRedirect": {
+    "message": "Il server reindirizza la richiesta API. Usa l’indirizzo di base diretto di Paperless. Un eventuale portale di accesso deve consentire l’uso del token su /api/."
+  },
+  "apiNotFound": {
+    "message": "Nessuna API Paperless risponde a questo indirizzo. Inserisci l’indirizzo di base, includendo il percorso di installazione se necessario."
+  },
+  "importUnavailable": {
+    "message": "Stato dell’importazione non disponibile. Il PDF è stato inviato. Controlla l’importazione in Paperless."
+  },
+  "importRetrying": {
+    "message": "Lo stato dell’importazione è temporaneamente non disponibile. Verrà controllato di nuovo in automatico …"
+  },
+  "importStatusDenied": {
+    "message": "Non hai accesso allo stato dell’importazione. Controlla il token API e i permessi per le attività in Paperless."
+  },
+  "importProcessing": {
+    "message": "Paperless sta elaborando il PDF …"
+  },
+  "importSuccess": {
+    "message": "Importato in Paperless"
+  },
+  "importFailed": {
+    "message": "Paperless non è riuscito a importare il PDF. Controlla l’attività in Paperless."
+  },
+  "importDuplicate": {
+    "message": "Il documento esiste già. Paperless ha rilevato un duplicato."
+  },
+  "importCancelled": {
+    "message": "L’importazione è stata annullata in Paperless."
+  },
+  "uploadUncertain": {
+    "message": "Nessuna conferma ricevuta. Controlla la posta in arrivo di Paperless prima di inviare nuovamente il file."
+  },
+  "downloadInterrupted": {
+    "message": "Il download è stato interrotto. Riprova."
+  },
+  "setupServer": {
+    "message": "Configura prima il tuo server Paperless."
+  },
+  "destinationChanged": {
+    "message": "La destinazione del caricamento è cambiata o manca. Seleziona di nuovo il PDF."
+  },
+  "fetchingOpenPdf": {
+    "message": "Recupero del PDF aperto …"
+  },
+  "sourceNotPdf": {
+    "message": "Nessun PDF ricevuto. Il sito potrebbe aver restituito una pagina di accesso. Salva il PDF dal visualizzatore e selezionalo qui."
+  },
+  "fileUnavailable": {
+    "message": "Il file non è più disponibile. Selezionalo di nuovo."
+  },
+  "sendingToPaperless": {
+    "message": "Invio a Paperless …"
+  },
+  "uploadAccepted": {
+    "message": "Inviato a Paperless"
+  },
+  "importTakingLonger": {
+    "message": "Il PDF è stato inviato. L’importazione richiede più tempo del previsto. Controlla lo stato in Paperless."
+  },
+  "uploadOtherServer": {
+    "message": "Questo caricamento riguarda un altro server Paperless."
+  }
+}

@@ -1,3 +1,4 @@
+import { browserLocale } from './locale.js';
 import { chromium, expect, test, type BrowserContext } from '@playwright/test';
 import { createServer, type Server } from 'node:http';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -141,9 +142,11 @@ test('window upload finds PDFs, skips inaccessible local tabs and other windows,
     const extensionPath = path.resolve('dist');
     context = await chromium.launchPersistentContext('', {
       channel: 'chromium',
+      ...browserLocale('de'),
       headless: true,
       viewport: { width: 390, height: 700 },
       args: [
+        '--lang=de',
         `--disable-extensions-except=${extensionPath}`,
         `--load-extension=${extensionPath}`,
         '--disable-features=ExtensionsMenuAccessControl',

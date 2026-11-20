@@ -19,7 +19,7 @@ test('task lookup stays on the configured server and supports legacy string docu
   });
   assert.deepEqual(await checkImport(settings, taskId), {
     status: 'success',
-    message: 'In Paperless importiert',
+    message: { key: 'importSuccess' },
     documentId: 42,
   });
   assert.equal(request.url, `${settings.url}api/tasks/?task_id=${taskId}`);
@@ -97,7 +97,10 @@ test('unknown or malformed responses never claim an import or expose server deta
     const result = await checkImport(settings, taskId);
     assert.equal(result.status, 'unavailable');
     assert.equal(result.documentId, undefined);
-    assert.doesNotMatch(result.message, /private server message/);
+    assert.doesNotMatch(
+      JSON.stringify(result.message),
+      /private server message/,
+    );
   }
 });
 
@@ -109,7 +112,7 @@ test('failure text is not interpreted as a duplicate or shown to users', async (
   );
   const result = await checkImport(settings, taskId);
   assert.equal(result.status, 'failure');
-  assert.doesNotMatch(result.message, /secret|token|duplicate/);
+  assert.deepEqual(result.message, { key: 'importFailed' });
 });
 
 test('network, HTTP, and invalid JSON errors leave upload acceptance untouched', async (t) => {

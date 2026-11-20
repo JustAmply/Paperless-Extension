@@ -1,0 +1,408 @@
+{
+  "languageTag": {
+    "message": "nl"
+  },
+  "extensionDescription": {
+    "message": "Stuur geopende pdf’s of lokale pdf-bestanden rechtstreeks naar je Paperless-ngx-server."
+  },
+  "sendPdf": {
+    "message": "Pdf naar Paperless sturen"
+  },
+  "badgeBusy": {
+    "message": "Paperless Upload: overdracht bezig"
+  },
+  "badgeCheck": {
+    "message": "Paperless Upload: controleer de overdracht"
+  },
+  "badgeStopped": {
+    "message": "Paperless Upload: wachtrij gestopt. Open de extensie opnieuw."
+  },
+  "accessDenied": {
+    "message": "Toegang geweigerd."
+  },
+  "waitForTransfer": {
+    "message": "Wacht tot de huidige overdracht is voltooid."
+  },
+  "allowServer": {
+    "message": "Geef toegang tot je Paperless-server."
+  },
+  "restartUpload": {
+    "message": "De bestemming is gewijzigd. Start de upload opnieuw."
+  },
+  "localTabsSkipped": {
+    "message": "Lokale tabbladen zijn overgeslagen. Geef toegang tot lokale pdf’s om ze mee te nemen."
+  },
+  "noPdfTabs": {
+    "message": "Geen pdf-tabbladen gevonden in dit venster."
+  },
+  "allowWebsites": {
+    "message": "Toegang tot websites ontbreekt. Probeer alle pdf-tabbladen opnieuw te uploaden en geef toegang in Chrome."
+  },
+  "cannotCheckAgain": {
+    "message": "De status van deze import kan niet opnieuw worden gecontroleerd."
+  },
+  "selectPdf": {
+    "message": "Selecteer ten minste één pdf."
+  },
+  "batchLimit": {
+    "message": "De geselecteerde pdf’s mogen samen niet groter zijn dan $LIMIT$ MiB.",
+    "placeholders": {
+      "limit": {
+        "content": "$1"
+      }
+    }
+  },
+  "invalidFileDetail": {
+    "message": "‘$FILE$’: $REASON$",
+    "placeholders": {
+      "file": {
+        "content": "$1"
+      },
+      "reason": {
+        "content": "$2"
+      }
+    }
+  },
+  "waitingForTransfer": {
+    "message": "Wacht op overdracht"
+  },
+  "tabPdfChanged": {
+    "message": "De pdf in het tabblad is gewijzigd of gesloten. Open de extensie opnieuw."
+  },
+  "tabPdfLoading": {
+    "message": "De pdf wordt nog geladen. Wacht even en probeer het opnieuw."
+  },
+  "cacheUnavailable": {
+    "message": "De opgeslagen kopie van de pdf is niet meer beschikbaar. Sla de pdf op vanuit de viewer en sleep hem hierheen."
+  },
+  "uiSettings": {
+    "message": "Instellingen"
+  },
+  "uiConnectToPaperless": {
+    "message": "Verbinden met Paperless"
+  },
+  "uiSetupHint": {
+    "message": "Stel de verbinding één keer in om pdf’s rechtstreeks naar je server te sturen."
+  },
+  "uiDisplayTitle": {
+    "message": "Weergave"
+  },
+  "uiHideSuccess": {
+    "message": "Succesmeldingen verbergen"
+  },
+  "uiAfterSeconds": {
+    "message": "Na $SECONDS$ seconden",
+    "placeholders": {
+      "seconds": {
+        "content": "$1",
+        "example": "15"
+      }
+    }
+  },
+  "uiNeverHide": {
+    "message": "Nooit"
+  },
+  "uiSavedImmediately": {
+    "message": "Je keuze wordt direct opgeslagen."
+  },
+  "uiConnection": {
+    "message": "Verbinding met Paperless"
+  },
+  "uiServerAddress": {
+    "message": "Paperless-adres"
+  },
+  "uiServerHelp": {
+    "message": "Het basisadres van je server, zo nodig met een subpad."
+  },
+  "uiApiToken": {
+    "message": "API-token"
+  },
+  "uiYourToken": {
+    "message": "Je API-token"
+  },
+  "uiFindToken": {
+    "message": "Open je profiel in Paperless om je API-token te vinden."
+  },
+  "uiHttpWarning": {
+    "message": "Met HTTP worden je token en pdf’s onversleuteld verstuurd."
+  },
+  "uiConnectionAccess": {
+    "message": "Chrome vraagt één keer toegang tot alle websites, zodat je pdf’s kunt uploaden zonder verdere toestemmingsvragen."
+  },
+  "uiConnect": {
+    "message": "Verbinden"
+  },
+  "uiLocalToken": {
+    "message": "Je token wordt alleen in dit Chrome-profiel opgeslagen."
+  },
+  "uiUploadPdfs": {
+    "message": "Pdf’s uploaden"
+  },
+  "uiUploadCurrent": {
+    "message": "Huidige pdf uploaden"
+  },
+  "uiChooseFiles": {
+    "message": "Bestanden kiezen"
+  },
+  "uiUploadAllTabs": {
+    "message": "Alle pdf-tabbladen uploaden"
+  },
+  "uiUploadWindow": {
+    "message": "Pdf’s in dit venster uploaden"
+  },
+  "uiAllTabs": {
+    "message": "Alle pdf-tabbladen"
+  },
+  "uiDropHint": {
+    "message": "Of sleep hier pdf’s naartoe"
+  },
+  "uiWebAccess": {
+    "message": "Chrome vraagt één keer toegang tot alle websites."
+  },
+  "uiAllowLocal": {
+    "message": "Toegang tot lokale pdf’s toestaan"
+  },
+  "uiTransfers": {
+    "message": "Overdrachten"
+  },
+  "uiDismiss": {
+    "message": "Meldingen sluiten"
+  },
+  "uiOpeningPdf": {
+    "message": "Pdf openen"
+  },
+  "uiLoadingPdf": {
+    "message": "Pdf laden…"
+  },
+  "uiImported": {
+    "message": "Geïmporteerd"
+  },
+  "uiDuplicate": {
+    "message": "Bestaat al"
+  },
+  "uiImportOtherServer": {
+    "message": "Deze import hoort bij een andere Paperless-server."
+  },
+  "uiImporting": {
+    "message": "Importeren…"
+  },
+  "uiTransferred": {
+    "message": "Verzonden"
+  },
+  "uiWaiting": {
+    "message": "In wachtrij"
+  },
+  "uiDownloading": {
+    "message": "Downloaden…"
+  },
+  "uiUploading": {
+    "message": "Uploaden…"
+  },
+  "uiOpenInPaperless": {
+    "message": "Openen in Paperless"
+  },
+  "uiOpenNamedDocument": {
+    "message": "$NAME$ openen in Paperless",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "invoice.pdf"
+      }
+    }
+  },
+  "uiRecheckImport": {
+    "message": "Importstatus opnieuw controleren"
+  },
+  "uiRecheckNamedImport": {
+    "message": "Importstatus van $NAME$ opnieuw controleren",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "invoice.pdf"
+      }
+    }
+  },
+  "uiOpenPaperlessTab": {
+    "message": "Paperless openen in een nieuw tabblad"
+  },
+  "uiAlreadySent": {
+    "message": "Al naar Paperless verzonden"
+  },
+  "uiUnconfirmed": {
+    "message": "Overdracht onbevestigd"
+  },
+  "uiPreparing": {
+    "message": "Voorbereiden… Houd dit venster nog even open."
+  },
+  "uiMayClose": {
+    "message": "Je kunt dit venster sluiten."
+  },
+  "uiKeepToken": {
+    "message": "Opgeslagen token behouden"
+  },
+  "uiKeepTokenHelp": {
+    "message": "Laat dit veld leeg om je opgeslagen token te behouden."
+  },
+  "uiNewTokenHelp": {
+    "message": "Voer een API-token in voor het nieuwe Paperless-adres."
+  },
+  "uiCheckingConnection": {
+    "message": "Verbinding controleren…"
+  },
+  "uiSiteDenied": {
+    "message": "Toegang tot websites is geweigerd. Geef toestemming in Chrome."
+  },
+  "uiSaveConnection": {
+    "message": "Verbinding opslaan"
+  },
+  "uiSaveChoiceFailed": {
+    "message": "Je keuze kon niet worden opgeslagen."
+  },
+  "uiTabAccessDenied": {
+    "message": "Toegang tot pdf-tabbladen is geweigerd."
+  },
+  "uiLocalAccessDenied": {
+    "message": "Toegang tot lokale pdf’s is geweigerd."
+  },
+  "uiEnableFileAccess": {
+    "message": "Open de details van Paperless Upload in chrome://extensions en sta toegang tot bestands-URL’s toe. Je kunt de pdf ook hierheen slepen."
+  },
+  "actionFailed": {
+    "message": "De actie kon niet worden voltooid. Probeer het opnieuw."
+  },
+  "pdfTooLarge": {
+    "message": "De pdf is te groot. Per bestand geldt een limiet van 50 MiB."
+  },
+  "invalidPdf": {
+    "message": "Dit bestand is geen pdf. Kies een pdf-bestand."
+  },
+  "invalidServer": {
+    "message": "Voer een geldig Paperless-adres in."
+  },
+  "invalidServerUrl": {
+    "message": "Gebruik een HTTP- of HTTPS-adres zonder inloggegevens, queryparameters of fragment."
+  },
+  "invalidTokenFormat": {
+    "message": "Voer je Paperless-API-token zonder spaties in."
+  },
+  "sourceFetchFailed": {
+    "message": "De pdf kon niet opnieuw worden opgehaald. Download de pdf vanuit de geopende viewer en selecteer het bestand hier of sleep het hierheen."
+  },
+  "sourceExpired": {
+    "message": "Het oorspronkelijke pdf-adres is niet beschikbaar (HTTP $status$). De link is mogelijk verlopen of was voor eenmalig gebruik. Er is niets naar Paperless verstuurd. Download de pdf vanuit de geopende viewer en selecteer het bestand hier of sleep het hierheen.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "sourceDenied": {
+    "message": "De website weigert toegang tot de pdf (HTTP $status$). Je sessie is mogelijk verlopen. Er is niets naar Paperless verstuurd. Download de pdf vanuit de geopende viewer en selecteer het bestand hier of sleep het hierheen.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "sourceHttpError": {
+    "message": "De website kon de pdf niet leveren (HTTP $status$). Er is niets naar Paperless verstuurd. Download de pdf vanuit de geopende viewer en selecteer het bestand hier of sleep het hierheen.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "sourceInterrupted": {
+    "message": "Het downloaden van de pdf is onderbroken. Download de pdf vanuit de geopende viewer en selecteer het bestand hier of sleep het hierheen."
+  },
+  "apiInvalidToken": {
+    "message": "Het API-token is ongeldig. Controleer het in de instellingen."
+  },
+  "apiDenied": {
+    "message": "Toegang geweigerd. Controleer de rechten van het token en je toegang tot de server."
+  },
+  "apiTooLarge": {
+    "message": "De server weigert het bestand vanwege de grootte. Controleer de uploadlimiet van de server."
+  },
+  "apiRateLimited": {
+    "message": "Te veel verzoeken. Probeer het later opnieuw."
+  },
+  "apiRejected": {
+    "message": "Paperless heeft het verzoek geweigerd (HTTP $status$). Controleer het adres en zo nodig de logboeken van Paperless.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "apiUnreachable": {
+    "message": "Paperless is niet bereikbaar. Controleer het adres, het HTTPS-certificaat en de netwerkverbinding."
+  },
+  "apiRedirect": {
+    "message": "De server leidt het API-verzoek om. Gebruik het directe basisadres van Paperless. Een eventueel inlogportaal moet toegang met een token tot /api/ toestaan."
+  },
+  "apiNotFound": {
+    "message": "Op dit adres reageert geen Paperless-API. Voer het basisadres in, zo nodig met het installatiepad."
+  },
+  "importUnavailable": {
+    "message": "De importstatus is niet beschikbaar. De pdf is verstuurd. Controleer de import in Paperless."
+  },
+  "importRetrying": {
+    "message": "De importstatus is tijdelijk niet beschikbaar. De status wordt automatisch opnieuw gecontroleerd …"
+  },
+  "importStatusDenied": {
+    "message": "Je hebt geen toegang tot de importstatus. Controleer het API-token en de taakrechten in Paperless."
+  },
+  "importProcessing": {
+    "message": "Paperless verwerkt de pdf …"
+  },
+  "importSuccess": {
+    "message": "Geïmporteerd in Paperless"
+  },
+  "importFailed": {
+    "message": "Paperless kon de pdf niet importeren. Controleer de taak in Paperless."
+  },
+  "importDuplicate": {
+    "message": "Het document bestaat al. Paperless heeft een duplicaat gevonden."
+  },
+  "importCancelled": {
+    "message": "De import is in Paperless geannuleerd."
+  },
+  "uploadUncertain": {
+    "message": "Geen bevestiging ontvangen. Controleer je Paperless-inbox voordat je het bestand opnieuw verstuurt."
+  },
+  "downloadInterrupted": {
+    "message": "De download is onderbroken. Probeer het opnieuw."
+  },
+  "setupServer": {
+    "message": "Stel eerst je Paperless-server in."
+  },
+  "destinationChanged": {
+    "message": "De uploadbestemming is gewijzigd of ontbreekt. Selecteer de pdf opnieuw."
+  },
+  "fetchingOpenPdf": {
+    "message": "Geopende pdf ophalen …"
+  },
+  "sourceNotPdf": {
+    "message": "Geen pdf ontvangen. Mogelijk heeft de website een inlogpagina teruggestuurd. Sla de pdf vanuit de viewer op en selecteer het bestand hier."
+  },
+  "fileUnavailable": {
+    "message": "Het bestand is niet meer beschikbaar. Selecteer het opnieuw."
+  },
+  "sendingToPaperless": {
+    "message": "Versturen naar Paperless …"
+  },
+  "uploadAccepted": {
+    "message": "Verstuurd naar Paperless"
+  },
+  "importTakingLonger": {
+    "message": "De pdf is verstuurd. De import duurt langer dan verwacht. Controleer de status in Paperless."
+  },
+  "uploadOtherServer": {
+    "message": "Deze upload hoort bij een andere Paperless-server."
+  }
+}

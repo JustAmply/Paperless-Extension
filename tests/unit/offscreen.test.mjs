@@ -155,10 +155,10 @@ test('a start signal arriving during an empty queue read is not lost', async () 
 });
 
 test('an explicit API rejection remains a failed upload with its explanation', async () => {
-  const f = fixture({ outcome: new UserError('Keine Berechtigung.') });
+  const f = fixture({ outcome: new UserError({ key: 'apiDenied' }) });
   await f.run();
   assert.equal(f.jobs.get('first').status, 'failed');
-  assert.equal(f.jobs.get('first').message, 'Keine Berechtigung.');
+  assert.deepEqual(f.jobs.get('first').message, { key: 'apiDenied' });
   assert.equal(f.uploads.length, 1);
   assert.equal(f.files.size, 0);
 });
@@ -169,7 +169,7 @@ test('queued files cannot be sent to a different Paperless server', async () => 
   await f.run();
   assert.equal(f.uploads.length, 0);
   assert.equal(f.jobs.get('first').status, 'failed');
-  assert.match(f.jobs.get('first').message, /Upload-Ziel/);
+  assert.deepEqual(f.jobs.get('first').message, { key: 'destinationChanged' });
 });
 
 test('the runner automatically confirms an accepted upload', async () => {

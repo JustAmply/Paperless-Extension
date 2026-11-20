@@ -1,3 +1,4 @@
+import { browserLocale } from './locale.js';
 import {
   chromium,
   expect,
@@ -281,10 +282,12 @@ test.beforeEach(async () => {
   const extensionPath = path.resolve('dist');
   context = await chromium.launchPersistentContext('', {
     channel: 'chromium',
+    ...browserLocale('de'),
     headless: true,
     viewport: { width: 390, height: 700 },
     colorScheme: 'light',
     args: [
+      '--lang=de',
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
       '--disable-features=ExtensionsMenuAccessControl',
@@ -431,7 +434,7 @@ test('a saved token can only be reused at the same normalized Paperless address'
   );
   expect(response).toMatchObject({
     ok: false,
-    error: 'Gib für die neue Paperless-Adresse einen API-Token ein.',
+    error: { key: 'uiNewTokenHelp' },
   });
   expect(replacementProfileRequests).toBe(0);
 

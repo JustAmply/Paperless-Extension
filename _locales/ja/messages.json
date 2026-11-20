@@ -1,0 +1,408 @@
+{
+  "languageTag": {
+    "message": "ja"
+  },
+  "extensionDescription": {
+    "message": "開いている PDF やローカルの PDF ファイルを自分の Paperless-ngx サーバーに直接送信できます。"
+  },
+  "sendPdf": {
+    "message": "PDF を Paperless に送信"
+  },
+  "badgeBusy": {
+    "message": "Paperless Upload：転送中"
+  },
+  "badgeCheck": {
+    "message": "Paperless Upload：転送状況を確認してください"
+  },
+  "badgeStopped": {
+    "message": "Paperless Upload：キューが停止しました。拡張機能のポップアップを開き直してください。"
+  },
+  "accessDenied": {
+    "message": "アクセスが拒否されました。"
+  },
+  "waitForTransfer": {
+    "message": "現在の転送が完了するまでお待ちください。"
+  },
+  "allowServer": {
+    "message": "Paperless サーバーへのアクセスを許可してください。"
+  },
+  "restartUpload": {
+    "message": "アップロード先が変更されました。もう一度アップロードを開始してください。"
+  },
+  "localTabsSkipped": {
+    "message": "ローカルファイルのタブをスキップしました。対象に含めるには、ローカル PDF へのアクセスを許可してください。"
+  },
+  "noPdfTabs": {
+    "message": "このウィンドウには PDF のタブが見つかりませんでした。"
+  },
+  "allowWebsites": {
+    "message": "ウェブサイトへのアクセス権限がありません。すべての PDF タブのアップロードを再度選び、Chrome でアクセスを許可してください。"
+  },
+  "cannotCheckAgain": {
+    "message": "このインポートの状態は再確認できません。"
+  },
+  "selectPdf": {
+    "message": "PDF を 1 件以上選択してください。"
+  },
+  "batchLimit": {
+    "message": "選択した PDF の合計サイズは $LIMIT$ MiB 以下にしてください。",
+    "placeholders": {
+      "limit": {
+        "content": "$1"
+      }
+    }
+  },
+  "invalidFileDetail": {
+    "message": "「$FILE$」：$REASON$",
+    "placeholders": {
+      "file": {
+        "content": "$1"
+      },
+      "reason": {
+        "content": "$2"
+      }
+    }
+  },
+  "waitingForTransfer": {
+    "message": "転送待ち"
+  },
+  "tabPdfChanged": {
+    "message": "タブ内の PDF が変更されたか、閉じられました。拡張機能を開き直してください。"
+  },
+  "tabPdfLoading": {
+    "message": "PDF を読み込み中です。少し待ってからもう一度お試しください。"
+  },
+  "cacheUnavailable": {
+    "message": "キャッシュされた PDF は利用できなくなりました。PDF ビューアーで保存し、ここにドラッグしてください。"
+  },
+  "uiSettings": {
+    "message": "設定"
+  },
+  "uiConnectToPaperless": {
+    "message": "Paperless に接続"
+  },
+  "uiSetupHint": {
+    "message": "一度設定すれば、PDF をサーバーに直接送れます。"
+  },
+  "uiDisplayTitle": {
+    "message": "表示"
+  },
+  "uiHideSuccess": {
+    "message": "成功メッセージを非表示にする"
+  },
+  "uiAfterSeconds": {
+    "message": "$SECONDS$ 秒後",
+    "placeholders": {
+      "seconds": {
+        "content": "$1",
+        "example": "15"
+      }
+    }
+  },
+  "uiNeverHide": {
+    "message": "自動で隠さない"
+  },
+  "uiSavedImmediately": {
+    "message": "設定はすぐに保存されます。"
+  },
+  "uiConnection": {
+    "message": "Paperless への接続"
+  },
+  "uiServerAddress": {
+    "message": "Paperless のアドレス"
+  },
+  "uiServerHelp": {
+    "message": "サーバーのベース URL を入力します。サブパスがある場合はそれも含めてください。"
+  },
+  "uiApiToken": {
+    "message": "API トークン"
+  },
+  "uiYourToken": {
+    "message": "API トークンを入力"
+  },
+  "uiFindToken": {
+    "message": "Paperless のプロフィール画面で API トークンを確認できます。"
+  },
+  "uiHttpWarning": {
+    "message": "HTTP ではトークンと PDF が暗号化されずに送信されます。"
+  },
+  "uiConnectionAccess": {
+    "message": "Chrome がすべてのサイトへのアクセス許可を一度求めます。許可すると、以降は確認なしで PDF をアップロードできます。"
+  },
+  "uiConnect": {
+    "message": "接続"
+  },
+  "uiLocalToken": {
+    "message": "トークンはこの Chrome プロフィールにのみ保存されます。"
+  },
+  "uiUploadPdfs": {
+    "message": "PDF をアップロード"
+  },
+  "uiUploadCurrent": {
+    "message": "開いている PDF をアップロード"
+  },
+  "uiChooseFiles": {
+    "message": "ファイルを選択"
+  },
+  "uiUploadAllTabs": {
+    "message": "すべての PDF タブをアップロード"
+  },
+  "uiUploadWindow": {
+    "message": "このウィンドウの PDF をアップロード"
+  },
+  "uiAllTabs": {
+    "message": "すべての PDF タブ"
+  },
+  "uiDropHint": {
+    "message": "または PDF をここにドラッグ"
+  },
+  "uiWebAccess": {
+    "message": "Chrome がすべてのサイトへのアクセス許可を一度求めます。"
+  },
+  "uiAllowLocal": {
+    "message": "ローカルの PDF へのアクセスを許可"
+  },
+  "uiTransfers": {
+    "message": "転送状況"
+  },
+  "uiDismiss": {
+    "message": "メッセージを閉じる"
+  },
+  "uiOpeningPdf": {
+    "message": "PDF を開いています"
+  },
+  "uiLoadingPdf": {
+    "message": "PDF を読み込んでいます…"
+  },
+  "uiImported": {
+    "message": "インポート済み"
+  },
+  "uiDuplicate": {
+    "message": "登録済み"
+  },
+  "uiImportOtherServer": {
+    "message": "このインポートは別の Paperless サーバーのものです。"
+  },
+  "uiImporting": {
+    "message": "インポート中…"
+  },
+  "uiTransferred": {
+    "message": "送信済み"
+  },
+  "uiWaiting": {
+    "message": "待機中"
+  },
+  "uiDownloading": {
+    "message": "ダウンロード中…"
+  },
+  "uiUploading": {
+    "message": "アップロード中…"
+  },
+  "uiOpenInPaperless": {
+    "message": "Paperless で開く"
+  },
+  "uiOpenNamedDocument": {
+    "message": "Paperless で「$NAME$」を開く",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "invoice.pdf"
+      }
+    }
+  },
+  "uiRecheckImport": {
+    "message": "インポート状況を再確認"
+  },
+  "uiRecheckNamedImport": {
+    "message": "「$NAME$」のインポート状況を再確認",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "invoice.pdf"
+      }
+    }
+  },
+  "uiOpenPaperlessTab": {
+    "message": "新しいタブで Paperless を開く"
+  },
+  "uiAlreadySent": {
+    "message": "Paperless に送信済み"
+  },
+  "uiUnconfirmed": {
+    "message": "送信を確認できません"
+  },
+  "uiPreparing": {
+    "message": "準備中です。しばらくこのウィンドウを開いたままにしてください。"
+  },
+  "uiMayClose": {
+    "message": "このウィンドウを閉じてもかまいません。"
+  },
+  "uiKeepToken": {
+    "message": "保存済みのトークンを使う"
+  },
+  "uiKeepTokenHelp": {
+    "message": "空欄のままにすると、保存済みのトークンを引き続き使用します。"
+  },
+  "uiNewTokenHelp": {
+    "message": "新しい Paperless アドレスの API トークンを入力してください。"
+  },
+  "uiCheckingConnection": {
+    "message": "接続を確認しています…"
+  },
+  "uiSiteDenied": {
+    "message": "サイトへのアクセスが許可されていません。Chrome で許可してください。"
+  },
+  "uiSaveConnection": {
+    "message": "接続設定を保存"
+  },
+  "uiSaveChoiceFailed": {
+    "message": "設定を保存できませんでした。"
+  },
+  "uiTabAccessDenied": {
+    "message": "PDF タブへのアクセスが許可されていません。"
+  },
+  "uiLocalAccessDenied": {
+    "message": "ローカルの PDF へのアクセスが許可されていません。"
+  },
+  "uiEnableFileAccess": {
+    "message": "chrome://extensions で Paperless Upload の詳細を開き、ファイルの URL へのアクセスを許可してください。PDF をここにドラッグすることもできます。"
+  },
+  "actionFailed": {
+    "message": "操作を完了できませんでした。もう一度お試しください。"
+  },
+  "pdfTooLarge": {
+    "message": "PDF が大きすぎます。1 ファイルあたりの上限は 50 MiB です。"
+  },
+  "invalidPdf": {
+    "message": "このファイルは PDF ではありません。PDF ファイルを選択してください。"
+  },
+  "invalidServer": {
+    "message": "有効な Paperless のアドレスを入力してください。"
+  },
+  "invalidServerUrl": {
+    "message": "認証情報、クエリ、フラグメントを含まない HTTP または HTTPS のアドレスを指定してください。"
+  },
+  "invalidTokenFormat": {
+    "message": "Paperless の API トークンを空白を入れずに入力してください。"
+  },
+  "sourceFetchFailed": {
+    "message": "PDF を再取得できませんでした。開いているビューアーから PDF をダウンロードし、ここで選択するかドラッグしてください。"
+  },
+  "sourceExpired": {
+    "message": "PDF の元のアドレスを利用できません（HTTP $status$）。リンクの有効期限が切れたか、一度しか使えないリンクの可能性があります。Paperless には何も送信されていません。開いているビューアーから PDF をダウンロードし、ここで選択するかドラッグしてください。",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "sourceDenied": {
+    "message": "サイトが PDF へのアクセスを拒否しました（HTTP $status$）。ログインの有効期限が切れた可能性があります。Paperless には何も送信されていません。開いているビューアーから PDF をダウンロードし、ここで選択するかドラッグしてください。",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "sourceHttpError": {
+    "message": "サイトから PDF を取得できませんでした（HTTP $status$）。Paperless には何も送信されていません。開いているビューアーから PDF をダウンロードし、ここで選択するかドラッグしてください。",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "sourceInterrupted": {
+    "message": "PDF のダウンロードが中断されました。開いているビューアーから PDF をダウンロードし、ここで選択するかドラッグしてください。"
+  },
+  "apiInvalidToken": {
+    "message": "API トークンが無効です。設定でトークンを確認してください。"
+  },
+  "apiDenied": {
+    "message": "アクセスが拒否されました。トークンの権限とサーバーへのアクセス権を確認してください。"
+  },
+  "apiTooLarge": {
+    "message": "ファイルサイズがサーバーの制限を超えています。サーバーのアップロード上限を確認してください。"
+  },
+  "apiRateLimited": {
+    "message": "リクエストが多すぎます。しばらくしてからもう一度お試しください。"
+  },
+  "apiRejected": {
+    "message": "Paperless がリクエストを拒否しました（HTTP $status$）。アドレスを確認し、必要に応じて Paperless のログを確認してください。",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "apiUnreachable": {
+    "message": "Paperless に接続できません。アドレス、HTTPS 証明書、ネットワーク接続を確認してください。"
+  },
+  "apiRedirect": {
+    "message": "サーバーが API リクエストをリダイレクトしました。Paperless に直接接続できるベース URL を指定してください。認証ゲートウェイを使う場合は、トークンによる /api/ へのアクセスを許可してください。"
+  },
+  "apiNotFound": {
+    "message": "このアドレスでは Paperless API から応答がありません。ベース URL を入力してください。必要に応じてインストール先のパスも含めてください。"
+  },
+  "importUnavailable": {
+    "message": "インポート状況を取得できません。PDF は送信済みです。Paperless でインポート状況を確認してください。"
+  },
+  "importRetrying": {
+    "message": "現在インポート状況を取得できません。しばらくすると自動的に再確認します…"
+  },
+  "importStatusDenied": {
+    "message": "インポート状況を確認する権限がありません。Paperless で API トークンとタスクの閲覧権限を確認してください。"
+  },
+  "importProcessing": {
+    "message": "Paperless が PDF を処理しています…"
+  },
+  "importSuccess": {
+    "message": "Paperless にインポート済み"
+  },
+  "importFailed": {
+    "message": "Paperless が PDF をインポートできませんでした。Paperless でタスクを確認してください。"
+  },
+  "importDuplicate": {
+    "message": "同じ文書がすでに存在します。Paperless が重複を検出しました。"
+  },
+  "importCancelled": {
+    "message": "Paperless でインポートがキャンセルされました。"
+  },
+  "uploadUncertain": {
+    "message": "送信を確認できませんでした。ファイルを再送する前に Paperless の受信箱を確認してください。"
+  },
+  "downloadInterrupted": {
+    "message": "ダウンロードが中断されました。もう一度お試しください。"
+  },
+  "setupServer": {
+    "message": "最初に Paperless サーバーを設定してください。"
+  },
+  "destinationChanged": {
+    "message": "アップロード先が変更されたか、設定されていません。PDF を選び直してください。"
+  },
+  "fetchingOpenPdf": {
+    "message": "開いている PDF を取得しています…"
+  },
+  "sourceNotPdf": {
+    "message": "PDF を受信できませんでした。サイトがログインページを返した可能性があります。ビューアーから PDF を保存し、ここで選択してください。"
+  },
+  "fileUnavailable": {
+    "message": "ファイルが見つかりません。もう一度選択してください。"
+  },
+  "sendingToPaperless": {
+    "message": "Paperless に送信しています…"
+  },
+  "uploadAccepted": {
+    "message": "Paperless に送信済み"
+  },
+  "importTakingLonger": {
+    "message": "PDF は送信済みです。インポートに時間がかかっています。Paperless で状況を確認してください。"
+  },
+  "uploadOtherServer": {
+    "message": "このアップロードの送信先は別の Paperless サーバーです。"
+  }
+}

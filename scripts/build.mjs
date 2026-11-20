@@ -15,6 +15,9 @@ if (result.status !== 0) process.exit(result.status ?? 1);
 const dist = path.join(root, 'dist');
 await rm(dist, { recursive: true, force: true });
 await rename(path.join(root, '.build'), dist);
+await cp(path.join(root, '_locales'), path.join(dist, '_locales'), {
+  recursive: true,
+});
 for (const name of ['manifest.json', 'LICENSE', 'THIRD_PARTY_NOTICES.md']) {
   await cp(path.join(root, name), path.join(dist, name));
 }

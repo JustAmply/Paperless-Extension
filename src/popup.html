@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -15,10 +15,10 @@
       <button
         id="settings-toggle"
         class="icon-button"
-        aria-label="Einstellungen"
+        data-i18n-aria-label="uiSettings"
         aria-expanded="false"
         aria-controls="settings-panel"
-        title="Einstellungen"
+        data-i18n-title="uiSettings"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="3" />
@@ -32,8 +32,8 @@
     <main>
       <section id="settings-panel" aria-labelledby="settings-title" hidden>
         <div class="section-heading">
-          <h1 id="settings-title">Mit Paperless verbinden</h1>
-          <p id="setup-hint">Einmal einrichten. PDFs direkt ablegen.</p>
+          <h1 id="settings-title" data-i18n="uiConnectToPaperless"></h1>
+          <p id="setup-hint" data-i18n="uiSetupHint"></p>
         </div>
         <section
           id="display-settings"
@@ -41,66 +41,72 @@
           aria-labelledby="display-title"
           hidden
         >
-          <h2 id="display-title">Anzeige</h2>
-          <label for="success-display">Erfolgsmeldungen ausblenden</label>
+          <h2 id="display-title" data-i18n="uiDisplayTitle"></h2>
+          <label for="success-display" data-i18n="uiHideSuccess"></label>
           <select id="success-display" aria-describedby="display-help">
-            <option value="8">Nach 8 Sekunden</option>
-            <option value="15">Nach 15 Sekunden</option>
-            <option value="30">Nach 30 Sekunden</option>
-            <option value="0">Nicht automatisch</option>
+            <option value="8"></option>
+            <option value="15"></option>
+            <option value="30"></option>
+            <option value="0" data-i18n="uiNeverHide"></option>
           </select>
-          <p id="display-help" class="field-note">
-            Die Auswahl wird sofort gespeichert.
-          </p>
+          <p
+            id="display-help"
+            class="field-note"
+            data-i18n="uiSavedImmediately"
+          ></p>
           <p id="display-status" class="form-status error" role="status"></p>
         </section>
         <form id="settings-form">
-          <h2 id="connection-title" hidden>Paperless-Verbindung</h2>
-          <label for="server-url">Paperless-Adresse</label>
+          <h2 id="connection-title" hidden data-i18n="uiConnection"></h2>
+          <label for="server-url" data-i18n="uiServerAddress"></label>
           <input
             id="server-url"
             type="text"
             inputmode="url"
-            placeholder="https://paperless.example.de"
+            placeholder="https://paperless.example.com"
             required
             autocomplete="url"
             spellcheck="false"
           />
-          <p class="field-note">
-            Die Basisadresse deines Servers, ggf. mit Unterpfad.
-          </p>
-          <label for="api-token">API-Token</label>
+          <p class="field-note" data-i18n="uiServerHelp"></p>
+          <label for="api-token" data-i18n="uiApiToken"></label>
           <input
             id="api-token"
             type="password"
-            placeholder="Dein API-Token"
+            data-i18n-placeholder="uiYourToken"
             aria-describedby="token-help"
             autocomplete="off"
             spellcheck="false"
           />
-          <p id="token-help" class="field-note">
-            In Paperless unter „Mein Profil“ → „API-Token“.
-          </p>
-          <p id="http-warning" class="notice" hidden>
-            HTTP überträgt Token und PDFs unverschlüsselt.
-          </p>
-          <p id="connection-access-note" class="field-note">
-            Chrome fragt einmalig nach Zugriff auf alle Webseiten, damit du PDFs
-            ohne weitere Freigaben hochladen kannst.
-          </p>
-          <button id="save-settings" class="primary" type="submit">
-            Verbinden
-          </button>
+          <p id="token-help" class="field-note" data-i18n="uiFindToken"></p>
+          <p
+            id="http-warning"
+            class="notice"
+            hidden
+            data-i18n="uiHttpWarning"
+          ></p>
+          <p
+            id="connection-access-note"
+            class="field-note"
+            data-i18n="uiConnectionAccess"
+          ></p>
+          <button
+            id="save-settings"
+            class="primary"
+            type="submit"
+            data-i18n="uiConnect"
+          ></button>
           <p id="settings-status" class="form-status" role="status"></p>
         </form>
         <p class="privacy-note">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <rect x="5" y="10" width="14" height="11" rx="2" />
-            <path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg
-          >Token nur in diesem Chrome-Profil gespeichert.
+            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+          </svg>
+          <span data-i18n="uiLocalToken"></span>
         </p>
       </section>
-      <section id="upload-panel" aria-label="PDFs hochladen" hidden>
+      <section id="upload-panel" data-i18n-aria-label="uiUploadPdfs" hidden>
         <button
           id="send-current"
           class="primary current-button"
@@ -112,7 +118,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 16V4m-5 5 5-5 5 5M5 16v4h14v-4" />
           </svg>
-          <span id="send-current-label">Aktuelle PDF hochladen</span>
+          <span id="send-current-label" data-i18n="uiUploadCurrent"></span>
         </button>
         <p id="current-status" class="field-note" role="status" hidden></p>
         <div class="secondary-actions">
@@ -122,25 +128,27 @@
                 d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"
               />
             </svg>
-            Dateien wählen
+            <span data-i18n="uiChooseFiles"></span>
           </button>
           <button
             id="send-window"
             class="secondary-button"
             type="button"
-            aria-label="Alle PDF-Tabs hochladen"
-            title="PDFs im aktuellen Fenster hochladen"
+            data-i18n-aria-label="uiUploadAllTabs"
+            data-i18n-title="uiUploadWindow"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <rect x="3" y="7" width="14" height="14" rx="2" />
               <path d="M7 3h12a2 2 0 0 1 2 2v12" />
             </svg>
-            Alle PDF-Tabs
+            <span data-i18n="uiAllTabs"></span>
           </button>
         </div>
-        <p id="drop-hint" class="field-note drop-hint">
-          Oder PDFs hierher ziehen
-        </p>
+        <p
+          id="drop-hint"
+          class="field-note drop-hint"
+          data-i18n="uiDropHint"
+        ></p>
         <input
           id="file-input"
           type="file"
@@ -148,12 +156,18 @@
           multiple
           hidden
         />
-        <p id="web-access-note" class="field-note" hidden>
-          Chrome fragt einmalig nach Zugriff auf alle Webseiten.
-        </p>
-        <button id="file-access" class="text-button" hidden>
-          Zugriff auf lokale PDFs erlauben
-        </button>
+        <p
+          id="web-access-note"
+          class="field-note"
+          hidden
+          data-i18n="uiWebAccess"
+        ></p>
+        <button
+          id="file-access"
+          class="text-button"
+          hidden
+          data-i18n="uiAllowLocal"
+        ></button>
         <div
           id="upload-status"
           class="upload-status"
@@ -161,11 +175,20 @@
           aria-live="polite"
           aria-atomic="true"
         ></div>
-        <h2 id="batch-summary" class="batch-summary" hidden>Übertragungen</h2>
+        <h2
+          id="batch-summary"
+          class="batch-summary"
+          hidden
+          data-i18n="uiTransfers"
+        ></h2>
         <ul id="job-list" class="job-list" aria-labelledby="batch-summary"></ul>
-        <button id="dismiss-results" class="text-button" type="button" hidden>
-          Meldungen schließen
-        </button>
+        <button
+          id="dismiss-results"
+          class="text-button"
+          type="button"
+          hidden
+          data-i18n="uiDismiss"
+        ></button>
       </section>
       <p id="fatal-error" class="form-status error" role="alert" hidden></p>
     </main>

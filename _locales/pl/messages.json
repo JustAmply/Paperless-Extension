@@ -1,0 +1,408 @@
+{
+  "languageTag": {
+    "message": "pl"
+  },
+  "extensionDescription": {
+    "message": "Wysyłaj otwarte pliki PDF lub pliki PDF z dysku bezpośrednio na swój serwer Paperless-ngx."
+  },
+  "sendPdf": {
+    "message": "Wyślij PDF do Paperless"
+  },
+  "badgeBusy": {
+    "message": "Paperless Upload: trwa przesyłanie"
+  },
+  "badgeCheck": {
+    "message": "Paperless Upload: sprawdź przesyłanie"
+  },
+  "badgeStopped": {
+    "message": "Paperless Upload: kolejka zatrzymana. Otwórz ponownie okno rozszerzenia."
+  },
+  "accessDenied": {
+    "message": "Odmowa dostępu."
+  },
+  "waitForTransfer": {
+    "message": "Poczekaj na zakończenie bieżącego przesyłania."
+  },
+  "allowServer": {
+    "message": "Zezwól na dostęp do swojego serwera Paperless."
+  },
+  "restartUpload": {
+    "message": "Miejsce docelowe uległo zmianie. Rozpocznij przesyłanie ponownie."
+  },
+  "localTabsSkipped": {
+    "message": "Pominięto lokalne karty. Zezwól na dostęp do lokalnych plików PDF, aby je uwzględnić."
+  },
+  "noPdfTabs": {
+    "message": "W tym oknie nie znaleziono kart z plikami PDF."
+  },
+  "allowWebsites": {
+    "message": "Brak dostępu do witryn. Ponownie wybierz przesyłanie wszystkich kart z PDF i zezwól na dostęp w Chrome."
+  },
+  "cannotCheckAgain": {
+    "message": "Nie można ponownie sprawdzić stanu tego importu."
+  },
+  "selectPdf": {
+    "message": "Wybierz co najmniej jeden plik PDF."
+  },
+  "batchLimit": {
+    "message": "Łączny rozmiar wybranych plików PDF nie może przekraczać $LIMIT$ MiB.",
+    "placeholders": {
+      "limit": {
+        "content": "$1"
+      }
+    }
+  },
+  "invalidFileDetail": {
+    "message": "„$FILE$”: $REASON$",
+    "placeholders": {
+      "file": {
+        "content": "$1"
+      },
+      "reason": {
+        "content": "$2"
+      }
+    }
+  },
+  "waitingForTransfer": {
+    "message": "Oczekuje na przesłanie"
+  },
+  "tabPdfChanged": {
+    "message": "Plik PDF w karcie został zmieniony lub zamknięty. Otwórz rozszerzenie ponownie."
+  },
+  "tabPdfLoading": {
+    "message": "Plik PDF jest jeszcze wczytywany. Poczekaj chwilę i spróbuj ponownie."
+  },
+  "cacheUnavailable": {
+    "message": "Kopia PDF w pamięci podręcznej nie jest już dostępna. Zapisz plik z przeglądarki PDF i przeciągnij go tutaj."
+  },
+  "uiSettings": {
+    "message": "Ustawienia"
+  },
+  "uiConnectToPaperless": {
+    "message": "Połącz z Paperless"
+  },
+  "uiSetupHint": {
+    "message": "Skonfiguruj połączenie raz, aby wysyłać pliki PDF bezpośrednio na swój serwer."
+  },
+  "uiDisplayTitle": {
+    "message": "Wyświetlanie"
+  },
+  "uiHideSuccess": {
+    "message": "Ukrywaj komunikaty o powodzeniu"
+  },
+  "uiAfterSeconds": {
+    "message": "Po $SECONDS$ sekundach",
+    "placeholders": {
+      "seconds": {
+        "content": "$1",
+        "example": "15"
+      }
+    }
+  },
+  "uiNeverHide": {
+    "message": "Nigdy"
+  },
+  "uiSavedImmediately": {
+    "message": "Wybór jest zapisywany od razu."
+  },
+  "uiConnection": {
+    "message": "Połączenie z Paperless"
+  },
+  "uiServerAddress": {
+    "message": "Adres Paperless"
+  },
+  "uiServerHelp": {
+    "message": "Adres bazowy serwera wraz z podścieżką, jeśli jest używana."
+  },
+  "uiApiToken": {
+    "message": "Token API"
+  },
+  "uiYourToken": {
+    "message": "Twój token API"
+  },
+  "uiFindToken": {
+    "message": "W Paperless otwórz swój profil i znajdź token API."
+  },
+  "uiHttpWarning": {
+    "message": "Protokół HTTP przesyła token i pliki PDF bez szyfrowania."
+  },
+  "uiConnectionAccess": {
+    "message": "Chrome poprosi raz o dostęp do wszystkich witryn, aby umożliwić wysyłanie plików PDF bez kolejnych pytań o zgodę."
+  },
+  "uiConnect": {
+    "message": "Połącz"
+  },
+  "uiLocalToken": {
+    "message": "Token jest zapisywany tylko w tym profilu Chrome."
+  },
+  "uiUploadPdfs": {
+    "message": "Wyślij pliki PDF"
+  },
+  "uiUploadCurrent": {
+    "message": "Wyślij bieżący PDF"
+  },
+  "uiChooseFiles": {
+    "message": "Wybierz pliki"
+  },
+  "uiUploadAllTabs": {
+    "message": "Wyślij pliki ze wszystkich kart z PDF"
+  },
+  "uiUploadWindow": {
+    "message": "Wyślij pliki PDF z tego okna"
+  },
+  "uiAllTabs": {
+    "message": "Wszystkie karty z PDF"
+  },
+  "uiDropHint": {
+    "message": "Możesz też przeciągnąć tu pliki PDF"
+  },
+  "uiWebAccess": {
+    "message": "Chrome poprosi raz o dostęp do wszystkich witryn."
+  },
+  "uiAllowLocal": {
+    "message": "Zezwól na dostęp do lokalnych plików PDF"
+  },
+  "uiTransfers": {
+    "message": "Przesyłanie"
+  },
+  "uiDismiss": {
+    "message": "Zamknij komunikaty"
+  },
+  "uiOpeningPdf": {
+    "message": "Otwieranie pliku PDF"
+  },
+  "uiLoadingPdf": {
+    "message": "Wczytywanie pliku PDF…"
+  },
+  "uiImported": {
+    "message": "Zaimportowano"
+  },
+  "uiDuplicate": {
+    "message": "Już istnieje"
+  },
+  "uiImportOtherServer": {
+    "message": "Ten import dotyczy innego serwera Paperless."
+  },
+  "uiImporting": {
+    "message": "Importowanie…"
+  },
+  "uiTransferred": {
+    "message": "Wysłano"
+  },
+  "uiWaiting": {
+    "message": "W kolejce"
+  },
+  "uiDownloading": {
+    "message": "Pobieranie…"
+  },
+  "uiUploading": {
+    "message": "Wysyłanie…"
+  },
+  "uiOpenInPaperless": {
+    "message": "Otwórz w Paperless"
+  },
+  "uiOpenNamedDocument": {
+    "message": "Otwórz $NAME$ w Paperless",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "invoice.pdf"
+      }
+    }
+  },
+  "uiRecheckImport": {
+    "message": "Sprawdź ponownie stan importu"
+  },
+  "uiRecheckNamedImport": {
+    "message": "Sprawdź ponownie stan importu pliku $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "invoice.pdf"
+      }
+    }
+  },
+  "uiOpenPaperlessTab": {
+    "message": "Otwórz Paperless w nowej karcie"
+  },
+  "uiAlreadySent": {
+    "message": "Już wysłano do Paperless"
+  },
+  "uiUnconfirmed": {
+    "message": "Nie potwierdzono przesłania"
+  },
+  "uiPreparing": {
+    "message": "Przygotowywanie… Pozostaw to okno przez chwilę otwarte."
+  },
+  "uiMayClose": {
+    "message": "Możesz zamknąć to okno."
+  },
+  "uiKeepToken": {
+    "message": "Zachowaj zapisany token"
+  },
+  "uiKeepTokenHelp": {
+    "message": "Pozostaw pole puste, aby zachować zapisany token."
+  },
+  "uiNewTokenHelp": {
+    "message": "Wprowadź token API dla nowego adresu Paperless."
+  },
+  "uiCheckingConnection": {
+    "message": "Sprawdzanie połączenia…"
+  },
+  "uiSiteDenied": {
+    "message": "Odmówiono dostępu do witryn. Udziel pozwolenia w Chrome."
+  },
+  "uiSaveConnection": {
+    "message": "Zapisz połączenie"
+  },
+  "uiSaveChoiceFailed": {
+    "message": "Nie udało się zapisać wyboru."
+  },
+  "uiTabAccessDenied": {
+    "message": "Odmówiono dostępu do kart z plikami PDF."
+  },
+  "uiLocalAccessDenied": {
+    "message": "Odmówiono dostępu do lokalnych plików PDF."
+  },
+  "uiEnableFileAccess": {
+    "message": "Na stronie chrome://extensions otwórz szczegóły rozszerzenia Paperless Upload i zezwól na dostęp do adresów URL plików. Możesz też przeciągnąć plik PDF tutaj."
+  },
+  "actionFailed": {
+    "message": "Nie udało się wykonać tej czynności. Spróbuj ponownie."
+  },
+  "pdfTooLarge": {
+    "message": "Plik PDF jest za duży. Limit dla jednego pliku wynosi 50 MiB."
+  },
+  "invalidPdf": {
+    "message": "Ten plik nie jest plikiem PDF. Wybierz plik PDF."
+  },
+  "invalidServer": {
+    "message": "Podaj prawidłowy adres serwera Paperless."
+  },
+  "invalidServerUrl": {
+    "message": "Użyj adresu HTTP lub HTTPS bez danych logowania, parametrów zapytania ani fragmentu."
+  },
+  "invalidTokenFormat": {
+    "message": "Wpisz token API Paperless bez spacji."
+  },
+  "sourceFetchFailed": {
+    "message": "Nie udało się ponownie pobrać pliku PDF. Pobierz go z otwartej przeglądarki plików PDF, a następnie wybierz go tutaj lub przeciągnij do tego okna."
+  },
+  "sourceExpired": {
+    "message": "Pierwotny adres pliku PDF jest niedostępny (HTTP $status$). Link mógł wygasnąć lub być jednorazowy. Nic nie wysłano do Paperless. Pobierz PDF z otwartej przeglądarki plików PDF, a następnie wybierz go tutaj lub przeciągnij do tego okna.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "sourceDenied": {
+    "message": "Witryna odmówiła dostępu do pliku PDF (HTTP $status$). Twoja sesja mogła wygasnąć. Nic nie wysłano do Paperless. Pobierz PDF z otwartej przeglądarki plików PDF, a następnie wybierz go tutaj lub przeciągnij do tego okna.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "sourceHttpError": {
+    "message": "Witryna nie zwróciła pliku PDF (HTTP $status$). Nic nie wysłano do Paperless. Pobierz PDF z otwartej przeglądarki plików PDF, a następnie wybierz go tutaj lub przeciągnij do tego okna.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "sourceInterrupted": {
+    "message": "Pobieranie pliku PDF zostało przerwane. Pobierz go z otwartej przeglądarki plików PDF, a następnie wybierz go tutaj lub przeciągnij do tego okna."
+  },
+  "apiInvalidToken": {
+    "message": "Token API jest nieprawidłowy. Sprawdź go w ustawieniach."
+  },
+  "apiDenied": {
+    "message": "Odmowa dostępu. Sprawdź uprawnienia tokenu i swój dostęp do serwera."
+  },
+  "apiTooLarge": {
+    "message": "Serwer odrzucił plik ze względu na jego rozmiar. Sprawdź limit przesyłania na serwerze."
+  },
+  "apiRateLimited": {
+    "message": "Zbyt wiele żądań. Spróbuj ponownie później."
+  },
+  "apiRejected": {
+    "message": "Paperless odrzucił żądanie (HTTP $status$). Sprawdź adres, a w razie potrzeby także dzienniki Paperless.",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "404"
+      }
+    }
+  },
+  "apiUnreachable": {
+    "message": "Nie można połączyć się z Paperless. Sprawdź adres, certyfikat HTTPS i połączenie sieciowe."
+  },
+  "apiRedirect": {
+    "message": "Serwer przekierowuje żądanie API. Użyj bezpośredniego adresu bazowego Paperless. Brama logowania musi zezwalać na dostęp do /api/ przy użyciu tokenu."
+  },
+  "apiNotFound": {
+    "message": "Pod tym adresem nie odpowiada API Paperless. Podaj adres bazowy wraz ze ścieżką instalacji, jeśli jest wymagana."
+  },
+  "importUnavailable": {
+    "message": "Status importu jest niedostępny. Plik PDF został wysłany. Sprawdź import w Paperless."
+  },
+  "importRetrying": {
+    "message": "Status importu jest chwilowo niedostępny. Zostanie ponownie sprawdzony automatycznie …"
+  },
+  "importStatusDenied": {
+    "message": "Nie masz dostępu do statusu importu. Sprawdź token API oraz uprawnienia do zadań w Paperless."
+  },
+  "importProcessing": {
+    "message": "Paperless przetwarza plik PDF …"
+  },
+  "importSuccess": {
+    "message": "Zaimportowano do Paperless"
+  },
+  "importFailed": {
+    "message": "Paperless nie zdołał zaimportować pliku PDF. Sprawdź zadanie w Paperless."
+  },
+  "importDuplicate": {
+    "message": "Dokument już istnieje. Paperless wykrył duplikat."
+  },
+  "importCancelled": {
+    "message": "Import został anulowany w Paperless."
+  },
+  "uploadUncertain": {
+    "message": "Brak potwierdzenia. Przed ponownym wysłaniem pliku sprawdź skrzynkę odbiorczą Paperless."
+  },
+  "downloadInterrupted": {
+    "message": "Pobieranie zostało przerwane. Spróbuj ponownie."
+  },
+  "setupServer": {
+    "message": "Najpierw skonfiguruj serwer Paperless."
+  },
+  "destinationChanged": {
+    "message": "Miejsce docelowe wysyłki zmieniło się lub nie jest skonfigurowane. Wybierz ponownie plik PDF."
+  },
+  "fetchingOpenPdf": {
+    "message": "Pobieranie otwartego pliku PDF …"
+  },
+  "sourceNotPdf": {
+    "message": "Nie otrzymano pliku PDF. Witryna mogła zwrócić stronę logowania. Zapisz PDF z przeglądarki plików PDF i wybierz go tutaj."
+  },
+  "fileUnavailable": {
+    "message": "Plik nie jest już dostępny. Wybierz go ponownie."
+  },
+  "sendingToPaperless": {
+    "message": "Wysyłanie do Paperless …"
+  },
+  "uploadAccepted": {
+    "message": "Wysłano do Paperless"
+  },
+  "importTakingLonger": {
+    "message": "Plik PDF został wysłany. Import trwa dłużej niż zwykle. Sprawdź jego status w Paperless."
+  },
+  "uploadOtherServer": {
+    "message": "Ten plik został wysłany na inny serwer Paperless."
+  }
+}

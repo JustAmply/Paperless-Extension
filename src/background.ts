@@ -1,3 +1,4 @@
+import { message, t } from './shared/i18n.js';
 import {
   dismissResults,
   enqueueWindow,
@@ -163,11 +164,7 @@ async function badge(): Promise<void> {
     text: busy ? '…' : failed ? '×' : '',
   });
   await chrome.action.setTitle({
-    title: busy
-      ? 'Paperless Upload: Übertragung läuft'
-      : failed
-        ? 'Paperless Upload: Übertragung prüfen'
-        : 'PDF an Paperless senden',
+    title: busy ? t('badgeBusy') : failed ? t('badgeCheck') : t('sendPdf'),
   });
   await chrome.action.setBadgeBackgroundColor({
     color: failed ? '#9c452d' : '#005616',
@@ -175,10 +172,10 @@ async function badge(): Promise<void> {
 }
 
 async function handle(
-  message: BackgroundRequest,
+  request: BackgroundRequest,
   sender: chrome.runtime.MessageSender,
 ): Promise<BackgroundResponse> {
-  switch (message.type) {
+  switch (request.type) {
     case 'state':
       return { ok: true, state: await state() };
     case 'capture-context': {
@@ -188,9 +185,9 @@ async function handle(
         tabId === undefined ||
         !sender.documentId
       )
-        throw new UserError('Zugriff verweigert.');
+        throw new UserError(message('accessDenied'));
       const match = pdfDispositions.get(tabId);
-      if (match?.url !== message.url)
+      if (match?.url !== request.url)
         return { ok: true, documentId: sender.documentId };
       pdfDispositions.delete(tabId);
       return {
@@ -201,51 +198,43 @@ async function handle(
     }
     case 'dismiss-results':
       if (sender.url !== chrome.runtime.getURL('popup.html'))
-        throw new UserError('Zugriff verweigert.');
+        throw new UserError(message('accessDenied'));
       await dismissResults();
       await badge();
       return { ok: true, state: await state() };
     case 'retry-import': {
       if (sender.url !== chrome.runtime.getURL('popup.html'))
-        throw new UserError('Zugriff verweigert.');
+        throw new UserError(message('accessDenied'));
       const config = await settings();
-      if (!config)
-        throw new UserError('Bitte richte zuerst deinen Paperless-Server ein.');
-      await retryImport(message.jobId, config.url);
+      if (!config) throw new UserError(message('setupServer'));
+      await retryImport(request.jobId, config.url);
       await offscreen(true);
       return { ok: true };
     }
     case 'settings': {
       if (sender.url !== chrome.runtime.getURL('offscreen.html'))
-        throw new UserError('Zugriff verweigert.');
+        throw new UserError(message('accessDenied'));
       const config = await settings();
-      if (!config)
-        throw new UserError('Bitte richte zuerst deinen Paperless-Server ein.');
+      if (!config) throw new UserError(message('setupServer'));
       return { ok: true, settings: config };
     }
     case 'save': {
       if (sender.url !== chrome.runtime.getURL('popup.html'))
-        throw new UserError('Zugriff verweigert.');
+        throw new UserError(message('accessDenied'));
       if ((await getJobs()).some(isActive))
-        throw new UserError(
-          'Bitte warte, bis die Übertragung abgeschlossen ist.',
-        );
+        throw new UserError(message('waitForTransfer'));
       const previous = await settings();
-      const next = validateSettings(message.url, message.token, previous);
+      const next = validateSettings(request.url, request.token, previous);
       if (
         !(await chrome.permissions.contains({
           origins: [hostPermission(next.url)],
         }))
       ) {
-        throw new UserError(
-          'Bitte erlaube den Zugriff auf deinen Paperless-Server.',
-        );
+        throw new UserError(message('allowServer'));
       }
       await verifyConnection(next);
       if ((await getJobs()).some(isActive))
-        throw new UserError(
-          'Bitte warte, bis die Übertragung abgeschlossen ist.',
-        );
+        throw new UserError(message('waitForTransfer'));
       await chrome.storage.local.set({ settings: next });
       if (
         previous &&
@@ -266,29 +255,22 @@ async function handle(
       return { ok: true };
     case 'upload-window': {
       if (sender.url !== chrome.runtime.getURL('popup.html'))
-        throw new UserError('Zugriff verweigert.');
+        throw new UserError(message('accessDenied'));
       const config = await settings();
-      if (!config)
-        throw new UserError('Bitte richte zuerst deinen Paperless-Server ein.');
-      if (message.serverUrl !== config.url)
-        throw new UserError(
-          'Das Upload-Ziel hat sich geändert. Starte den Upload erneut.',
-        );
+      if (!config) throw new UserError(message('setupServer'));
+      if (request.serverUrl !== config.url)
+        throw new UserError(message('restartUpload'));
       if ((await getJobs()).some(isActive))
-        throw new UserError(
-          'Bitte warte, bis die laufende Übertragung abgeschlossen ist.',
-        );
+        throw new UserError(message('waitForTransfer'));
       const { sources, skippedLocalTabs } = await windowPdfs(
-        message.windowId,
+        request.windowId,
         await liveCaptures(),
       );
-      const localNotice = skippedLocalTabs
-        ? 'Lokale Tabs wurden übersprungen. Erlaube den Zugriff auf lokale PDFs, um sie einzubeziehen.'
-        : '';
+      const localNotice = skippedLocalTabs ? message('localTabsSkipped') : '';
       if (!sources.length)
         return {
           ok: true,
-          message: localNotice || 'Keine PDF-Tabs in diesem Fenster gefunden.',
+          message: localNotice || message('noPdfTabs'),
           state: await state(),
         };
       await enqueueWindow(sources, config.url);
@@ -305,12 +287,11 @@ async function handle(
       return { ok: true };
     case 'runner-stopped':
       if (sender.url !== chrome.runtime.getURL('offscreen.html'))
-        throw new UserError('Zugriff verweigert.');
+        throw new UserError(message('accessDenied'));
       await chrome.action.setBadgeText({ text: '×' });
       await chrome.action.setBadgeBackgroundColor({ color: '#9c452d' });
       await chrome.action.setTitle({
-        title:
-          'Paperless Upload: Warteschlange angehalten. Popup erneut öffnen.',
+        title: t('badgeStopped'),
       });
       return { ok: true };
   }

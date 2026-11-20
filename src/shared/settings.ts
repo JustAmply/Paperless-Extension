@@ -1,3 +1,4 @@
+import { message } from './i18n.js';
 import { UserError, type Settings } from './model.js';
 
 export function normalizeServer(input: string): string {
@@ -6,7 +7,7 @@ export function normalizeServer(input: string): string {
   try {
     url = new URL(text.includes('://') ? text : `https://${text}`);
   } catch {
-    throw new UserError('Bitte gib eine gültige Paperless-Adresse ein.');
+    throw new UserError(message('invalidServer'));
   }
   if (
     !['http:', 'https:'].includes(url.protocol) ||
@@ -16,9 +17,7 @@ export function normalizeServer(input: string): string {
     url.search ||
     url.hash
   ) {
-    throw new UserError(
-      'Nutze eine HTTP(S)-Adresse ohne Zugangsdaten, Suche oder Sprungmarke.',
-    );
+    throw new UserError(message('invalidServerUrl'));
   }
   url.pathname = `${url.pathname.replace(/\/+$/, '')}/`;
   return url.href;
@@ -36,13 +35,9 @@ export function validateSettings(
   const url = normalizeServer(input);
   const value = token.trim() || (previous?.url === url ? previous.token : '');
   if (!value && previous && previous.url !== url)
-    throw new UserError(
-      'Gib für die neue Paperless-Adresse einen API-Token ein.',
-    );
+    throw new UserError(message('uiNewTokenHelp'));
   if (!value || /[^\x21-\x7e]/.test(value) || value.length > 512) {
-    throw new UserError(
-      'Bitte gib deinen Paperless-API-Token ohne Leerzeichen ein.',
-    );
+    throw new UserError(message('invalidTokenFormat'));
   }
   return { url, token: value };
 }

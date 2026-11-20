@@ -167,7 +167,9 @@ test('window inspection stops before reading any document when origin access is 
     new Map(),
   );
   globalThis.chrome.permissions.contains = async () => false;
-  await assert.rejects(windowPdfs(7), /Webseitenzugriff fehlt/);
+  await assert.rejects(windowPdfs(7), {
+    userMessage: { key: 'allowWebsites' },
+  });
   assert.deepEqual(calls.inspections, []);
 });
 
