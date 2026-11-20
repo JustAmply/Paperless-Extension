@@ -1,0 +1,13 @@
+Invia i PDF aperti in Chrome direttamente al tuo server Paperless-ngx. Puoi ad esempio archiviare una fattura dal portale clienti mentre è ancora aperta nel browser.
+
+Apri Paperless Upload dalla barra degli strumenti di Chrome per inviare il PDF che stai visualizzando. Puoi anche caricare in una volta sola tutti i PDF rilevati nelle schede della finestra corrente. Per i file sul tuo dispositivo, usa il selettore di file o trascina i PDF nella finestra dell’estensione.
+
+Per configurare la connessione, inserisci l’indirizzo del tuo server Paperless e il tuo token API. Ogni invio parte su tua richiesta. Una volta pronti i file, puoi chiudere la finestra dell’estensione. Il trasferimento prosegue finché Chrome resta aperto.
+
+L’estensione indica quando Paperless ha accettato un file per l’elaborazione. Se lo stato dell’importazione è disponibile, ne mostra anche l’esito. Dopo un’importazione riuscita puoi aprire il documento in Paperless. Se manca la conferma, controlla prima la posta in arrivo di Paperless. Il file non viene mai inviato di nuovo automaticamente.
+
+L’interfaccia segue la lingua di Chrome ed è disponibile in dieci lingue. Le impostazioni e i file temporanei restano nel tuo profilo Chrome. I PDF selezionati vengono inviati direttamente al server configurato. L’estensione non contiene pubblicità né strumenti di tracciamento.
+
+Richiede Chrome 116 o versioni successive. A partire da Chrome 151 l’estensione può usare il PDF già caricato in una scheda, anche se per aprire la fattura è necessario effettuare l’accesso. Se un PDF non è accessibile, salvalo dal visualizzatore e seleziona il file. Per caricare i PDF locali direttamente da una scheda occorre concedere un’autorizzazione aggiuntiva in Chrome.
+
+Paperless Upload è un progetto indipendente e non è un prodotto ufficiale di Paperless-ngx.

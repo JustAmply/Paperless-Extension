@@ -28,13 +28,20 @@ These are identifiers, not secrets. The workflow requests only the `https://www.
 
 The workflow never runs on a push or tag, never skips review, and stops on store validation warnings. It polls asynchronous package processing for up to five minutes. Upload and publish POSTs are never retried automatically. After any uncertain network response or failed run, inspect the Dashboard before rerunning; the store might already have accepted the package. A draft uploaded successfully can be submitted directly in the Dashboard without uploading the same version again.
 
-## Store graphics
+## Localized store materials
 
-Run `npm run test:e2e` to refresh the synthetic popup screenshots, then `node scripts/store-assets.mjs`. The generator renders `artifacts/store/screenshot-1280x800.png` and `artifacts/store/promo-440x280.png` using the existing Playwright browser. It embeds the original successful-import screenshot without changing the displayed extension UI. All document names come from the local test fixture; no real account or token is used. Inspect the images before uploading them to the listing.
+Run `npm run build` followed by `node scripts/store-assets.mjs` with Playwright Chromium installed. For every packaged locale, the generator opens a synthetic invoice in an isolated browser profile, uploads it to a local fixture, waits for import success and captures the actual popup. It renders one 1280 × 800 store screenshot per language under `store/graphics/<locale>/` and one global 440 × 280 promotional tile. The translated headlines and sample filenames are in [store/screenshot-copy.json](../store/screenshot-copy.json).
+
+When the release changes listing text or graphics:
+
+1. Choose `upload` in the release workflow to create a package draft. The uploaded package supplies the locale list and localized short descriptions.
+2. Open **Store listing** in the Developer Dashboard. Select each language, paste its [detailed description](../store/listing/) and replace its localized screenshot with the matching `screenshot-1280x800.png`. Use the German screenshot for the default listing.
+3. Replace the global small promotional tile with `store/graphics/promo-440x280.png`. Save the listing and verify the language selections, images and descriptions before submitting the draft for review.
 
 ## References
 
 - [Chrome Web Store API usage](https://developer.chrome.com/docs/webstore/using-api)
+- [Localize a Chrome Web Store listing](https://developer.chrome.com/docs/webstore/cws-dashboard-listing#localize-your-listing)
 - [Store service-account setup and publisher limitation](https://developer.chrome.com/docs/webstore/service-accounts)
 - [GitHub Actions authentication and Workload Identity Federation](https://github.com/google-github-actions/auth)
 - [Upload state values](https://developer.chrome.com/docs/webstore/api/reference/rest/v2/UploadState)

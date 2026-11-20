@@ -1,0 +1,62 @@
+{
+  "de": {
+    "title": "Vom PDF-Tab nach Paperless",
+    "detail": "Lade Rechnungen direkt aus Chrome auf deinen eigenen Paperless-ngx-Server.",
+    "caption": "Nach dem Import öffnest du das Dokument direkt in Paperless.",
+    "filename": "Beispielrechnung.pdf"
+  },
+  "en": {
+    "title": "From PDF tab to Paperless",
+    "detail": "Send invoices straight from Chrome to your own Paperless-ngx server.",
+    "caption": "Open the document in Paperless once the import is complete.",
+    "filename": "Sample invoice.pdf"
+  },
+  "fr": {
+    "title": "De l’onglet PDF à Paperless",
+    "detail": "Envoyez vos factures depuis Chrome vers votre propre serveur Paperless-ngx.",
+    "caption": "Une fois le document importé, ouvrez-le dans Paperless.",
+    "filename": "Exemple de facture.pdf"
+  },
+  "es": {
+    "title": "De la pestaña PDF a Paperless",
+    "detail": "Envía facturas desde Chrome directamente a tu servidor Paperless-ngx.",
+    "caption": "Abre el documento en Paperless cuando termine la importación.",
+    "filename": "Factura de ejemplo.pdf"
+  },
+  "it": {
+    "title": "Dalla scheda PDF a Paperless",
+    "detail": "Invia le fatture da Chrome direttamente al tuo server Paperless-ngx.",
+    "caption": "Al termine dell’importazione, apri il documento in Paperless.",
+    "filename": "Fattura di esempio.pdf"
+  },
+  "nl": {
+    "title": "Van pdf-tabblad naar Paperless",
+    "detail": "Stuur facturen vanuit Chrome rechtstreeks naar je eigen Paperless-ngx-server.",
+    "caption": "Open het document in Paperless zodra het is geïmporteerd.",
+    "filename": "Voorbeeldfactuur.pdf"
+  },
+  "pl": {
+    "title": "Z karty z PDF do Paperless",
+    "detail": "Wysyłaj faktury z Chrome bezpośrednio na swój serwer Paperless-ngx.",
+    "caption": "Po zakończeniu importu otwórz dokument w Paperless.",
+    "filename": "Przykładowa faktura.pdf"
+  },
+  "pt_BR": {
+    "title": "Da aba com o PDF para o Paperless",
+    "detail": "Envie faturas diretamente do Chrome para o seu servidor Paperless-ngx.",
+    "caption": "Abra o documento no Paperless quando a importação terminar.",
+    "filename": "Fatura de exemplo.pdf"
+  },
+  "sv": {
+    "title": "Från PDF-fliken till Paperless",
+    "detail": "Skicka fakturor direkt från Chrome till din egen Paperless-ngx-server.",
+    "caption": "Öppna dokumentet i Paperless när importen är klar.",
+    "filename": "Exempelfaktura.pdf"
+  },
+  "ja": {
+    "title": "開いた PDF を Paperless へ",
+    "detail": "Chrome で開いた請求書を、自分の Paperless-ngx サーバーに直接送信。",
+    "caption": "インポートが完了した文書は、そのまま Paperless で開けます。",
+    "filename": "請求書サンプル.pdf"
+  }
+}

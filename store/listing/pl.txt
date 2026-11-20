@@ -1,0 +1,13 @@
+Wysyłaj pliki PDF otwarte w Chrome bezpośrednio na własny serwer Paperless-ngx. Możesz na przykład zarchiwizować fakturę z portalu klienta, gdy wciąż jest otwarta w przeglądarce.
+
+Otwórz Paperless Upload z paska narzędzi Chrome, aby wysłać wyświetlany plik PDF. Możesz też przesłać jednocześnie wszystkie pliki PDF wykryte w kartach bieżącego okna. Pliki z urządzenia wybierz z dysku lub przeciągnij do okna rozszerzenia.
+
+Przy pierwszym uruchomieniu podaj adres swojego serwera Paperless i token API. Każde przesyłanie rozpoczynasz samodzielnie. Po przygotowaniu plików możesz zamknąć okno rozszerzenia. Przesyłanie trwa, dopóki Chrome jest uruchomiony.
+
+Rozszerzenie informuje, kiedy Paperless przyjmie plik do przetworzenia. Jeśli stan importu jest dostępny, zobaczysz także wynik. Po udanym imporcie możesz od razu otworzyć dokument w Paperless. Jeśli brakuje potwierdzenia, sprawdź najpierw skrzynkę odbiorczą Paperless. Rozszerzenie nigdy nie ponawia wysyłki automatycznie.
+
+Interfejs korzysta z języka Chrome i jest dostępny w dziesięciu językach. Ustawienia i pliki tymczasowe pozostają w Twoim profilu Chrome. Wybrane pliki PDF trafiają bezpośrednio na skonfigurowany serwer. Rozszerzenie nie zawiera reklam ani mechanizmów śledzenia.
+
+Wymaga Chrome w wersji 116 lub nowszej. Od wersji 151 rozszerzenie może użyć pliku PDF już wczytanego w karcie, na przykład faktury dostępnej po zalogowaniu. Jeśli plik jest niedostępny, zapisz go w przeglądarce PDF, a następnie wybierz z dysku. Przesyłanie bezpośrednio z kart z lokalnymi plikami PDF wymaga dodatkowego uprawnienia w Chrome.
+
+Paperless Upload to niezależny projekt. Nie jest oficjalnym produktem Paperless-ngx.

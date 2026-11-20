@@ -1,0 +1,13 @@
+Übertrage geöffnete PDFs direkt an deinen eigenen Paperless-ngx-Server. So kannst du zum Beispiel eine Rechnung aus dem Kundenportal ablegen, solange sie noch im Browser geöffnet ist.
+
+Öffne Paperless Upload über die Chrome-Symbolleiste und sende die aktuelle PDF. Du kannst auch alle erkannten PDF-Tabs im aktuellen Fenster auf einmal hochladen. Dateien von deinem Gerät lassen sich auswählen oder in das Erweiterungsfenster ziehen.
+
+Zur Einrichtung brauchst du die Adresse deines Paperless-Servers und einen API-Token. Jede Übertragung startet auf deinen Klick. Sobald die Dateien vorbereitet sind, kannst du das Erweiterungsfenster schließen. Chrome muss während der Übertragung geöffnet bleiben.
+
+Du siehst, wann Paperless eine Datei zur Verarbeitung angenommen hat. Ist der Importstatus verfügbar, zeigt die Erweiterung auch das Ergebnis an. Nach einem erfolgreichen Import kannst du das Dokument direkt in Paperless öffnen. Fehlt die Bestätigung, prüfe zuerst deinen Posteingang. Die Erweiterung sendet die Datei nicht automatisch erneut.
+
+Die Oberfläche folgt der Sprache von Chrome und ist in zehn Sprachen verfügbar. Einstellungen und temporäre Dateien bleiben in deinem Chrome-Profil. Die ausgewählten PDFs werden direkt an den eingerichteten Server gesendet. Die Erweiterung enthält weder Werbung noch Tracking.
+
+Erfordert Chrome ab Version 116. Ab Chrome 151 kann die Erweiterung auch eine bereits im Tab geladene PDF übernehmen, etwa eine Rechnung hinter einer Anmeldung. Ist eine PDF nicht zugänglich, speichere sie im Viewer und wähle die Datei aus. Für das direkte Hochladen aus lokalen PDF-Tabs ist in Chrome eine zusätzliche Freigabe nötig.
+
+Paperless Upload ist ein unabhängiges Projekt und kein offizielles Produkt von Paperless-ngx.

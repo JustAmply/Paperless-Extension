@@ -1,40 +1,38 @@
 # Chrome Web Store Listing — Paperless Upload
 
-Last updated: 2026-11-19
+Last updated: 2026-11-20
 
 ## Store listing
 
 - Name: Paperless Upload
-- Short description: Geöffnete PDFs oder lokale PDF-Dateien direkt an deinen Paperless-ngx-Server übertragen.
-- Primary language: German
 - Category: Productivity → Tools
+- Default language: German
 - Single purpose: Send user-selected PDF documents to the user's own Paperless-ngx server.
 
-### Detailed description
+The manifest supplies each short description from `extensionDescription` in the corresponding [Chrome message catalog](_locales/). The following plain-text files contain the detailed descriptions exactly as they should appear in the Developer Dashboard.
 
-Paperless Upload überträgt PDFs direkt an deinen eigenen Paperless-ngx-Server.
-
-Lade die aktuell geöffnete PDF hoch, wähle lokale PDF-Dateien aus oder ziehe sie in das Erweiterungsfenster. Mit „Alle PDF-Tabs hochladen“ kannst du die erkannten PDFs des aktuellen Browserfensters gemeinsam übertragen. Das funktioniert auch bei Rechnungsportalen, die im Tab eine einzelne PDF einbetten.
-
-Trage einmal deine Serveradresse und deinen Paperless-API-Token ein. Eine Übertragung startet erst, wenn du sie ausdrücklich auslöst. Du kannst das Erweiterungsfenster danach schließen; die Übertragung läuft weiter, solange Chrome geöffnet bleibt.
-
-Die Erweiterung unterscheidet zwischen der Annahme einer Datei und dem anschließenden Import durch Paperless. Sie zeigt nach Möglichkeit den Importstatus und einen Link zum Dokument an. Wenn eine Übertragung nicht sicher bestätigt werden kann, wird sie nicht automatisch wiederholt.
-
-Deine Einstellungen und vorübergehend benötigten Dokumente werden lokal im Browser gespeichert. PDFs werden nur an den von dir eingerichteten Paperless-Server übertragen. Es gibt keine Werbung, Analyse- oder Trackingdienste.
-
-Voraussetzungen: ein eigener Paperless-ngx-Zugang und Chrome ab Version 116. Ab Chrome 151 können neu geöffnete PDFs direkt aus der bereits empfangenen Antwort übernommen werden. Bei nicht zugänglichen Dokumenten kannst du die Datei speichern und anschließend auswählen. Für lokale PDF-Tabs ist eine zusätzliche Dateizugriffsfreigabe erforderlich.
-
-Paperless Upload ist ein unabhängiges Projekt und kein offizielles Produkt von Paperless-ngx.
+| Store language      | Detailed description                           |
+| ------------------- | ---------------------------------------------- |
+| German              | [Deutsch](store/listing/de.txt)                |
+| English             | [English](store/listing/en.txt)                |
+| French              | [Français](store/listing/fr.txt)               |
+| Spanish             | [Español](store/listing/es.txt)                |
+| Italian             | [Italiano](store/listing/it.txt)               |
+| Dutch               | [Nederlands](store/listing/nl.txt)             |
+| Polish              | [Polski](store/listing/pl.txt)                 |
+| Portuguese (Brazil) | [Português do Brasil](store/listing/pt_BR.txt) |
+| Swedish             | [Svenska](store/listing/sv.txt)                |
+| Japanese            | [日本語](store/listing/ja.txt)                 |
 
 ## Graphics and assets
 
-| Asset                             | Location                                  | Status                                              |
-| --------------------------------- | ----------------------------------------- | --------------------------------------------------- |
-| Store icon, 128 × 128             | `assets/icon-128.png`                     | Existing extension icon                             |
-| Product screenshots               | `artifacts/store/screenshot-1280x800.png` | Generated from synthetic test evidence and uploaded |
-| Small promotional tile, 440 × 280 | `artifacts/store/promo-440x280.png`       | Generated and uploaded                              |
+| Asset                                    | Location                                          |
+| ---------------------------------------- | ------------------------------------------------- |
+| Store icon, 128 × 128                    | `assets/icon-128.png`                             |
+| Localized screenshots, 1280 × 800        | `store/graphics/<locale>/screenshot-1280x800.png` |
+| Global small promotional tile, 440 × 280 | `store/graphics/promo-440x280.png`                |
 
-Use synthetic documents and a fixture server for screenshots. Never show real API tokens, private server addresses, or personal documents.
+Each screenshot shows the actual popup running in its target language after a successful import on a local fixture server. The tile uses the extension name and icon across all languages. See the [release instructions](docs/RELEASING.md#localized-store-materials) to regenerate and apply the assets.
 
 ## Permission justifications
 
@@ -75,19 +73,10 @@ Policy source: [docs/PRIVACY_POLICY.md](docs/PRIVACY_POLICY.md). Public policy U
 
 ## Version history
 
-| Version | Date       | Changes                                                                                         | Status                    |
-| ------- | ---------- | ----------------------------------------------------------------------------------------------- | ------------------------- |
-| 0.3.1   | 2026-11-19 | Save displayed PDFs by keyboard and recognize protected invoices in direct or embedded viewers. | Local build               |
-| 0.3.0   | 2026-11-16 | Initial store publication preparation for PDF uploads and import-status feedback.               | Submitted; review pending |
+| Version | Date       | Changes                                                                                         | Status      |
+| ------- | ---------- | ----------------------------------------------------------------------------------------------- | ----------- |
+| 0.4.0   | 2026-11-20 | Localize the extension and store materials in ten languages.                                    | Prepared    |
+| 0.3.1   | 2026-11-19 | Save displayed PDFs by keyboard and recognize protected invoices in direct or embedded viewers. | Local build |
+| 0.3.0   | 2026-11-17 | First store release with PDF uploads and import-status feedback.                                | Published   |
 
-## Submission requirements still to verify
-
-- Publisher access and existing linked service account verified on 2026-11-16.
-- First item created and version 0.3.0 ZIP uploaded in the Developer Dashboard.
-- Public privacy policy, developer contact, store graphics, and final data-use disclosures.
-- GitHub environment configuration described in [docs/RELEASING.md](docs/RELEASING.md).
-- Store review and approval; a successful API submission does not mean the extension is publicly available.
-
-## Current setup status
-
-The store draft exists and includes German listing copy, the extension icon, a product screenshot, a promotional tile, permission justifications, and data-use disclosures (authentication information, web history/source URLs, and website content). The GitHub environment and its four variables are configured and restricted to main. The Google workload identity pool/provider exists with a repository-, branch-, workflow-, and subject-specific condition. The service-account IAM grant is configured. The repository and privacy policy are public, and the homepage/support/policy URLs are saved in the store. Release workflow run 43925511614 completed successfully, including verification, packaging, keyless authentication, upload, and submission. Version 0.3.0 is PENDING_REVIEW with automatic publication after approval.
+The initial release was submitted on November 16 by workflow run 43925511614. The [public store listing](https://chromewebstore.google.com/detail/paperless-upload/adpolpaolmleglppngfeoleclnoekmga) showed version 0.3.0 in German, dated November 17, when checked on November 20, 2026.

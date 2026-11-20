@@ -1,0 +1,13 @@
+Send open PDFs directly to your own Paperless-ngx server. For example, you can file an invoice from a customer portal while it is still open in your browser.
+
+Open Paperless Upload from the Chrome toolbar to send the current PDF. You can also upload all detected PDF tabs in the current window at once. For files on your device, use the file picker or drag the PDFs into the extension.
+
+Connect once with your Paperless server address and API token. Each upload starts when you choose to send a file. Once the files are ready, you can close the popup and the transfer continues while Chrome is running.
+
+See when Paperless has accepted a file for processing. If the import status is available, the extension shows the result and lets you open a successfully imported document in Paperless. If confirmation is missing, check your Paperless inbox first. The extension never automatically resends the file.
+
+The interface follows your Chrome language and is available in ten languages. Settings and temporary files stay in your Chrome profile. Selected PDFs go directly to the server you configured. The extension has no ads or tracking.
+
+Requires Chrome 116 or later. From Chrome 151, the extension can use a PDF that has already loaded in a tab, including invoices behind a sign-in. If a PDF is inaccessible, save it from the viewer and choose the saved file. Uploading directly from local PDF tabs requires additional file access in Chrome.
+
+Paperless Upload is an independent project and is not an official Paperless-ngx product.

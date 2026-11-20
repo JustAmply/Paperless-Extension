@@ -1,0 +1,13 @@
+Stuur geopende pdf’s rechtstreeks naar je eigen Paperless-ngx-server. Zo kun je bijvoorbeeld een factuur uit een klantenportaal archiveren terwijl die nog in je browser openstaat.
+
+Open Paperless Upload via de werkbalk van Chrome om de huidige pdf te versturen. Je kunt ook alle herkende pdf-tabbladen in het actieve venster in één keer uploaden. Bestanden op je apparaat kun je selecteren of naar het venster van de extensie slepen.
+
+Vul bij de eerste keer het adres van je Paperless-server en je API-token in. Je start elke upload zelf. Zodra de bestanden klaarstaan, kun je het venster van de extensie sluiten. De overdracht gaat door zolang Chrome geopend blijft.
+
+Je ziet wanneer Paperless een bestand voor verwerking heeft geaccepteerd. Als de importstatus beschikbaar is, zie je ook het resultaat en kun je het geïmporteerde document in Paperless openen. Controleer bij een ontbrekende bevestiging eerst je inbox in Paperless. De extensie verstuurt het bestand nooit automatisch opnieuw.
+
+De interface volgt de taal van Chrome en is beschikbaar in tien talen. Instellingen en tijdelijke bestanden blijven in je Chrome-profiel. De geselecteerde pdf’s gaan rechtstreeks naar de ingestelde server. De extensie bevat geen advertenties of tracking.
+
+Vereist Chrome 116 of hoger. Vanaf Chrome 151 kan de extensie de pdf gebruiken die al in een tabblad is geladen, ook bij facturen waarvoor je moet inloggen. Is een pdf niet toegankelijk, sla deze dan op vanuit de viewer en selecteer het opgeslagen bestand. Voor het rechtstreeks uploaden vanuit lokale pdf-tabbladen heeft Chrome aanvullende toestemming nodig.
+
+Paperless Upload is een onafhankelijk project en geen officieel product van Paperless-ngx.

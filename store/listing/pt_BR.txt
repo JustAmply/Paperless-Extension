@@ -1,0 +1,13 @@
+Envie os PDFs abertos no Chrome diretamente para o seu servidor Paperless-ngx. Por exemplo, você pode arquivar uma fatura do portal do cliente enquanto ela ainda está aberta no navegador.
+
+Abra o Paperless Upload na barra de ferramentas do Chrome para enviar o PDF que está na tela. Você também pode enviar de uma só vez todos os PDFs detectados nas abas da janela atual. Para enviar arquivos do seu dispositivo, selecione os PDFs ou arraste-os para a janela da extensão.
+
+Na primeira conexão, informe o endereço do seu servidor Paperless e o token de API. Cada envio começa quando você o solicita. Assim que os arquivos estiverem prontos, você pode fechar a janela da extensão. A transferência continua enquanto o Chrome estiver aberto.
+
+A extensão indica quando o Paperless aceitou um arquivo para processamento. Se o status da importação estiver disponível, você também verá o resultado. Após uma importação bem-sucedida, é possível abrir o documento no Paperless. Se faltar a confirmação, consulte primeiro a caixa de entrada do Paperless. A extensão nunca reenvia o arquivo automaticamente.
+
+A interface acompanha o idioma do Chrome e está disponível em dez idiomas. As configurações e os arquivos temporários ficam no seu perfil do Chrome. Os PDFs selecionados são enviados diretamente ao servidor configurado. A extensão não tem anúncios nem rastreamento.
+
+Requer o Chrome 116 ou superior. A partir do Chrome 151, a extensão pode usar um PDF já carregado em uma aba, inclusive uma fatura que exige login. Se um PDF estiver inacessível, salve-o pelo visualizador e selecione o arquivo salvo. O envio de um PDF local diretamente da aba exige uma permissão adicional no Chrome.
+
+O Paperless Upload é um projeto independente e não é um produto oficial do Paperless-ngx.
