@@ -75,11 +75,11 @@ Policy source: [docs/PRIVACY_POLICY.md](docs/PRIVACY_POLICY.md). Public policy U
 
 | Version | Date       | Changes                                                                                         | Status      |
 | ------- | ---------- | ----------------------------------------------------------------------------------------------- | ----------- |
-| 0.4.1   | 2026-11-20 | Use English for the default extension and store language.                                       | Local build |
-| 0.4.0   | 2026-11-20 | Localize the extension and store materials in ten languages.                                    | Store draft |
+| 0.4.1   | 2026-11-20 | Use English for the default extension and store language.                                       | Store draft |
+| 0.4.0   | 2026-11-20 | Localize the extension and store materials in ten languages.                                    | Superseded  |
 | 0.3.1   | 2026-11-19 | Save displayed PDFs by keyboard and recognize protected invoices in direct or embedded viewers. | Local build |
 | 0.3.0   | 2026-11-17 | First store release with PDF uploads and import-status feedback.                                | Published   |
 
 The initial release was submitted on November 16 by workflow run 43925511614. The [public store listing](https://chromewebstore.google.com/detail/paperless-upload/adpolpaolmleglppngfeoleclnoekmga) showed version 0.3.0 in German, dated November 17, when checked on November 20, 2026.
 
-The [0.4.0 release workflow](https://github.com/JustAmply/Paperless-Extension/actions/runs/44652732907) uploaded the ten-language package as a draft. The localized detailed descriptions, screenshots, and global promotional tile still need to be saved in the Developer Dashboard before the draft is submitted for review.
+The [0.4.1 release workflow](https://github.com/JustAmply/Paperless-Extension/actions/runs/44654001447) uploaded the ten-language package with English as its default locale. The localized detailed descriptions, screenshots, and global promotional tile still need to be verified in the Developer Dashboard before the draft is submitted for review.
