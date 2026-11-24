@@ -141,6 +141,15 @@
   "uiUploadCurrent": {
     "message": "Carica il PDF aperto"
   },
+  "uiOpenInChrome": {
+    "message": "Apri PDF in Chrome"
+  },
+  "uiOpenPdfTab": {
+    "message": "Apri il PDF in una nuova scheda"
+  },
+  "uiSaveOriginalPdf": {
+    "message": "Salva il PDF originale"
+  },
   "uiChooseFiles": {
     "message": "Scegli file"
   },

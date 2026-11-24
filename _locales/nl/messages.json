@@ -141,6 +141,15 @@
   "uiUploadCurrent": {
     "message": "Huidige pdf uploaden"
   },
+  "uiOpenInChrome": {
+    "message": "Pdf openen in Chrome"
+  },
+  "uiOpenPdfTab": {
+    "message": "PDF in een apart tabblad openen"
+  },
+  "uiSaveOriginalPdf": {
+    "message": "Originele pdf opslaan"
+  },
   "uiChooseFiles": {
     "message": "Bestanden kiezen"
   },

@@ -9,7 +9,7 @@ import {
 } from '@playwright/test';
 import { createServer, type Server } from 'node:http';
 import { createHash } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const token = 'toolbar-fixture-token';
@@ -85,10 +85,26 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
     }[] = [];
     const sourceRequests: (string | undefined)[] = [];
     const sourceMethods: string[] = [];
+    let largeRequests = 0;
     let context: BrowserContext | undefined;
     let server: Server | undefined;
     try {
       server = createServer(async (request, response) => {
+        if (request.url === '/large-once.pdf') {
+          if (++largeRequests > 1) {
+            response.writeHead(410).end();
+            return;
+          }
+          const large = samplePdf(100 * 1024 * 1024);
+          response
+            .writeHead(200, {
+              'content-type': 'application/pdf',
+              'cache-control': 'no-store',
+              'content-length': large.length,
+            })
+            .end(large);
+          return;
+        }
         if (request.url === '/oversize.pdf') {
           const large = samplePdf(50 * 1024 * 1024);
           response.writeHead(200, {
@@ -316,7 +332,12 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
           [...pdf],
         );
         navigationUrl = `${sourceUrl}#page=1&zoom=150`;
-        await page.goto(navigationUrl);
+        const localTab = context.waitForEvent('page');
+        const opener = page;
+        await opener.goto(navigationUrl);
+        page = await localTab;
+        await page.waitForURL(/^filesystem:/);
+        await opener.close();
       } else await page.goto(navigationUrl);
       await expect
         .poll(() =>
@@ -340,16 +361,31 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
         await page.waitForURL(navigationUrl);
       }
       if (sourceType === 'get' || sourceType === 'blob') {
-        const handler = page
+        const viewer = page
           .frames()
-          .find(
-            (frame) => frame.url() === `chrome-extension://${id}/capture.html`,
+          .find((frame) =>
+            frame
+              .url()
+              .startsWith(
+                'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/',
+              ),
+          )!;
+        expect(viewer.parentFrame()).toBe(page.mainFrame());
+        if (sourceType === 'blob') {
+          const localViewer = new URL(page.url());
+          expect(localViewer.protocol).toBe('filesystem:');
+          expect(localViewer.hash).toBe(new URL(navigationUrl).hash);
+          expect(decodeURIComponent(localViewer.pathname)).toContain(
+            expectedName,
           );
-        expect(handler).toBeDefined();
-        await expect(handler!.locator('iframe')).toHaveAttribute(
-          'src',
-          /#page=1&zoom=150$/,
-        );
+          navigationUrl = page.url();
+          const [saved] = await Promise.all([
+            page.waitForEvent('download'),
+            viewer.getByRole('button', { name: 'Herunterladen' }).click(),
+          ]);
+          expect(saved.suggestedFilename()).toBe(expectedName);
+          expect(await readFile((await saved.path())!)).toEqual(pdf);
+        } else await expect(page).toHaveURL(navigationUrl);
         await mkdir(path.resolve('artifacts/screenshots'), { recursive: true });
         await page.screenshot({
           path: path.resolve('artifacts/screenshots/pdf-viewer.png'),
@@ -392,6 +428,35 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
           .toBe(false);
         return { popupId: popupId!, command };
       };
+      if (sourceType === 'single-use') {
+        await test.step('Save the captured original without a configured server', async () => {
+          await worker.evaluate(() => chrome.storage.local.remove('settings'));
+          const opened = context.waitForEvent('page');
+          await worker.evaluate(() =>
+            chrome.tabs.create({
+              url: chrome.runtime.getURL('popup.html'),
+              active: false,
+            }),
+          );
+          const savePopup = await opened;
+          await expect(savePopup.locator('#settings-panel')).toBeVisible();
+          const [download] = await Promise.all([
+            savePopup.waitForEvent('download'),
+            savePopup
+              .getByRole('button', { name: 'Original-PDF speichern' })
+              .click(),
+          ]);
+          expect(download.suggestedFilename()).toBe(expectedName);
+          expect(await readFile((await download.path())!)).toEqual(pdf);
+          expect(sourceMethods).toEqual(['GET']);
+          expect(uploads).toHaveLength(0);
+          await savePopup.close();
+          await worker.evaluate(
+            (settings) => chrome.storage.local.set({ settings }),
+            { url: baseUrl, token },
+          );
+        });
+      }
       const first = await openAction();
       expect(uploads).toHaveLength(0);
       expect(sourceMethods).toEqual(
@@ -513,13 +578,10 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
       }
       if (sourceType === 'get') {
         const original = (await sourceCache())[0]!;
-        const viewer = page
-          .frames()
-          .find(
-            (frame) => frame.url() === `chrome-extension://${id}/capture.html`,
-          )!;
+        const cachePage = await context.newPage();
+        await cachePage.goto(`chrome-extension://${id}/popup.html`);
         await test.step('Late captures cannot replace or resurrect a tab entry', async () => {
-          const result = await viewer.evaluate(async (url) => {
+          const result = await cachePage.evaluate(async (url) => {
             const {
               capturePdf,
               capturedSources,
@@ -582,7 +644,7 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
           expect(result.afterClear).toBeUndefined();
         });
         // Fill the real cache without running 25 PDF viewer processes.
-        const ready = await viewer.evaluate(async (url) => {
+        const ready = await cachePage.evaluate(async (url) => {
           const { capturePdf, capturedSources, clearCapturedPdf } =
             (await import(
               chrome.runtime.getURL('data/sources.js')
@@ -604,6 +666,7 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
           return sources.filter((source) => source.availability === 'ready')
             .length;
         }, sourceUrl);
+        await cachePage.close();
         expect(ready).toBe(25);
         expect(await sourceCache()).toEqual([
           {
@@ -671,6 +734,26 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
             error: { key: 'pdfTooLarge' },
           },
         ]);
+        const localTab = context.waitForEvent('page');
+        await page.goto(`http://localhost:${address.port}/large-once.pdf`);
+        const largeTab = await localTab;
+        await expect(largeTab).toHaveURL(/^filesystem:.*large-once\.pdf$/);
+        await expect
+          .poll(() =>
+            largeTab
+              .mainFrame()
+              .childFrames()
+              .some((frame) =>
+                frame
+                  .url()
+                  .startsWith(
+                    'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/',
+                  ),
+              ),
+          )
+          .toBe(true);
+        expect(largeRequests).toBe(1);
+        await largeTab.close();
       }
       if (sourceType === 'single-use') {
         // Reloading the very same URL now returns HTML. Its old PDF is stale.

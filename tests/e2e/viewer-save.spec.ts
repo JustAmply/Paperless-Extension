@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import path from 'node:path';
 
-test('saving a newly opened invoice uses its displayed PDF and filename', async ({}, testInfo) => {
+test('the original invoice opens directly in the native viewer with PDF controls and keyboard navigation', async ({}, testInfo) => {
   const extension = path.resolve('dist');
   const context = await chromium.launchPersistentContext(
     testInfo.outputPath('profile'),
@@ -18,7 +18,11 @@ test('saving a newly opened invoice uses its displayed PDF and filename', async 
       ],
     },
   );
-  const pdf = await context.pages()[0]!.pdf();
+  const portal = context.pages()[0]!;
+  await portal.setContent(
+    '<p style="break-after:page">First invoice page</p><p>Second invoice page</p>',
+  );
+  const pdf = await portal.pdf();
   let invoiceRequests = 0;
   const server = createServer((request, response) => {
     if (request.url === '/invoices/Rechnung.pdf') {
@@ -27,7 +31,12 @@ test('saving a newly opened invoice uses its displayed PDF and filename', async 
         response.writeHead(410).end();
         return;
       }
-      response.writeHead(200, { 'content-type': 'application/pdf' }).end(pdf);
+      response
+        .writeHead(200, {
+          'content-type': 'application/pdf',
+          'cache-control': 'private, max-age=60',
+        })
+        .end(pdf);
       return;
     }
     response
@@ -41,29 +50,44 @@ test('saving a newly opened invoice uses its displayed PDF and filename', async 
     const address = server.address();
     if (!address || typeof address === 'string')
       throw new Error('Missing fixture port');
-    const portal = context.pages()[0]!;
     await portal.goto(`http://127.0.0.1:${address.port}/`);
     const [invoice] = await Promise.all([
       portal.waitForEvent('popup'),
       portal.getByRole('link', { name: 'Rechnung' }).click(),
     ]);
-    await expect
-      .poll(() =>
-        invoice
-          .frames()
-          .some((frame) =>
-            frame
-              .url()
-              .startsWith(
-                'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/',
-              ),
-          ),
-      )
-      .toBe(true);
+    const nativeViewer = () =>
+      invoice
+        .mainFrame()
+        .childFrames()
+        .find((frame) =>
+          frame
+            .url()
+            .startsWith('chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/'),
+        );
+    await expect.poll(() => Boolean(nativeViewer())).toBe(true);
+    const viewer = nativeViewer()!;
+    await expect(viewer.locator('#pagelength')).toHaveText('2');
+    await expect(viewer.getByRole('button', { name: 'Drucken' })).toBeEnabled();
+    const content = viewer
+      .childFrames()
+      .find((frame) => frame.url() === invoice.url())!;
+    const pdfPlugin = content.locator(
+      'embed[type="application/x-google-chrome-pdf"]',
+    );
+    await expect(pdfPlugin).toHaveAttribute('full-frame', '');
+    await expect(pdfPlugin).toHaveAttribute('original-url', invoice.url());
     await invoice.bringToFront();
+    const pageNumber = viewer.getByRole('textbox', { name: 'Seitennummer' });
+    await pageNumber.click();
+    await pageNumber.fill('2');
+    await pageNumber.press('Enter');
+    await expect
+      .poll(() => content.evaluate(() => window.scrollY))
+      .toBeGreaterThan(0);
+    expect(invoiceRequests).toBe(1);
     const [saved] = await Promise.all([
       invoice.waitForEvent('download', { timeout: 5_000 }),
-      invoice.keyboard.press('ControlOrMeta+s'),
+      viewer.getByRole('button', { name: 'Herunterladen' }).click(),
     ]);
     expect(saved.suggestedFilename()).toBe('Rechnung.pdf');
     expect(await readFile((await saved.path())!)).toEqual(pdf);

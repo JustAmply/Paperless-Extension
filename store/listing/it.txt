@@ -8,6 +8,6 @@ L’estensione indica quando Paperless ha accettato un file per l’elaborazione
 
 L’interfaccia segue la lingua di Chrome ed è disponibile in dieci lingue. Le impostazioni e i file temporanei restano nel tuo profilo Chrome. I PDF selezionati vengono inviati direttamente al server configurato. L’estensione non contiene pubblicità né strumenti di tracciamento.
 
-Richiede Chrome 116 o versioni successive. A partire da Chrome 151 l’estensione può usare il PDF già caricato in una scheda, anche se per aprire la fattura è necessario effettuare l’accesso. Se un PDF non è accessibile, salvalo dal visualizzatore e seleziona il file. Per caricare i PDF locali direttamente da una scheda occorre concedere un’autorizzazione aggiuntiva in Chrome.
+Richiede Chrome 116 o versioni successive. A partire da Chrome 157 l’estensione può usare il PDF già caricato in una scheda, anche se per aprire la fattura è necessario effettuare l’accesso. Se un PDF non è accessibile, salvalo dal visualizzatore e seleziona il file. Per caricare i PDF locali direttamente da una scheda occorre concedere un’autorizzazione aggiuntiva in Chrome.
 
 Paperless Upload è un progetto indipendente e non è un prodotto ufficiale di Paperless-ngx.

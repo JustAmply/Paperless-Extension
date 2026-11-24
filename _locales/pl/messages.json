@@ -141,6 +141,15 @@
   "uiUploadCurrent": {
     "message": "Wyślij bieżący PDF"
   },
+  "uiOpenInChrome": {
+    "message": "Otwórz PDF w Chrome"
+  },
+  "uiOpenPdfTab": {
+    "message": "Otwórz PDF w osobnej karcie"
+  },
+  "uiSaveOriginalPdf": {
+    "message": "Zapisz oryginalny plik PDF"
+  },
   "uiChooseFiles": {
     "message": "Wybierz pliki"
   },

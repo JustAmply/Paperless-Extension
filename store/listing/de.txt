@@ -8,6 +8,6 @@ Du siehst, wann Paperless eine Datei zur Verarbeitung angenommen hat. Ist der Im
 
 Die Oberfläche folgt der Sprache von Chrome und ist in zehn Sprachen verfügbar. Einstellungen und temporäre Dateien bleiben in deinem Chrome-Profil. Die ausgewählten PDFs werden direkt an den eingerichteten Server gesendet. Die Erweiterung enthält weder Werbung noch Tracking.
 
-Erfordert Chrome ab Version 116. Ab Chrome 151 kann die Erweiterung auch eine bereits im Tab geladene PDF übernehmen, etwa eine Rechnung hinter einer Anmeldung. Ist eine PDF nicht zugänglich, speichere sie im Viewer und wähle die Datei aus. Für das direkte Hochladen aus lokalen PDF-Tabs ist in Chrome eine zusätzliche Freigabe nötig.
+Erfordert Chrome ab Version 116. Ab Chrome 157 kann die Erweiterung auch eine bereits im Tab geladene PDF übernehmen, etwa eine Rechnung hinter einer Anmeldung. Ist eine PDF nicht zugänglich, speichere sie im Viewer und wähle die Datei aus. Für das direkte Hochladen aus lokalen PDF-Tabs ist in Chrome eine zusätzliche Freigabe nötig.
 
 Paperless Upload ist ein unabhängiges Projekt und kein offizielles Produkt von Paperless-ngx.

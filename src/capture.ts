@@ -5,7 +5,6 @@ import {
   type CapturedPdf,
 } from './data/sources.js';
 import { errorMessage } from './shared/model.js';
-import { inspectPdfTab } from './browser/pdf-tabs.js';
 import {
   documentSource,
   pdfFingerprint,
@@ -13,6 +12,15 @@ import {
   validatePdf,
 } from './shared/pdf.js';
 import { request } from './shared/messaging.js';
+import {
+  isLocalPdfViewer,
+  writeLocalPdf,
+  deleteLocalPdf,
+} from './browser/local-pdf.js';
+import { supportsBufferedPdfFallback } from './browser/native-fallback.js';
+
+// Chromium drops its native handoff buffer above this size (MimeHandlerBodyCache).
+const MAX_NATIVE_REPLAY_BYTES = 100 * 1024 * 1024;
 
 localizeDocument();
 
@@ -24,128 +32,168 @@ function showError(error: unknown): void {
   }
 }
 
+async function uploadMetadata(
+  pending: CapturedPdf,
+  file: Blob,
+  disposition: string,
+): Promise<CapturedPdf> {
+  try {
+    await validatePdf(file);
+    const fingerprint = await pdfFingerprint(file);
+    return {
+      ...pending,
+      file,
+      fingerprint,
+      name: pdfName(pending.url, disposition, fingerprint),
+    };
+  } catch (error) {
+    return { ...pending, error: errorMessage(error) };
+  }
+}
+
+function offerLocalCopy(
+  file: Blob,
+  name: string,
+  fragment: string,
+  openViewer?: () => Promise<unknown>,
+): void {
+  const url = URL.createObjectURL(file);
+  const open = document.querySelector<HTMLAnchorElement>('#open-pdf')!;
+  const download = document.querySelector<HTMLAnchorElement>('#download-pdf')!;
+  open.href = url + fragment;
+  if (openViewer)
+    open.addEventListener('click', (event) => {
+      event.preventDefault();
+      void openViewer().catch(showError);
+    });
+  download.href = url;
+  download.download = name;
+  document.title = name;
+  document.getElementById('status')!.hidden = true;
+  document.getElementById('local-file')!.hidden = false;
+  open.focus();
+}
+
 async function capture(): Promise<void> {
   const stream = await chrome.mimeHandler.getStreamInfo();
-  const url = documentSource(stream.originalUrl);
-  // Delegate unsupported schemes and the preview's own Blob to Chrome.
-  // The portal's HTTP response must never enter the fallback reload path.
+  // A local copy opened below remains readable from its original tab, even
+  // if Chrome has to reload it. Never wrap the local viewer recursively.
   if (
-    !url ||
-    (stream.embedded &&
-      stream.originalUrl.startsWith(`blob:${location.origin}/`))
+    stream.originalUrl.startsWith(`blob:${location.origin}/`) ||
+    isLocalPdfViewer(stream.originalUrl)
   ) {
     await chrome.mimeHandler.abortAndFallbackToNativeHandler();
     return;
   }
-  const streamDisposition = Object.entries(stream.responseHeaders).find(
+  const url = documentSource(stream.originalUrl);
+  const header = Object.entries(stream.responseHeaders).find(
     ([name]) => name.toLowerCase() === 'content-disposition',
   )?.[1];
-  let disposition =
-    typeof streamDisposition === 'string' ? streamDisposition : '';
-  const metadata: CapturedPdf = {
-    tabId: stream.tabId,
-    embedded: stream.embedded,
-    url,
-    name: pdfName(url, disposition),
-    createdAt: Date.now(),
-    fingerprint: crypto.randomUUID(),
-  };
-  let registered = false;
-  try {
-    const context = await request({
-      target: 'background',
-      type: 'capture-context',
-      url,
-    });
-    if (!context.documentId) throw new Error('Missing viewer document ID');
-    metadata.documentId = context.documentId;
-    disposition ||= context.disposition ?? '';
-    await capturePdf(metadata);
-    registered = true;
-  } catch (error) {
-    showError(error);
+  let disposition = typeof header === 'string' ? header : '';
+  let pending: (CapturedPdf & { documentId: string }) | undefined;
+  if (url) {
+    try {
+      const context = await request({
+        target: 'background',
+        type: 'capture-context',
+        url,
+      });
+      if (!context.documentId) throw new Error('Missing capture document ID');
+      disposition ||= context.disposition ?? '';
+      const metadata = {
+        tabId: stream.tabId,
+        documentId: context.documentId,
+        embedded: stream.embedded,
+        url,
+        name: pdfName(url, disposition),
+        createdAt: Date.now(),
+        fingerprint: crypto.randomUUID(),
+      };
+      await capturePdf(metadata);
+      pending = metadata;
+    } catch (error) {
+      showError(error);
+    }
   }
+
+  // Chrome can reuse the original navigation only after its stream is drained.
+  // Do this even if indexing failed or this source is ineligible for upload.
   let file: Blob;
   try {
     const response = await fetch(stream.streamUrl);
     if (!response.ok) throw new Error('Missing PDF stream');
-    disposition ||= response.headers.get('content-disposition') ?? '';
-    metadata.name = pdfName(url, disposition);
-    // Let the browser assemble a Blob without copying the document into a
-    // JavaScript byte array. The viewer also supports PDFs above the upload cap.
     file = await response.blob();
+    disposition ||= response.headers.get('content-disposition') ?? '';
   } catch (error) {
-    if (registered) {
+    if (pending)
       await finishPdfCapture(
-        { ...metadata, error: errorMessage(error) },
-        metadata.fingerprint,
-      ).catch(showError);
-    }
+        { ...pending, error: errorMessage(error) },
+        pending.fingerprint,
+      );
     throw error;
   }
-  if (registered) {
+
+  // A same-tab Blob URL can lose its creator as soon as the PDF opens.
+  // A response beyond Chromium's buffer can only be replayed locally.
+  const needsLocalCopy =
+    (!stream.embedded && url?.startsWith('blob:')) ||
+    file.size > MAX_NATIVE_REPLAY_BYTES ||
+    !supportsBufferedPdfFallback();
+  let viewerUrl: string | undefined;
+  let name = url ? pdfName(url, disposition) : 'PDF.pdf';
+  if (pending) {
+    const metadata = await uploadMetadata(pending, file, disposition);
+    name = metadata.name;
+    if (needsLocalCopy && !stream.embedded) {
+      try {
+        viewerUrl = await writeLocalPdf(pending.documentId, name, file);
+        metadata.viewerUrl = viewerUrl;
+      } catch (error) {
+        await deleteLocalPdf(pending.documentId).catch(showError);
+        showError(error);
+      }
+    }
     try {
-      await validatePdf(file);
-      const fingerprint = await pdfFingerprint(file);
-      metadata.name = pdfName(url, disposition, fingerprint);
-      await finishPdfCapture(
-        { ...metadata, fingerprint, file },
-        metadata.fingerprint,
-      );
-      const status = document.getElementById('status');
-      if (status) status.hidden = true;
+      if (!(await finishPdfCapture(metadata, pending.fingerprint))) {
+        if (viewerUrl) await deleteLocalPdf(pending.documentId);
+        return;
+      }
     } catch (error) {
-      await finishPdfCapture(
-        { ...metadata, error: errorMessage(error) },
-        metadata.fingerprint,
-      ).catch(showError);
+      if (viewerUrl) await deleteLocalPdf(pending.documentId).catch(showError);
+      viewerUrl = undefined;
       showError(error);
     }
   }
-  const viewer = document.createElement('iframe');
-  viewer.title = metadata.name;
-  // The preview and download share a local Blob URL. Neither needs to repeat
-  // the portal request that generated this document.
-  const tab = await chrome.tabs.get(stream.tabId);
-  const fragment = new URL(
-    stream.embedded ? stream.originalUrl : (tab.url ?? stream.originalUrl),
-  ).hash;
-  const objectUrl = URL.createObjectURL(file);
-  viewer.src = objectUrl + fragment;
-  document.title = metadata.name;
-  const download = document.createElement('a');
-  download.download = metadata.name;
-  download.href = objectUrl;
-  window.addEventListener('keydown', (event) => {
-    if (
-      event.isTrusted &&
-      !event.defaultPrevented &&
-      event.key.toLowerCase() === 's' &&
-      event.ctrlKey !== event.metaKey &&
-      !event.altKey &&
-      !event.shiftKey
-    ) {
-      event.preventDefault();
-      if (!event.repeat) download.click();
-    }
-  });
-  document.body.append(viewer);
-  if (!stream.embedded) {
-    // A new PDF tab initially focuses Chrome's generated HTML document.
-    window.focus();
-  } else if (metadata.documentId) {
-    const channel = `save-pdf:${metadata.documentId}`;
-    const host = await inspectPdfTab(stream.tabId, url, channel);
-    if (host?.acceptsSaveShortcut) {
-      const port = chrome.tabs.connect(stream.tabId, {
-        documentId: host.documentId,
-        name: channel,
-      });
-      port.onMessage.addListener((message: unknown) => {
-        if (message === 'save') download.click();
-      });
-    }
+  if (!needsLocalCopy) {
+    await chrome.mimeHandler.abortAndFallbackToNativeHandler();
+    return;
   }
+
+  const tab = await chrome.tabs.get(stream.tabId);
+  const current = stream.embedded
+    ? stream.originalUrl
+    : (tab.pendingUrl ?? tab.url);
+  if (!current || (!stream.embedded && documentSource(current) !== url)) return;
+  const fragment = new URL(current).hash;
+  if (!viewerUrl) {
+    // Preserve an embedding portal, or a PDF that exceeded local storage.
+    offerLocalCopy(file, name, fragment);
+    return;
+  }
+
+  // Chromium permits opening its private filesystem in a new tab. Keep
+  // background document loads in the background and preserve the source tab.
+  const target = viewerUrl + fragment;
+  const openViewer = (active: boolean) =>
+    chrome.tabs.create({
+      url: target,
+      windowId: tab.windowId,
+      openerTabId: stream.tabId,
+      index: tab.index + 1,
+      active,
+    });
+  offerLocalCopy(file, name, fragment, () => openViewer(true));
+  await openViewer(tab.active);
 }
 
 void capture().catch(showError);

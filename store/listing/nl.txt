@@ -8,6 +8,6 @@ Je ziet wanneer Paperless een bestand voor verwerking heeft geaccepteerd. Als de
 
 De interface volgt de taal van Chrome en is beschikbaar in tien talen. Instellingen en tijdelijke bestanden blijven in je Chrome-profiel. De geselecteerde pdf’s gaan rechtstreeks naar de ingestelde server. De extensie bevat geen advertenties of tracking.
 
-Vereist Chrome 116 of hoger. Vanaf Chrome 151 kan de extensie de pdf gebruiken die al in een tabblad is geladen, ook bij facturen waarvoor je moet inloggen. Is een pdf niet toegankelijk, sla deze dan op vanuit de viewer en selecteer het opgeslagen bestand. Voor het rechtstreeks uploaden vanuit lokale pdf-tabbladen heeft Chrome aanvullende toestemming nodig.
+Vereist Chrome 116 of hoger. Vanaf Chrome 157 kan de extensie de pdf gebruiken die al in een tabblad is geladen, ook bij facturen waarvoor je moet inloggen. Is een pdf niet toegankelijk, sla deze dan op vanuit de viewer en selecteer het opgeslagen bestand. Voor het rechtstreeks uploaden vanuit lokale pdf-tabbladen heeft Chrome aanvullende toestemming nodig.
 
 Paperless Upload is een onafhankelijk project en geen officieel product van Paperless-ngx.

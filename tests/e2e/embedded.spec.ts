@@ -1,7 +1,6 @@
 import { browserLocale } from './locale.js';
 import { chromium, expect, test } from '@playwright/test';
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 test('uploads the visible invoice in a portal frame and a blank blob viewer without replaying protected requests', async () => {
@@ -144,33 +143,23 @@ test('uploads the visible invoice in a portal frame and a blank blob viewer with
           ),
       )
       .toBe(true);
-    const [saved] = await Promise.all([
-      portal.waitForEvent('download', { timeout: 5000 }),
-      portal.keyboard.press('ControlOrMeta+s'),
-    ]);
-    expect(await readFile((await saved.path())!)).toEqual(invoice);
-    expect(
-      await portal.evaluate(() =>
-        window.dispatchEvent(
-          new KeyboardEvent('keydown', {
-            key: 's',
-            ctrlKey: true,
-            cancelable: true,
-          }),
-        ),
-      ),
-    ).toBe(true);
     await portal.evaluate(() => {
-      const input = document.createElement('input');
-      document.body.append(input);
-      input.focus();
+      document.body.tabIndex = -1;
+      document.body.focus();
       window.addEventListener('keydown', (event) => {
-        if (event.key.toLowerCase() === 's')
-          input.value = String(event.defaultPrevented);
+        if (event.ctrlKey || event.metaKey)
+          document.body.dataset[event.key.toLowerCase()] = String(
+            event.defaultPrevented,
+          );
       });
     });
-    await portal.keyboard.press('ControlOrMeta+s');
-    await expect(portal.locator('input')).toHaveValue('false');
+    for (const key of ['s', 'p']) {
+      await portal.keyboard.press(`ControlOrMeta+${key}`);
+      await expect(portal.locator('body')).toHaveAttribute(
+        `data-${key}`,
+        'false',
+      );
+    }
     const blankEvent = portal.waitForEvent('popup');
     await portal.evaluate((data) => {
       const blank = window.open('about:blank', '_blank')!;
@@ -214,6 +203,23 @@ test('uploads the visible invoice in a portal frame and a blank blob viewer with
     const popup = await popupEvent;
     await popup.waitForURL(popupUrl);
     await expect(popup.locator('#send-current')).toBeVisible();
+    // Native viewers outlive the extension worker that observed the handoff.
+    const cdp = await context.newCDPSession(popup);
+    const { targetInfos } = await cdp.send('Target.getTargets');
+    const background = targetInfos.find(
+      (target) => target.url === worker.url(),
+    );
+    if (!background) throw new Error('Missing extension worker target');
+    const startedAt = await worker.evaluate(() => performance.timeOrigin);
+    await cdp.send('Target.closeTarget', { targetId: background.targetId });
+    await popup.reload();
+    await expect(popup.locator('#send-current')).toBeEnabled();
+    const resumed = context
+      .serviceWorkers()
+      .find((item) => item.url() === worker.url());
+    expect(
+      await resumed?.evaluate(() => performance.timeOrigin),
+    ).toBeGreaterThan(startedAt);
     await popup.locator('#send-current').click();
     await expect(popup.locator('[data-status="accepted"]')).toHaveCount(1);
     expect(uploads).toEqual([invoice]);
@@ -233,6 +239,54 @@ test('uploads the visible invoice in a portal frame and a blank blob viewer with
       '/statement?once=invoice',
       '/statement?once=preview',
     ]);
+
+    await test.step('Open an embedded invoice in its own tab and upload it after closing the portal', async () => {
+      const requestsBeforeOpening = [...sourceRequests];
+      await hidden.locator('iframe').evaluate((frame) => {
+        frame.style.opacity = '1';
+      });
+      await popup.evaluate(() => chrome.storage.local.remove('settings'));
+      await hidden.bringToFront();
+      await popup.reload();
+      await expect(popup.locator('#settings-panel')).toBeVisible();
+      const opening = context.waitForEvent('page');
+      await popup
+        .getByRole('button', { name: 'Im eigenen PDF-Tab öffnen' })
+        .click();
+      const detached = await opening;
+      await detached.waitForURL(/^filesystem:chrome-extension:/);
+      const native = () =>
+        detached
+          .mainFrame()
+          .childFrames()
+          .find((frame) =>
+            frame
+              .url()
+              .startsWith(
+                'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/',
+              ),
+          );
+      await expect.poll(() => Boolean(native())).toBe(true);
+      await expect(native()!.locator('#pagelength')).toHaveText('1');
+      await expect(
+        native()!.getByRole('button', { name: 'Drucken' }),
+      ).toBeEnabled();
+      expect(uploads).toHaveLength(3);
+      await hidden.close();
+      await popup.evaluate(
+        (url) =>
+          chrome.storage.local.set({ settings: { url, token: 'test-token' } }),
+        base,
+      );
+      await detached.bringToFront();
+      await popup.reload();
+      await expect(popup.locator('#open-original')).toBeHidden();
+      await expect(popup.locator('#send-current')).toBeEnabled();
+      await popup.locator('#send-current').click();
+      await expect.poll(() => uploads.length).toBe(4);
+      expect(uploads[3]).toEqual(invoice);
+      expect(sourceRequests).toEqual(requestsBeforeOpening);
+    });
   } finally {
     await context.close();
     await new Promise<void>((resolve) => server.close(() => resolve()));

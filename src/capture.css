@@ -1,30 +1,13 @@
-html,
 body {
-  margin: 0;
-  width: 100%;
-  height: 100%;
-  background: #282828;
-  color: #fff;
+  margin: 24px;
+  color-scheme: light dark;
   font:
-    14px 'Segoe UI',
-    system-ui,
+    14px system-ui,
     sans-serif;
 }
-p {
-  margin: 0;
-  padding: 24px;
-}
-body {
+
+#local-file:not([hidden]) {
   display: flex;
-  flex-direction: column;
-}
-[hidden] {
-  display: none;
-}
-iframe {
-  display: block;
-  width: 100%;
-  flex: 1;
-  min-height: 0;
-  border: 0;
+  flex-wrap: wrap;
+  gap: 1.5em;
 }

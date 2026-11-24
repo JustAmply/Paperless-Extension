@@ -8,6 +8,6 @@ A extensão indica quando o Paperless aceitou um arquivo para processamento. Se 
 
 A interface acompanha o idioma do Chrome e está disponível em dez idiomas. As configurações e os arquivos temporários ficam no seu perfil do Chrome. Os PDFs selecionados são enviados diretamente ao servidor configurado. A extensão não tem anúncios nem rastreamento.
 
-Requer o Chrome 116 ou superior. A partir do Chrome 151, a extensão pode usar um PDF já carregado em uma aba, inclusive uma fatura que exige login. Se um PDF estiver inacessível, salve-o pelo visualizador e selecione o arquivo salvo. O envio de um PDF local diretamente da aba exige uma permissão adicional no Chrome.
+Requer o Chrome 116 ou superior. A partir do Chrome 157, a extensão pode usar um PDF já carregado em uma aba, inclusive uma fatura que exige login. Se um PDF estiver inacessível, salve-o pelo visualizador e selecione o arquivo salvo. O envio de um PDF local diretamente da aba exige uma permissão adicional no Chrome.
 
 O Paperless Upload é um projeto independente e não é um produto oficial do Paperless-ngx.

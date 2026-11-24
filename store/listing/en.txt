@@ -8,6 +8,6 @@ See when Paperless has accepted a file for processing. If the import status is a
 
 The interface follows your Chrome language and is available in ten languages. Settings and temporary files stay in your Chrome profile. Selected PDFs go directly to the server you configured. The extension has no ads or tracking.
 
-Requires Chrome 116 or later. From Chrome 151, the extension can use a PDF that has already loaded in a tab, including invoices behind a sign-in. If a PDF is inaccessible, save it from the viewer and choose the saved file. Uploading directly from local PDF tabs requires additional file access in Chrome.
+Requires Chrome 116 or later. From Chrome 157, the extension can use a PDF that has already loaded in a tab, including invoices behind a sign-in. If a PDF is inaccessible, save it from the viewer and choose the saved file. Uploading directly from local PDF tabs requires additional file access in Chrome.
 
 Paperless Upload is an independent project and is not an official Paperless-ngx product.

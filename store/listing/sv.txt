@@ -8,6 +8,6 @@ Du ser när Paperless har tagit emot en fil för bearbetning. Om importstatusen 
 
 Gränssnittet följer språket i Chrome och finns på tio språk. Inställningar och tillfälliga filer lagras i din Chrome-profil. De PDF-filer du väljer skickas direkt till den server du har angett. Tillägget innehåller ingen reklam eller spårning.
 
-Kräver Chrome 116 eller senare. Från och med Chrome 151 kan tillägget använda en PDF som redan har lästs in i en flik, till exempel en faktura som kräver inloggning. Om en PDF är oåtkomlig kan du spara den från PDF-visaren och välja den sparade filen. För att ladda upp en lokal PDF direkt från en flik behöver du ge Chrome ytterligare behörighet för filåtkomst.
+Kräver Chrome 116 eller senare. Från och med Chrome 157 kan tillägget använda en PDF som redan har lästs in i en flik, till exempel en faktura som kräver inloggning. Om en PDF är oåtkomlig kan du spara den från PDF-visaren och välja den sparade filen. För att ladda upp en lokal PDF direkt från en flik behöver du ge Chrome ytterligare behörighet för filåtkomst.
 
 Paperless Upload är ett fristående projekt och ingen officiell produkt från Paperless-ngx.

@@ -1,5 +1,6 @@
 import { localizeDocument, message, resolveMessage, t } from './shared/i18n.js';
 import { enqueue } from './data/jobs.js';
+import { getCapturedFile, prepareEmbeddedPdfTab } from './data/sources.js';
 import { request } from './shared/messaging.js';
 import {
   errorMessage,
@@ -56,6 +57,9 @@ const ui = {
   tokenHelp: element('token-help'),
   send: element<HTMLButtonElement>('send-current'),
   sendLabel: element('send-current-label'),
+  saveOriginal: element<HTMLButtonElement>('save-original'),
+  openOriginal: element<HTMLButtonElement>('open-original'),
+  originalStatus: element('original-status'),
   currentStatus: element('current-status'),
   fileAccess: element<HTMLButtonElement>('file-access'),
   drop: element<HTMLButtonElement>('drop-zone'),
@@ -276,6 +280,9 @@ function render(state: State): void {
       : undefined;
   const isLocal = activeSource?.url.startsWith('file:');
   ui.send.hidden = !currentSource;
+  ui.saveOriginal.hidden = captured?.availability !== 'ready';
+  ui.openOriginal.hidden =
+    ui.saveOriginal.hidden || !captured?.embedded || !captured.documentId;
   ui.fileAccess.hidden = !hasFileTabs() || localFileAccess;
   ui.currentStatus.textContent = captured?.error
     ? resolveMessage(captured.error)
@@ -537,6 +544,42 @@ ui.upload.addEventListener('drop', (event) => {
 ui.send.addEventListener('click', () => {
   const source = currentPdf;
   if (!ui.send.disabled && source) void start(source).catch(showUploadError);
+});
+ui.saveOriginal.addEventListener('click', async () => {
+  const source = currentPdf;
+  if (!source || !('availability' in source) || source.availability !== 'ready')
+    return;
+  ui.saveOriginal.disabled = true;
+  ui.originalStatus.textContent = '';
+  try {
+    const saved = await getCapturedFile(source);
+    if (!saved) throw new UserError(message('tabPdfChanged'));
+    const url = URL.createObjectURL(saved.file);
+    const download = document.createElement('a');
+    download.href = url;
+    download.download = saved.name;
+    download.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    ui.originalStatus.textContent = resolveMessage(errorMessage(error));
+  } finally {
+    ui.saveOriginal.disabled = false;
+  }
+});
+ui.openOriginal.addEventListener('click', async () => {
+  const source = currentPdf;
+  if (!source || !('availability' in source) || source.availability !== 'ready')
+    return;
+  ui.openOriginal.disabled = true;
+  ui.originalStatus.textContent = '';
+  try {
+    const url = await prepareEmbeddedPdfTab(source);
+    await chrome.tabs.create({ url, openerTabId: source.tabId });
+  } catch (error) {
+    ui.originalStatus.textContent = resolveMessage(errorMessage(error));
+  } finally {
+    ui.openOriginal.disabled = false;
+  }
 });
 ui.fileAccess.addEventListener('click', () => {
   void chrome.permissions

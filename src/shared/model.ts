@@ -20,6 +20,7 @@ export function sourceKey(source: Source): string {
 }
 
 export interface SourceInfo extends Source {
+  viewerUrl?: string;
   embedded?: boolean;
   availability: 'ready' | 'loading' | 'unavailable';
   error?: LocalizedMessage | string;

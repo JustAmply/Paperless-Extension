@@ -141,6 +141,15 @@
   "uiUploadCurrent": {
     "message": "Aktuelle PDF hochladen"
   },
+  "uiOpenInChrome": {
+    "message": "PDF in Chrome öffnen"
+  },
+  "uiOpenPdfTab": {
+    "message": "Im eigenen PDF-Tab öffnen"
+  },
+  "uiSaveOriginalPdf": {
+    "message": "Original-PDF speichern"
+  },
   "uiChooseFiles": {
     "message": "Dateien wählen"
   },

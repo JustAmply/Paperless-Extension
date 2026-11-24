@@ -80,6 +80,35 @@ test('window upload only uses blob tabs with matching captured data', async (t) 
   assert.deepEqual(calls.permissions, []);
 });
 
+test('local PDF tabs share an exact capture and window upload stages it only once', async (t) => {
+  const viewerUrl =
+    'filesystem:chrome-extension://fixture/temporary/paperless-pdf/1234567890ABCDEF1234567890ABCDEF/Invoice.pdf';
+  const capture = {
+    tabId: 1,
+    url: 'blob:https://files.example/expired',
+    viewerUrl,
+    fingerprint: 'captured',
+    availability: 'ready',
+  };
+  const calls = browser(
+    t,
+    [
+      { id: 1, url: viewerUrl + '#page=2' },
+      { id: 2, url: viewerUrl },
+      { id: 3, url: viewerUrl.replace('Invoice', 'Another') },
+      { id: 4, url: 'chrome-extension://fixture/popup.html' },
+    ],
+    new Map(),
+  );
+  const alias = { ...capture, tabId: 2, embedded: false };
+  assert.deepEqual(
+    (await windowPdfs(7, [capture, alias, { ...capture, tabId: 3 }])).sources,
+    [alias],
+  );
+  assert.deepEqual(calls.inspections, []);
+  assert.deepEqual(calls.permissions, []);
+});
+
 test('embedded PDFs require a matching visible viewer, including in a portal-created blank tab', async (t) => {
   const url = 'blob:https://files.example/receipt';
   const wrapper = 'https://files.example/invoices';

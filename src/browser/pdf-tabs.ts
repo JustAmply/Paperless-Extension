@@ -7,6 +7,7 @@ import {
 } from '../shared/model.js';
 import { documentSource, readableSource } from '../shared/pdf.js';
 import { hostPermission } from '../shared/settings.js';
+import { isLocalPdfViewer } from './local-pdf.js';
 
 const TAB_INSPECTION_BATCH_SIZE = 8;
 
@@ -27,9 +28,9 @@ export async function windowSources(windowId: number): Promise<Source[]> {
 
 function tabUrl(url: string | undefined): string | undefined {
   // A portal can open a blank tab and add its PDF viewer to that document.
-  return url?.split('#')[0] === 'about:blank'
-    ? 'about:blank'
-    : documentSource(url);
+  const base = url?.split('#')[0];
+  if (base === 'about:blank' || (base && isLocalPdfViewer(base))) return base;
+  return documentSource(url);
 }
 
 export function tabSource(
@@ -40,12 +41,7 @@ export function tabSource(
 }
 
 // Runs in the isolated world of the tab's top document.
-function inspectDocument(
-  embeddedUrl: string | null,
-  saveChannel: string | null,
-) {
-  const viewers = () =>
-    Array.from(document.querySelectorAll('iframe, embed, object'));
+function inspectDocument(embeddedUrl: string | null) {
   const matches = (element: Element) => {
     let url: string;
     // A redirected frame can show a different URL from its src attribute.
@@ -65,80 +61,25 @@ function inspectDocument(
       element.checkVisibility({ checkVisibilityCSS: true, checkOpacity: true })
     );
   };
-  const viewer =
-    embeddedUrl === null
-      ? undefined
-      : viewers().find((element) => matches(element) && visible(element));
-  const result = {
+  return {
     type: document.contentType,
     url: document.URL,
-    embedded: Boolean(viewer),
-    acceptsSaveShortcut: false,
+    embedded:
+      embeddedUrl !== null &&
+      Array.from(document.querySelectorAll('iframe, embed, object')).some(
+        (element) => matches(element) && visible(element),
+      ),
   };
-  if (!viewer || !saveChannel) return result;
-
-  const isFullPageViewer = () => {
-    const bounds = viewer.getBoundingClientRect();
-    // Another visible frame or a second capture at the same URL is ambiguous.
-    const anotherViewer = viewers().some(
-      (element) => element !== viewer && (matches(element) || visible(element)),
-    );
-    return (
-      !anotherViewer &&
-      matches(viewer) &&
-      visible(viewer) &&
-      bounds.left <= 0 &&
-      bounds.top <= 0 &&
-      bounds.right >= innerWidth &&
-      bounds.bottom >= innerHeight &&
-      document.elementFromPoint(innerWidth / 2, innerHeight / 2) === viewer
-    );
-  };
-  if (!isFullPageViewer()) return result;
-
-  const connect = (port: chrome.runtime.Port) => {
-    if (port.name !== saveChannel) return;
-    chrome.runtime.onConnect.removeListener(connect);
-    const save = (event: KeyboardEvent) => {
-      if (
-        !event.isTrusted ||
-        event.defaultPrevented ||
-        event.key.toLowerCase() !== 's' ||
-        event.ctrlKey === event.metaKey ||
-        event.altKey ||
-        event.shiftKey ||
-        document.activeElement !== document.body ||
-        document.body.isContentEditable ||
-        !isFullPageViewer()
-      )
-        return;
-      event.preventDefault();
-      if (!event.repeat) port.postMessage('save');
-    };
-    window.addEventListener('keydown', save);
-    port.onDisconnect.addListener(() =>
-      window.removeEventListener('keydown', save),
-    );
-  };
-  chrome.runtime.onConnect.addListener(connect);
-  result.acceptsSaveShortcut = true;
-  return result;
 }
 
-export async function inspectPdfTab(
-  tabId: number,
-  embeddedUrl: string | null,
-  saveChannel: string | null = null,
-) {
+async function inspectPdfTab(tabId: number, embeddedUrl: string | null) {
   try {
     const [result] = await chrome.scripting.executeScript({
       target: { tabId },
       func: inspectDocument,
-      args: [embeddedUrl, saveChannel],
+      args: [embeddedUrl],
     });
-    return (
-      result?.result && { ...result.result, documentId: result.documentId }
-    );
+    return result?.result;
   } catch {
     // The tab can be inaccessible, close, or navigate into a protected page.
     return undefined;
@@ -149,6 +90,12 @@ export async function detectTabPdf(
   tab: Source,
   capture?: SourceInfo,
 ): Promise<Source | SourceInfo | undefined> {
+  if (isLocalPdfViewer(tab.url))
+    return capture?.tabId === tab.tabId &&
+      !capture.embedded &&
+      capture.viewerUrl === tab.url
+      ? capture
+      : undefined;
   if (capture && !capture.embedded && capture.url === tab.url) return capture;
   if (!capture?.embedded && !readableSource(tab.url)) return undefined;
   const inspected = await inspectPdfTab(
@@ -202,7 +149,8 @@ export async function windowPdfs(
       ),
     );
     for (const pdf of results) {
-      if (pdf) pdfs.set(sourceKey(pdf), pdf);
+      if (pdf && !('availability' in pdf && pdf.availability === 'loading'))
+        pdfs.set(sourceKey(pdf), pdf);
     }
   }
   return { sources: [...pdfs.values()], skippedLocalTabs };

@@ -6,10 +6,13 @@ import {
   retryImport,
 } from './data/jobs.js';
 import {
-  capturedSources,
-  clearCapturedPdf,
-  deleteCaptures,
-} from './data/sources.js';
+  forgetPdfViewers,
+  listenForPdfViewers,
+  liveCaptures,
+} from './browser/pdf-viewer-lifecycle.js';
+import { configureNativePdfHandling } from './browser/native-fallback.js';
+import { listLocalPdfIds, deleteLocalPdf } from './browser/local-pdf.js';
+import { capturedSources } from './data/sources.js';
 import { windowPdfs } from './browser/pdf-tabs.js';
 import {
   errorMessage,
@@ -18,7 +21,6 @@ import {
   type BackgroundRequest,
   type BackgroundResponse,
   type Settings,
-  type SourceInfo,
   type State,
 } from './shared/model.js';
 import { hostPermission, validateSettings } from './shared/settings.js';
@@ -70,6 +72,7 @@ function listenForPdfNames(): void {
   );
 }
 
+listenForPdfViewers();
 listenForPdfNames();
 // Chrome rejects webRequest registration until the first host grant.
 chrome.permissions.onAdded.addListener(({ origins }) => {
@@ -89,35 +92,6 @@ async function state(): Promise<State> {
     jobs: await getJobs(),
     sources: await liveCaptures(),
   };
-}
-
-async function liveCaptures(tabId?: number): Promise<SourceInfo[]> {
-  // Snapshot keys before checking Chrome. A new viewer can register while
-  // this is in flight, including when reloading the exact same invoice URL.
-  const captures = await capturedSources(tabId);
-  if (!captures.length) return [];
-  const contexts = await chrome.runtime.getContexts({
-    documentUrls: [chrome.runtime.getURL('capture.html')],
-    ...(tabId === undefined ? {} : { tabIds: [tabId] }),
-  });
-  const liveIds = new Set(contexts.map((context) => context.documentId));
-  const liveTabs = new Set(contexts.map((context) => context.tabId));
-  const byTab = new Map<number, SourceInfo | undefined>();
-  const closed = [];
-  for (const source of captures) {
-    if (
-      source.documentId
-        ? liveIds.has(source.documentId)
-        : liveTabs.has(source.tabId)
-    ) {
-      // Multiple invoices in one page have no single current PDF.
-      byTab.set(source.tabId, byTab.has(source.tabId) ? undefined : source);
-    } else {
-      closed.push(source);
-    }
-  }
-  await deleteCaptures(closed);
-  return [...byTab.values()].filter((source): source is SourceInfo => !!source);
 }
 
 async function offscreen(start: boolean): Promise<void> {
@@ -312,8 +286,27 @@ chrome.runtime.onMessage.addListener(
   },
 );
 
+chrome.runtime.onInstalled.addListener(() => {
+  void configureNativePdfHandling();
+});
+
+async function cleanViewerFiles(): Promise<void> {
+  // Snapshot files before reading live records: every new writer registers
+  // its document in IndexedDB before creating its private viewer file.
+  const files = await listLocalPdfIds();
+  await liveCaptures();
+  if (!files.length) return;
+  const registered = new Set(
+    (await capturedSources()).map((source) => source.documentId),
+  );
+  await Promise.all(
+    files.filter((id) => !registered.has(id)).map(deleteLocalPdf),
+  );
+}
+
 chrome.runtime.onStartup.addListener(() => {
-  void liveCaptures();
+  void configureNativePdfHandling();
+  void cleanViewerFiles();
   void getJobs().then(async (jobs) => {
     if (jobs.some((job) => isActive(job) || hasImportWork(job)))
       await offscreen(true);
@@ -323,7 +316,7 @@ chrome.runtime.onStartup.addListener(() => {
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   pdfDispositions.delete(tabId);
-  void clearCapturedPdf(tabId);
+  void forgetPdfViewers(tabId);
 });
 
 chrome.tabs.onUpdated.addListener((tabId, change) => {

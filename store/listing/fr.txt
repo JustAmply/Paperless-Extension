@@ -8,6 +8,6 @@ L’extension indique quand Paperless a accepté un fichier pour le traiter. Si 
 
 L’interface utilise la langue de Chrome et est disponible en dix langues. Les réglages et les fichiers temporaires restent dans votre profil Chrome. Les PDF sélectionnés sont envoyés directement au serveur configuré. L’extension ne contient ni publicité ni outil de suivi.
 
-Nécessite Chrome 116 ou une version ultérieure. À partir de Chrome 151, l’extension peut reprendre un PDF déjà chargé dans un onglet, même si sa consultation nécessite une connexion. Si un PDF est inaccessible, enregistrez-le depuis la visionneuse, puis sélectionnez le fichier. L’envoi direct depuis un onglet affichant un PDF local nécessite une autorisation supplémentaire dans Chrome.
+Nécessite Chrome 116 ou une version ultérieure. À partir de Chrome 157, l’extension peut reprendre un PDF déjà chargé dans un onglet, même si sa consultation nécessite une connexion. Si un PDF est inaccessible, enregistrez-le depuis la visionneuse, puis sélectionnez le fichier. L’envoi direct depuis un onglet affichant un PDF local nécessite une autorisation supplémentaire dans Chrome.
 
 Paperless Upload est un projet indépendant de Paperless-ngx et n’est pas un produit officiel.

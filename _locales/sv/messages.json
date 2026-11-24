@@ -141,6 +141,15 @@
   "uiUploadCurrent": {
     "message": "Ladda upp aktuell PDF"
   },
+  "uiOpenInChrome": {
+    "message": "Öppna PDF i Chrome"
+  },
+  "uiOpenPdfTab": {
+    "message": "Öppna PDF-filen i en egen flik"
+  },
+  "uiSaveOriginalPdf": {
+    "message": "Spara original-PDF:en"
+  },
   "uiChooseFiles": {
     "message": "Välj filer"
   },
