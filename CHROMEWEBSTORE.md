@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — Paperless Upload
 
-Last updated: 2026-11-20
+Last updated: 2026-11-24
 
 ## Store listing
 
@@ -76,6 +76,7 @@ Policy source: [docs/PRIVACY_POLICY.md](docs/PRIVACY_POLICY.md). Public policy U
 
 | Version | Date       | Changes                                                                                         | Status      |
 | ------- | ---------- | ----------------------------------------------------------------------------------------------- | ----------- |
+| 0.5.0   | 2026-11-24 | Restore native PDF shortcuts and open embedded invoices in a separate PDF tab for upload.       | Prepared    |
 | 0.4.1   | 2026-11-20 | Use English for the default extension and store language.                                       | In review   |
 | 0.4.0   | 2026-11-20 | Localize the extension and store materials in ten languages.                                    | Superseded  |
 | 0.3.1   | 2026-11-19 | Save displayed PDFs by keyboard and recognize protected invoices in direct or embedded viewers. | Local build |
