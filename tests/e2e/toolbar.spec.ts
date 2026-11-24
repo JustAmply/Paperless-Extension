@@ -579,7 +579,9 @@ for (const sourceType of ['get', 'post', 'single-use', 'blob'] as const) {
       if (sourceType === 'get') {
         const original = (await sourceCache())[0]!;
         const cachePage = await context.newPage();
-        await cachePage.goto(`chrome-extension://${id}/popup.html`);
+        // The popup polls live tabs and would discard the synthetic tab IDs.
+        // A static extension resource gives this fixture the same IndexedDB.
+        await cachePage.goto(`chrome-extension://${id}/popup.css`);
         await test.step('Late captures cannot replace or resurrect a tab entry', async () => {
           const result = await cachePage.evaluate(async (url) => {
             const {
